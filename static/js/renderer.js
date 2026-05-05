@@ -78,6 +78,12 @@ export function clearMessages() {
       });
     });
   }
+  // Ensure input listeners update initial UI state (e.g. disable send button)
+  const inputEl = document.getElementById('user-input');
+  if (inputEl) {
+    inputEl.value = inputEl.value || '';
+    inputEl.dispatchEvent(new Event('input'));
+  }
 }
 
 function createMessageRow({ avatarClass, avatarIcon, roleLabel, isUser = false }) {

@@ -122,17 +122,25 @@ function bindSettingsEvents() {
 
 function bindInputEvents() {
   const userInput = document.getElementById('user-input');
+  const sendBtn   = document.getElementById('send-btn');
+
+  const updateSendButton = () => {
+    if (!sendBtn) return;
+    sendBtn.disabled = userInput.value.trim() === '';
+  };
 
   const submitInput = () => {
-    const text = userInput.value;
+    const text = userInput.value.trim();
+    if (!text) return; // don't submit empty messages
     userInput.value = '';
     autoResize(userInput);
     updateCharCount();
     sendMessage(text);
+    updateSendButton();
   };
 
   document.getElementById('send-btn').addEventListener('click', submitInput);
-  userInput.addEventListener('input',   () => { autoResize(userInput); updateCharCount(); });
+  userInput.addEventListener('input',   () => { autoResize(userInput); updateCharCount(); updateSendButton(); });
   userInput.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitInput(); }
   });
@@ -154,6 +162,7 @@ function bindInputEvents() {
     userInput.value = prompt.dataset.prompt;
     autoResize(userInput);
     userInput.focus();
+    updateSendButton();
   });
 
   // Edit & Resend — dispatched from renderer when user confirms an edit
@@ -166,6 +175,8 @@ function bindInputEvents() {
   document.getElementById('messages').addEventListener('chat:regenerate', e => {
     regenerateFrom(e.detail.logIndex);
   });
+  // Initialize send button state
+  updateSendButton();
 }
 
 function bindKeyboardEvents() {
