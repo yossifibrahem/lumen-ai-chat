@@ -27,9 +27,8 @@
   --content-w: 820px;
   --dock-w: 760px;
   --shadow: 0 8px 32px rgba(0,0,0,.5);
-  --font-sans: 'Sora', sans-serif;
+  --font-tiempos: 'Tiempos Text', Georgia, serif;
   --font-mono: 'JetBrains Mono', monospace;
-  --font-serif: 'Instrument Serif', serif;
   --fast: .15s;
   --ease: cubic-bezier(.4,0,.2,1);
 }
@@ -37,7 +36,7 @@
 html, body { height: var(--vvh, 100dvh); overflow: hidden; }
 html { font-size: var(--font-size-base, 15px); }
 body {
-  font-family: var(--font-sans);
+  font-family: var(--font-roman);
   background: var(--bg);
   color: var(--text);
   display: flex;
@@ -237,7 +236,7 @@ svg { flex-shrink: 0; }
   place-items: center;
 }
 .logo-mark svg { width: 14px; height: 14px; }
-.logo-name { font-family: var(--font-serif); font-size: 1.2rem; color: var(--text); letter-spacing: -.3px; }
+.logo-name { font-family: var(--font-tiempos); font-size: 1.2rem; color: var(--text); letter-spacing: -.3px; }
 .logo-name em, .es-logo em { font-style: italic; color: var(--accent); }
 
 
@@ -365,7 +364,7 @@ svg { flex-shrink: 0; }
 .es-logo {
   margin-bottom: 6px;
   color: var(--text);
-  font-family: var(--font-serif);
+  font-family: var(--font-tiempos);
   font-size: 2.2rem;
   opacity: .5;
 }
@@ -636,7 +635,7 @@ svg { flex-shrink: 0; }
 .msg-content { color: var(--text); font-size: .9rem; font-weight: 300; line-height: 1.75; }
 .msg-content p { margin-bottom: .65em; }
 .msg-content p:last-child { margin-bottom: 0; }
-.msg-content :is(h1, h2, h3, h4) { margin: 1.1em 0 .4em; color: var(--text); font-family: var(--font-serif); font-weight: 400; }
+.msg-content :is(h1, h2, h3, h4) { margin: 1.1em 0 .4em; color: var(--text); font-family: var(--font-tiempos); font-weight: 400; }
 .msg-content h1 { font-size: 1.4rem; }
 .msg-content h2 { font-size: 1.2rem; }
 .msg-content h3 { font-size: 1.05rem; }
@@ -747,7 +746,7 @@ svg { flex-shrink: 0; }
 .model-chip { padding: 5px 11px; border: 1px solid var(--border); border-radius: 20px; font-size: .68rem; font-family: var(--font-mono); }
 .model-chip:hover { border-color: var(--accent); color: var(--accent); }
 .section-sep { height: 1px; margin: 22px 0; background: var(--border); }
-.section-title { margin-bottom: 16px; color: var(--text); font-family: var(--font-serif); font-size: .95rem; }
+.section-title { margin-bottom: 16px; color: var(--text); font-family: var(--font-tiempos); font-size: .95rem; }
 .tool-card { margin-bottom: 7px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface2); }
 .tool-card-header { gap: 8px; margin-bottom: 4px; display: flex; align-items: center; }
 .tool-card-name { font-size: .78rem; font-family: var(--font-mono); color: var(--accent); font-weight: 500; }
@@ -949,7 +948,7 @@ html.hide-suggestion-chips #suggestions-bar { display: none !important; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
-  font-family: var(--font-sans);
+  font-family: var(--font-roman);
   font-size: .84rem;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239a978f' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
