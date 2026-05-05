@@ -41,7 +41,10 @@
     }
 
     // Font size
-    var sizes = { small: '13px', medium: '15px', large: '17px' };
+    var isMobile = window.innerWidth <= 768;
+    var sizes = isMobile
+      ? { small: '12px', medium: '14px', large: '16px' }
+      : { small: '14px', medium: '16px', large: '18px' };
     if (prefs.fontSize && sizes[prefs.fontSize]) {
       r.style.setProperty('--font-size-base', sizes[prefs.fontSize]);
     }
@@ -277,9 +280,9 @@
         <div class="field">
           <label>Font size</label>
           <select id="cust-font-size">
-            <option value="small">Small (13px)</option>
-            <option value="medium">Medium (15px)</option>
-            <option value="large">Large (17px)</option>
+            <option value="small">Small (12 – 14px)</option>
+            <option value="medium">Medium (14 – 16px)</option>
+            <option value="large">Large (16 – 18px)</option>
           </select>
         </div>
 

@@ -10,7 +10,10 @@ import { showToast } from './ui.js';
 
 export function applyCustomization() {
   // Font size
-  const sizes = { small: '13px', medium: '15px', large: '17px' };
+  const isMobile = window.innerWidth <= 768;
+  const sizes = isMobile
+    ? { small: '12px', medium: '14px', large: '16px' }
+    : { small: '14px', medium: '16px', large: '18px' };
   document.documentElement.style.setProperty('--font-size-base', sizes[state.fontSize] || sizes.medium);
 
   // Accent color — update all derived CSS variables
