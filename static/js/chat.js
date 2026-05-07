@@ -14,6 +14,7 @@ import { applyMarkdown } from './markdown.js';
 import { executeTool, isServerEnabled, isServerAutoApprove } from './mcp.js';
 import { buildMcpSystemPrompt as buildMcpPrompt } from './mcp_policy.js';
 import { persistConversation, createNewConversation } from './conversations.js';
+import { refreshFilePanel } from './file_panel.js';
 
 let turnAbortController = null;
 let turnCancelled = false;
@@ -364,6 +365,7 @@ export async function sendMessage(userText) {
   let uploadedFiles = [];
   try {
     uploadedFiles = await uploadConversationFiles(state.convId, filesToSend);
+    refreshFilePanel({ keepPreview: true }).catch(() => {});
   } catch (err) {
     pendingAttachments.unshift(...attachmentsToSend);
     refreshImagePreviewBar();
@@ -699,6 +701,7 @@ async function handleToolCalls(calls, precedingText, precedingReasoning = '', to
     if (decisions[i]) {
       toolStripSetRunning(strips[i], args);
       result = await executeTool(tc, { signal: turnAbortController?.signal });
+      refreshFilePanel({ keepPreview: true }).catch(() => {});
     } else {
       result = 'Tool execution denied by user.';
     }

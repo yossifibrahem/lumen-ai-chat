@@ -24,8 +24,8 @@ python app.py
 | **Model Fetch** | Auto-fetch available models from any API endpoint |
 | **Persistent Conversations** | Saved as JSON files in `./conversations/` |
 | **MCP Tool Calling** | Configure MCP servers in `mcp.json` |
+| **Workspace File Panel** | Browse each chat's `/workspace`, resize the panel, open files in a full-panel preview, copy text contents, and download any file |
 | **Tool Confirmation** | Every tool call shows name + arguments; requires user approval |
-| **File Attachments** | Upload files/images, preview them in chat|
 
 ## Settings
 
@@ -213,6 +213,19 @@ Important safety behavior: if a server is configured for container runtime and D
 ```
 GET /api/conversations/<conv_id>/container
 → { "status": "running"|"stopped"|"missing", "container_name": "lumen-chat-…", "workspace": "…" }
+
+GET /api/conversations/<conv_id>/files?path=/workspace
+→ List files/folders in the chat workspace
+
+GET /api/conversations/<conv_id>/files/content?path=/workspace/app.py
+→ Preview text/code/Markdown in the workspace panel; binary files are download-only
+
+GET /api/conversations/<conv_id>/files/download?path=/workspace/app.py
+→ Download any file from the chat workspace
+→ Preview text/code/Markdown files when safe
+
+GET /api/conversations/<conv_id>/files/download?path=/workspace/output.zip
+→ Download any file from the chat workspace
 ```
 
 ### Resource limits (defaults)

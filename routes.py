@@ -7,6 +7,7 @@ module, and return JSON.  No business logic lives here.
 from __future__ import annotations
 
 import json
+import mimetypes
 import os
 import re
 import threading
@@ -169,10 +170,154 @@ def call_mcp_tool():
 
 
 
+
+
+# ── Workspace file browser ───────────────────────────────────────────────────
+
+_TEXT_EXTENSIONS = {
+    ".bash", ".bat", ".c", ".cfg", ".conf", ".cpp", ".cs", ".css", ".csv",
+    ".dockerfile", ".env", ".go", ".h", ".hpp", ".htm", ".html", ".ini",
+    ".java", ".js", ".json", ".jsx", ".log", ".lua", ".md", ".mjs",
+    ".php", ".properties", ".py", ".rb", ".rs", ".sh", ".sql", ".svg",
+    ".toml", ".ts", ".tsx", ".txt", ".xml", ".yaml", ".yml",
+}
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(os.getenv(name, str(default)))
+    except ValueError:
+        return default
+
+
+_MAX_PREVIEW_BYTES = _env_int("LUMEN_MAX_FILE_PREVIEW_BYTES", 512 * 1024)
+_MAX_LIST_ENTRIES = _env_int("LUMEN_MAX_FILE_LIST_ENTRIES", 500)
+
+
+def _workspace_root(conv_id: str) -> Path:
+    return store.working_directory(conv_id).resolve()
+
+
+def _workspace_relpath(path_value: str | None) -> str:
+    raw = (path_value or "").strip().replace("\\", "/")
+    if raw in {"", ".", "/", "/workspace"}:
+        return ""
+    if raw.startswith("/workspace/"):
+        raw = raw[len("/workspace/"):]
+    elif raw.startswith("/"):
+        raise ValueError("Only /workspace paths are available")
+    parts = [part for part in raw.split("/") if part and part != "."]
+    if any(part == ".." for part in parts):
+        raise ValueError("Parent path traversal is not allowed")
+    return "/".join(parts)
+
+
+def _resolve_workspace_path(conv_id: str, path_value: str | None) -> tuple[Path, str]:
+    root = _workspace_root(conv_id)
+    rel = _workspace_relpath(path_value)
+    target = (root / rel).resolve()
+    if target != root and root not in target.parents:
+        raise ValueError("Path escapes the workspace")
+    return target, rel
+
+
+def _workspace_path(rel: str) -> str:
+    return "/workspace" + (f"/{rel}" if rel else "")
+
+
+def _parent_workspace_path(rel: str) -> str | None:
+    if not rel:
+        return None
+    parent = Path(rel).parent.as_posix()
+    return _workspace_path("" if parent == "." else parent)
+
+
+def _is_text_file(path: Path) -> bool:
+    if path.suffix.lower() in _TEXT_EXTENSIONS:
+        return True
+    mime, _ = mimetypes.guess_type(path.name)
+    return bool(mime and (mime.startswith("text/") or mime in {
+        "application/json", "application/javascript", "application/xml", "application/xhtml+xml",
+    }))
+
+
+def _file_entry(path: Path, root: Path) -> dict:
+    stat = path.stat()
+    rel = path.relative_to(root).as_posix()
+    is_dir = path.is_dir()
+    return {
+        "name": path.name,
+        "path": _workspace_path(rel),
+        "relative_path": rel,
+        "type": "directory" if is_dir else "file",
+        "size": None if is_dir else stat.st_size,
+        "modified": stat.st_mtime,
+        "previewable": (not is_dir) and _is_text_file(path) and stat.st_size <= _MAX_PREVIEW_BYTES,
+    }
+
+
+def _list_workspace_dir(conv_id: str, path_value: str | None) -> tuple[dict, int]:
+    if not store.load(conv_id):
+        return {"error": "Conversation not found"}, 404
+    try:
+        target, rel = _resolve_workspace_path(conv_id, path_value)
+    except ValueError as exc:
+        return {"error": str(exc)}, 400
+    if not target.exists():
+        return {"error": "Path not found"}, 404
+    if not target.is_dir():
+        return {"error": "Path is not a directory"}, 400
+
+    root = _workspace_root(conv_id)
+    entries = []
+    for child in sorted(target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
+        if len(entries) >= _MAX_LIST_ENTRIES:
+            break
+        entries.append(_file_entry(child, root))
+
+    return {
+        "path": _workspace_path(rel),
+        "relative_path": rel,
+        "parent": _parent_workspace_path(rel),
+        "entries": entries,
+        "limit": _MAX_LIST_ENTRIES,
+        "truncated": len(entries) >= _MAX_LIST_ENTRIES,
+    }, 200
+
+
+def _read_workspace_file(conv_id: str, path_value: str | None) -> tuple[dict, int]:
+    if not store.load(conv_id):
+        return {"error": "Conversation not found"}, 404
+    try:
+        target, rel = _resolve_workspace_path(conv_id, path_value)
+    except ValueError as exc:
+        return {"error": str(exc)}, 400
+    if not target.exists():
+        return {"error": "File not found"}, 404
+    if not target.is_file():
+        return {"error": "Path is not a file"}, 400
+
+    stat = target.stat()
+    previewable = _is_text_file(target) and stat.st_size <= _MAX_PREVIEW_BYTES
+    mime, _ = mimetypes.guess_type(target.name)
+    data = {
+        **_file_entry(target, _workspace_root(conv_id)),
+        "mime_type": mime or "application/octet-stream",
+    }
+    if not previewable:
+        data.update({"previewable": False, "content": None})
+        return data, 200
+
+    raw = target.read_bytes()
+    try:
+        content = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        content = raw.decode("utf-8", errors="replace")
+    data.update({"previewable": True, "content": content})
+    return data, 200
+
 # ── Container file uploads ────────────────────────────────────────────────────
 
 _SAFE_UPLOAD_NAME = re.compile(r"[^A-Za-z0-9._ -]+")
-_MAX_UPLOAD_BYTES = int(os.getenv("LUMEN_MAX_UPLOAD_BYTES", str(50 * 1024 * 1024)))
+_MAX_UPLOAD_BYTES = _env_int("LUMEN_MAX_UPLOAD_BYTES", 50 * 1024 * 1024)
 
 
 def _safe_upload_name(name: str) -> str:
@@ -195,9 +340,13 @@ def _unique_path(directory: Path, filename: str) -> Path:
     raise RuntimeError(f"Could not create a unique filename for {filename!r}")
 
 
-@blueprint.route("/api/conversations/<conv_id>/files", methods=["POST"])
-def upload_conversation_files(conv_id: str):
-    """Save uploaded files into the conversation workspace mounted at /workspace."""
+@blueprint.route("/api/conversations/<conv_id>/files", methods=["GET", "POST"])
+def conversation_files(conv_id: str):
+    """List or save files in the conversation workspace mounted at /workspace."""
+    if request.method == "GET":
+        payload, status = _list_workspace_dir(conv_id, request.args.get("path", ""))
+        return jsonify(payload), status
+
     if not store.load(conv_id):
         return jsonify({"error": "Conversation not found"}), 404
 
@@ -241,6 +390,25 @@ def upload_conversation_files(conv_id: str):
     if not saved:
         return jsonify({"error": "No valid files uploaded"}), 400
     return jsonify({"files": saved})
+
+
+@blueprint.route("/api/conversations/<conv_id>/files/content", methods=["GET"])
+def get_conversation_file_content(conv_id: str):
+    payload, status = _read_workspace_file(conv_id, request.args.get("path", ""))
+    return jsonify(payload), status
+
+
+@blueprint.route("/api/conversations/<conv_id>/files/download", methods=["GET"])
+def download_conversation_file(conv_id: str):
+    if not store.load(conv_id):
+        return jsonify({"error": "Conversation not found"}), 404
+    try:
+        target, _ = _resolve_workspace_path(conv_id, request.args.get("path", ""))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    if not target.exists() or not target.is_file():
+        return jsonify({"error": "File not found"}), 404
+    return send_file(target, as_attachment=True, download_name=target.name)
 
 # ── Images ────────────────────────────────────────────────────────────────────
 

@@ -115,7 +115,11 @@
 
     <input id="chat-title-input" type="text" placeholder="Untitled Conversation" maxlength="80" />
 
-    <div class="header-actions"></div>
+    <div class="header-actions">
+      <button id="btn-toggle-files" title="Workspace files" aria-label="Workspace files">
+        <span data-icon="mcpFileSystem"></span>
+      </button>
+    </div>
   </div>
 
   <div id="messages"></div>
@@ -168,6 +172,38 @@
     <div id="suggestions-bar"></div>
   </div>
 </main>
+
+<!-- Workspace Files Panel -->
+<aside id="file-panel">
+  <div id="file-panel-resizer" title="Resize workspace panel" aria-hidden="true"></div>
+  <div class="file-panel-header">
+    <div>
+      <div class="file-panel-title">Workspace</div>
+      <div id="file-panel-path">/workspace</div>
+    </div>
+    <div class="file-panel-actions">
+      <button id="btn-refresh-files" title="Refresh files" aria-label="Refresh files"><span data-icon="refresh"></span></button>
+      <button id="btn-close-files" title="Close files panel" aria-label="Close files panel"><span data-icon="close"></span></button>
+    </div>
+  </div>
+  <div id="file-panel-list"></div>
+  <div id="file-preview">
+    <div class="file-preview-header">
+      <div class="file-preview-heading">
+        <div id="file-preview-title">Preview</div>
+        <div id="file-preview-meta"></div>
+      </div>
+      <div class="file-preview-actions">
+        <button id="btn-back-files" title="Back to files" aria-label="Back to files"><span data-icon="chevronLeft"></span></button>
+        <button id="btn-copy-file" disabled title="Copy file content" aria-label="Copy file content"><span data-icon="copy"></span></button>
+        <button id="btn-download-file" disabled title="Download file" aria-label="Download file"><span data-icon="download"></span></button>
+        <button id="btn-refresh-files-preview" title="Refresh files" aria-label="Refresh files"><span data-icon="refresh"></span></button>
+        <button id="btn-close-files-preview" title="Close files panel" aria-label="Close files panel"><span data-icon="close"></span></button>
+      </div>
+    </div>
+    <div id="file-preview-body"></div>
+  </div>
+</aside>
 
 <!-- Settings Modal -->
 <div class="modal-overlay" id="settings-modal">

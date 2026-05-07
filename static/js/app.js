@@ -15,6 +15,7 @@ import { initVoiceInput } from './voice.js';
 import { clearMessages } from './renderer.js';
 import { ICONS, initIcons } from './icons.js';
 import { loadCustomization, saveCustomization, resetCustomization, initSwatchPicker, syncCustomizationUI } from './customization.js';
+import { initFilePanel } from './file_panel.js';
 
 // ── Event binding ─────────────────────────────────────────────────────────────
 
@@ -208,6 +209,7 @@ function bindEvents() {
 
 (async () => {
   initIcons();
+  initFilePanel();
   initMobileKeyboardHandling();   // must run early — sets --vvh before first paint
   bindEvents();
   loadSettings();
