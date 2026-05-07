@@ -171,11 +171,14 @@ function startInlineEdit(row, logIndex, currentText, currentContent = null) {
   const footerEl  = row.querySelector('.msg-footer');
   if (!contentEl) return;
 
-  // Extract persisted image URLs from the original content object so they
+  // Extract persisted attachments from the original content object so they
   // survive the edit cycle and are not silently dropped on resend.
-  const imageUrls = (currentContent && typeof currentContent === 'object' && !Array.isArray(currentContent))
-    ? (currentContent.imageUrls || [])
-    : [];
+  const preservedContent = currentContent && typeof currentContent === 'object' && !Array.isArray(currentContent)
+    ? currentContent
+    : {};
+  const attachments = normalizeContentAttachments(preservedContent);
+  const imageUrls = attachments.filter(entry => entry.kind === 'image').map(entry => entry.url).filter(Boolean);
+  const files = attachments.filter(entry => entry.kind === 'file');
 
   contentEl.style.display = 'none';
   footerEl?.remove();
@@ -198,11 +201,11 @@ function startInlineEdit(row, logIndex, currentText, currentContent = null) {
 
   saveBtn.addEventListener('click', () => {
     const newText = textarea.value.trim();
-    if (!newText && !imageUrls.length) return;
+    if (!newText && !attachments.length) return;
     editWrap.remove();
     contentEl.style.display = '';
-    // Include the original imageUrls so editAndResend can restore them.
-    row.dispatchEvent(new CustomEvent('chat:edit-resend', { bubbles: true, detail: { logIndex, newText, imageUrls } }));
+    // Include the original ordered attachment list so editAndResend can restore it exactly.
+    row.dispatchEvent(new CustomEvent('chat:edit-resend', { bubbles: true, detail: { logIndex, newText, imageUrls, files, attachments } }));
   });
 
   cancelBtn.addEventListener('click', cancelEdit);
@@ -214,21 +217,16 @@ function startInlineEdit(row, logIndex, currentText, currentContent = null) {
 
   actions.appendChild(cancelBtn);
   actions.appendChild(saveBtn);
-  editWrap.appendChild(textarea);
 
-  // Show attached images as a read-only strip inside the edit UI.
-  if (imageUrls.length) {
-    const imgStrip = createElement('div', { className: 'msg-edit-images' });
-    imageUrls.forEach(url => {
-      const img = document.createElement('img');
-      img.src       = url;
-      img.className = 'msg-image msg-edit-image-thumb';
-      img.alt       = '';
-      imgStrip.appendChild(img);
-    });
-    editWrap.appendChild(imgStrip);
+  // Show attached files/images above the editable text, matching the normal
+  // message layout where attachments appear first and text sits underneath.
+  if (attachments.length) {
+    const attachmentStrip = createElement('div', { className: 'msg-edit-attachments msg-attachments-grid' });
+    attachments.forEach(attachment => attachmentStrip.appendChild(renderAttachmentCard(attachment, { edit: true })));
+    editWrap.appendChild(attachmentStrip);
   }
 
+  editWrap.appendChild(textarea);
   editWrap.appendChild(actions);
   row.appendChild(editWrap);
 
@@ -438,35 +436,92 @@ export function appendThinkingBlock(reasoningText) {
   scrollToBottom();
 }
 
+function formatBytes(bytes = 0) {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ['KB', 'MB', 'GB'];
+  let value = bytes / 1024;
+  let unit = units.shift();
+  while (value >= 1024 && units.length) {
+    value /= 1024;
+    unit = units.shift();
+  }
+  return `${value.toFixed(value >= 10 ? 0 : 1)} ${unit}`;
+}
+
+function getFileExt(name = '') {
+  const ext = (name.split('.').pop() || '').trim();
+  return ext ? ext.toUpperCase().slice(0, 6) : 'FILE';
+}
+
+function normalizeContentAttachments(content = {}) {
+  if (!content || typeof content !== 'object' || Array.isArray(content)) return [];
+  if (Array.isArray(content.attachments)) {
+    return content.attachments
+      .map(entry => entry?.kind ? entry : null)
+      .filter(Boolean);
+  }
+  return [
+    ...(Array.isArray(content.files) ? content.files.map(file => ({ kind: 'file', ...file })) : []),
+    ...(Array.isArray(content.imageUrls) ? content.imageUrls.map(url => ({ kind: 'image', url })) : []),
+  ];
+}
+
+function renderAttachmentCard(attachment, { edit = false } = {}) {
+  if (attachment.kind === 'image') {
+    const btn = createElement('button', {
+      className: `msg-attachment-card msg-image-card${edit ? ' msg-edit-image-card' : ''}`,
+      html: `<img class="msg-attachment-image${edit ? ' msg-edit-image-thumb' : ''}" alt="" />`,
+    });
+    const img = btn.querySelector('img');
+    img.src = attachment.url || '';
+    btn.title = attachment.name ? `Open ${attachment.name}` : 'Open image';
+    btn.addEventListener('click', () => {
+      if (attachment.url) window.open(attachment.url, '_blank');
+    });
+    return btn;
+  }
+
+  const card = createElement('div', { className: `msg-attachment-card msg-file-card${edit ? ' msg-edit-file-card' : ''}` });
+  card.title = attachment.path ? `Available to tools at ${attachment.path}` : '';
+  const badge = getFileExt(attachment.name || 'file');
+  const size = formatBytes(attachment.size || 0);
+  card.innerHTML = `
+    <div class="msg-file-card-body">
+      <div class="msg-file-card-name"></div>
+      <div class="msg-file-card-subtle">Available in chat workspace</div>
+      <div class="msg-file-card-meta">
+        <span class="msg-file-card-badge">${badge}</span>
+        ${size ? `<span class="msg-file-card-size">${size}</span>` : ''}
+      </div>
+    </div>`;
+  card.querySelector('.msg-file-card-name').textContent = attachment.name || 'file';
+  return card;
+}
+
+function getRawText(content) {
+  if (typeof content === 'string') return content;
+  if (content && typeof content === 'object' && !Array.isArray(content)) return content.text || '';
+  if (Array.isArray(content)) return content.filter(p => p.type === 'text').map(p => p.text).join('\n');
+  return '';
+}
+
 function appendContentParts(contentEl, content) {
-  // Multipart attachments: { text, imageUrls: [...], files: [...] }
-  if (content && typeof content === 'object' && !Array.isArray(content) && ('imageUrls' in content || 'files' in content)) {
+  // Multipart attachments: { text, attachments: [...] } with legacy support for
+  // { text, imageUrls: [...], files: [...] }.
+  if (content && typeof content === 'object' && !Array.isArray(content) && ('attachments' in content || 'imageUrls' in content || 'files' in content)) {
+    const attachments = normalizeContentAttachments(content);
+
+    if (attachments.length) {
+      const attachmentsWrap = createElement('div', { className: 'msg-attachments-grid' });
+      attachments.forEach(attachment => attachmentsWrap.appendChild(renderAttachmentCard(attachment)));
+      contentEl.appendChild(attachmentsWrap);
+    }
+
     if (content.text) {
       const textChunk = createElement('div');
       applyMarkdown(textChunk, content.text);
       contentEl.appendChild(textChunk);
-    }
-    if (content.imageUrls?.length) {
-      const imgWrap = createElement('div', { className: 'msg-images' });
-      content.imageUrls.forEach(url => {
-        const img = document.createElement('img');
-        img.src = url;
-        img.className = 'msg-image';
-        img.addEventListener('click', () => window.open(url, '_blank'));
-        imgWrap.appendChild(img);
-      });
-      contentEl.appendChild(imgWrap);
-    }
-    if (content.files?.length) {
-      const fileWrap = createElement('div', { className: 'msg-files' });
-      content.files.forEach(file => {
-        const chip = createElement('div', { className: 'msg-file-chip' });
-        chip.title = file.path ? `Available to tools at ${file.path}` : '';
-        chip.innerHTML = `${ICONS.file}<span class="msg-file-name"></span>`;
-        chip.querySelector('.msg-file-name').textContent = file.name || 'file';
-        fileWrap.appendChild(chip);
-      });
-      contentEl.appendChild(fileWrap);
     }
     return;
   }
@@ -477,21 +532,10 @@ function appendContentParts(contentEl, content) {
   }
 
   if (!Array.isArray(content)) return;
-  content
-    .filter(part => part.type === 'text')
-    .forEach(part => {
-      const chunk = createElement('div');
-      applyMarkdown(chunk, part.text);
-      contentEl.appendChild(chunk);
-    });
+  const textParts = content.filter(p => p.type === 'text').map(p => p.text).join('\n');
+  applyMarkdown(contentEl, textParts);
 }
 
-function getRawText(content) {
-  if (typeof content === 'string') return content;
-  if (content && typeof content === 'object' && !Array.isArray(content) && ('imageUrls' in content || 'files' in content)) return content.text || '';
-  if (!Array.isArray(content)) return '';
-  return content.map(part => part.text || '').join('\n');
-}
 
 export function appendMessage(role, content, logIndex = -1) {
   if (!content) return null;

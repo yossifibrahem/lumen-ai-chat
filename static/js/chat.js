@@ -20,10 +20,11 @@ let turnCancelled = false;
 
 // ── Pending attachments ──────────────────────────────────────────────────────
 
-let pendingImages = [];
-// Each entry: { previewUrl: string, uploadPromise: Promise<{ref, url, mediaType}|null> }
-let pendingFiles = [];
-// Each entry: { file: File, name: string, size: number }
+// Keep one ordered list so mixed uploads render in the exact order the user picked them.
+// Image entry: { kind: 'image', previewUrl, uploadPromise, name, size }
+// File entry:  { kind: 'file', file, name, size }
+let pendingAttachments = [];
+let pendingAttachmentAdds = Promise.resolve();
 
 function getImagePreviewBar() { return document.getElementById('image-preview-bar'); }
 
@@ -39,50 +40,54 @@ function formatBytes(bytes = 0) {
   return `${value.toFixed(value >= 10 ? 0 : 1)} ${unit}`;
 }
 
+function getFileExt(name = '') {
+  const ext = (name.split('.').pop() || '').trim();
+  return ext ? ext.toUpperCase().slice(0, 6) : 'FILE';
+}
+
 function refreshImagePreviewBar() {
   const bar = getImagePreviewBar();
   if (!bar) return;
-  if (!pendingImages.length && !pendingFiles.length) { bar.hidden = true; bar.innerHTML = ''; return; }
+  if (!pendingAttachments.length) { bar.hidden = true; bar.innerHTML = ''; return; }
   bar.hidden = false;
   bar.innerHTML = '';
 
-  pendingImages.forEach((img, idx) => {
+  pendingAttachments.forEach((entry, idx) => {
     const wrap = document.createElement('div');
-    wrap.className = 'img-preview-wrap';
-    wrap.innerHTML = `
-      <img class="img-preview-thumb img-preview-uploading" src="${img.previewUrl}" />
-      <button class="img-preview-remove" title="Remove">
-        ${ICONS.close}
-      </button>`;
+    wrap.className = `composer-attachment-card ${entry.kind === 'image' ? 'composer-image-card' : 'composer-file-card'}`;
 
-    const thumb = wrap.querySelector('.img-preview-thumb');
-    img.uploadPromise.then(result => {
-      if (result) thumb.classList.remove('img-preview-uploading');
-      else        thumb.classList.add('img-preview-error');
-    });
+    if (entry.kind === 'image') {
+      wrap.innerHTML = `
+        <img class="composer-attachment-thumb img-preview-uploading" src="${entry.previewUrl}" alt="" />
+        <div class="composer-attachment-meta composer-attachment-meta-overlay">
+          <div class="composer-attachment-name" title="${escapeHtml(entry.name || 'image')}">${escapeHtml(entry.name || 'image')}</div>
+          <div class="composer-attachment-subtle">${formatBytes(entry.size || 0)}</div>
+        </div>
+        <button class="img-preview-remove" title="Remove attachment" aria-label="Remove attachment">
+          ${ICONS.close}
+        </button>`;
+
+      const thumb = wrap.querySelector('.composer-attachment-thumb');
+      entry.uploadPromise.then(result => {
+        if (result) thumb.classList.remove('img-preview-uploading');
+        else        thumb.classList.add('img-preview-error');
+      });
+    } else {
+      wrap.innerHTML = `
+        <div class="composer-attachment-meta">
+          <div class="composer-attachment-name" title="${escapeHtml(entry.name || 'file')}">${escapeHtml(entry.name || 'file')}</div>
+          <div class="composer-attachment-subtle">${formatBytes(entry.size || 0)}</div>
+          <div class="composer-attachment-badge-row">
+            <span class="composer-attachment-badge">${escapeHtml(getFileExt(entry.name || 'file'))}</span>
+          </div>
+        </div>
+        <button class="img-preview-remove" title="Remove attachment" aria-label="Remove attachment">
+          ${ICONS.close}
+        </button>`;
+    }
 
     wrap.querySelector('.img-preview-remove').addEventListener('click', () => {
-      pendingImages.splice(idx, 1);
-      refreshImagePreviewBar();
-    });
-    bar.appendChild(wrap);
-  });
-
-  pendingFiles.forEach((entry, idx) => {
-    const wrap = document.createElement('div');
-    wrap.className = 'file-preview-wrap';
-    wrap.innerHTML = `
-      <div class="file-preview-icon">${ICONS.file || '📄'}</div>
-      <div class="file-preview-meta">
-        <div class="file-preview-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</div>
-        <div class="file-preview-size">${formatBytes(entry.size)}</div>
-      </div>
-      <button class="img-preview-remove" title="Remove">
-        ${ICONS.close}
-      </button>`;
-
-    wrap.querySelector('.img-preview-remove').addEventListener('click', () => {
-      pendingFiles.splice(idx, 1);
+      pendingAttachments.splice(idx, 1);
       refreshImagePreviewBar();
     });
     bar.appendChild(wrap);
@@ -130,7 +135,7 @@ async function uploadConversationFiles(convId, entries) {
 function addRegularFiles(files) {
   for (const file of Array.from(files)) {
     if (!file || file.type.startsWith('image/')) continue;
-    pendingFiles.push({ file, name: file.name || 'file', size: file.size || 0 });
+    pendingAttachments.push({ kind: 'file', file, name: file.name || 'file', size: file.size || 0 });
   }
   refreshImagePreviewBar();
 }
@@ -141,23 +146,31 @@ async function addImageFiles(files) {
     try {
       const { dataUrl, mediaType } = await readFile(file);
       const uploadPromise = uploadImage(dataUrl, mediaType);
-      pendingImages.push({ previewUrl: dataUrl, uploadPromise });
+      pendingAttachments.push({ kind: 'image', previewUrl: dataUrl, uploadPromise, name: file.name || 'image', size: file.size || 0 });
       refreshImagePreviewBar(); // show thumb immediately, upload in background
     } catch {}
   }
 }
 
-export function initImageAttachments() {
-  const attachBtn  = document.getElementById('attach-btn');
-  const imageInput = document.getElementById('image-input');
-  const textarea   = document.getElementById('user-input');
+async function addAttachmentFiles(files) {
+  // Sequential processing preserves the user's selected order across mixed image/file uploads.
+  for (const file of Array.from(files)) {
+    if (!file) continue;
+    if (file.type.startsWith('image/')) await addImageFiles([file]);
+    else addRegularFiles([file]);
+  }
+}
 
-  attachBtn?.addEventListener('click', () => imageInput?.click());
-  imageInput?.addEventListener('change', e => {
+export function initImageAttachments() {
+  const attachBtn       = document.getElementById('attach-btn');
+  const attachmentInput = document.getElementById('attachment-input') || document.getElementById('image-input');
+  const textarea        = document.getElementById('user-input');
+
+  attachBtn?.addEventListener('click', () => attachmentInput?.click());
+  attachmentInput?.addEventListener('change', e => {
     const files = Array.from(e.target.files || []);
-    addImageFiles(files.filter(file => file.type.startsWith('image/')));
-    addRegularFiles(files.filter(file => !file.type.startsWith('image/')));
-    imageInput.value = '';
+    pendingAttachmentAdds = pendingAttachmentAdds.then(() => addAttachmentFiles(files)).catch(() => {});
+    attachmentInput.value = '';
   });
 
   textarea?.addEventListener('paste', e => {
@@ -165,12 +178,9 @@ export function initImageAttachments() {
     const fileItems = items.filter(i => i.kind === 'file');
     if (!fileItems.length) return;
     const files = fileItems.map(i => i.getAsFile()).filter(Boolean);
-    const imageFiles = files.filter(file => file.type.startsWith('image/'));
-    const regularFiles = files.filter(file => !file.type.startsWith('image/'));
-    if (!imageFiles.length && !regularFiles.length) return;
+    if (!files.length) return;
     e.preventDefault();
-    addImageFiles(imageFiles);
-    addRegularFiles(regularFiles);
+    pendingAttachmentAdds = pendingAttachmentAdds.then(() => addAttachmentFiles(files)).catch(() => {});
   });
 }
 
@@ -323,24 +333,39 @@ export async function stopAssistantTurn() {
 // ── Main entry point ──────────────────────────────────────────────────────────
 
 export async function sendMessage(userText) {
-  if (!userText.trim() && !pendingImages.length && !pendingFiles.length) return;
+  await pendingAttachmentAdds;
+  if (!userText.trim() && !pendingAttachments.length) return;
   if (state.isStreaming) return;
   if (!state.convId) await createNewConversation();
 
   setStreaming(true);
 
-  const textToSend   = userText.trim();
-  const imagesToSend = pendingImages.splice(0);
-  const filesToSend  = pendingFiles.splice(0);
+  const textToSend        = userText.trim();
+  const attachmentsToSend = pendingAttachments.splice(0);
+  const imagesToSend      = attachmentsToSend.filter(entry => entry.kind === 'image');
+  const filesToSend       = attachmentsToSend.filter(entry => entry.kind === 'file');
   refreshImagePreviewBar();
 
-  // Await any in-progress image uploads and copy regular files into the chat workspace.
+  // Resolve images first so a failed image does not silently disappear from the sent message.
+  const uploadedRefs = await Promise.all(imagesToSend.map(img => img.uploadPromise));
+  const failedImageCount = uploadedRefs.filter(result => !result).length;
+  if (failedImageCount) {
+    pendingAttachments.unshift(...attachmentsToSend);
+    refreshImagePreviewBar();
+    setStreaming(false);
+    const plural = failedImageCount === 1 ? '' : 's';
+    const errorText = `Image upload failed for ${failedImageCount} attachment${plural}. Remove it or try again before sending.`;
+    state.displayLog.push({ type: 'message', role: 'assistant', content: errorText });
+    appendMessage('assistant', errorText, state.displayLog.length - 1);
+    return;
+  }
+
+  // Copy regular files into the chat workspace.
   let uploadedFiles = [];
   try {
     uploadedFiles = await uploadConversationFiles(state.convId, filesToSend);
   } catch (err) {
-    pendingImages.unshift(...imagesToSend);
-    pendingFiles.unshift(...filesToSend);
+    pendingAttachments.unshift(...attachmentsToSend);
     refreshImagePreviewBar();
     setStreaming(false);
     const errorText = `File upload failed: ${err.message}`;
@@ -349,25 +374,48 @@ export async function sendMessage(userText) {
     return;
   }
 
-  const uploadedRefs = await Promise.all(imagesToSend.map(img => img.uploadPromise));
-  const validRefs    = uploadedRefs.filter(Boolean); // drop any that failed
+  const displayAttachments = [];
+  let imageCursor = 0;
+  let fileCursor = 0;
+  attachmentsToSend.forEach(entry => {
+    if (entry.kind === 'image') {
+      const uploaded = uploadedRefs[imageCursor++];
+      displayAttachments.push({
+        kind: 'image',
+        url: uploaded.url,
+        ref: uploaded.ref,
+        mediaType: uploaded.mediaType,
+        name: entry.name || 'image',
+        size: entry.size || 0,
+      });
+    } else {
+      const uploaded = uploadedFiles[fileCursor++];
+      if (uploaded) displayAttachments.push({ kind: 'file', ...uploaded });
+    }
+  });
+
+  const imageAttachments = displayAttachments.filter(entry => entry.kind === 'image');
 
   let apiContent;
-  let displayContent;
-
-  if (validRefs.length > 0) {
+  if (imageAttachments.length > 0) {
     // API payload: user-visible text + image_ref blocks. File paths are injected
     // later by buildApiMessages() from message attachment metadata.
     apiContent = [];
     if (textToSend) apiContent.push({ type: 'text', text: textToSend });
-    validRefs.forEach(r => apiContent.push({ type: 'image_ref', ref: r.ref }));
-
-    // Display payload: clean chat text + attachment chips.
-    displayContent = { text: textToSend, imageUrls: validRefs.map(r => r.url), files: uploadedFiles };
+    imageAttachments.forEach(entry => apiContent.push({ type: 'image_ref', ref: entry.ref }));
   } else {
-    apiContent     = textToSend;
-    displayContent = uploadedFiles.length ? { text: textToSend, files: uploadedFiles } : textToSend;
+    apiContent = textToSend;
   }
+
+  const displayContent = displayAttachments.length
+    ? {
+        text: textToSend,
+        attachments: displayAttachments,
+        // Legacy fields keep older renderer/history paths working.
+        imageUrls: imageAttachments.map(entry => entry.url),
+        files: uploadedFiles,
+      }
+    : textToSend;
 
   state.messages.push({ role: 'user', content: apiContent, attachments: uploadedFiles });
   state.displayLog.push({ type: 'message', role: 'user', content: displayContent });
@@ -530,9 +578,17 @@ function imageUrlToRef(url) {
   return match ? match[1] : null;
 }
 
-export async function editAndResend(logIndex, newText, imageUrls = []) {
+export async function editAndResend(logIndex, newText, imageUrls = [], files = [], attachments = null) {
   if (state.isStreaming) return;
-  if (!newText.trim() && !imageUrls.length) return;
+
+  const normalizedAttachments = Array.isArray(attachments)
+    ? attachments
+    : [
+        ...(files || []).map(file => ({ kind: 'file', ...file })),
+        ...(imageUrls || []).map(url => ({ kind: 'image', url, ref: imageUrlToRef(url) })),
+      ];
+
+  if (!newText.trim() && !normalizedAttachments.length) return;
   if (!state.convId) await createNewConversation();
 
   const messagesIndex = logIndexToMessagesIndex(logIndex);
@@ -540,23 +596,31 @@ export async function editAndResend(logIndex, newText, imageUrls = []) {
   state.messages.splice(messagesIndex);
   renderAllMessages(state.displayLog);
 
-  // If there are no images, fall through to the normal sendMessage path.
-  if (!imageUrls.length) {
-    await sendMessage(newText);
-    return;
+  // Rebuild the user turn with the original attachments so they are preserved.
+  const textToSend = newText.trim();
+  const fileAttachments = normalizedAttachments.filter(entry => entry.kind === 'file');
+  const imageAttachments = normalizedAttachments.filter(entry => entry.kind === 'image');
+  const refs = imageAttachments.map(entry => entry.ref || imageUrlToRef(entry.url)).filter(Boolean);
+
+  let apiContent;
+  if (refs.length) {
+    apiContent = [];
+    if (textToSend) apiContent.push({ type: 'text', text: textToSend });
+    refs.forEach(ref => apiContent.push({ type: 'image_ref', ref }));
+  } else {
+    apiContent = textToSend;
   }
 
-  // Rebuild the user turn with the original image refs so images are preserved.
-  const textToSend = newText.trim();
-  const refs = imageUrls.map(imageUrlToRef).filter(Boolean);
+  const displayContent = normalizedAttachments.length
+    ? {
+        text: textToSend,
+        attachments: normalizedAttachments,
+        imageUrls: imageAttachments.map(entry => entry.url).filter(Boolean),
+        files: fileAttachments,
+      }
+    : textToSend;
 
-  const apiContent = [];
-  if (textToSend) apiContent.push({ type: 'text', text: textToSend });
-  refs.forEach(ref => apiContent.push({ type: 'image_ref', ref }));
-
-  const displayContent = { text: textToSend, imageUrls };
-
-  state.messages.push({ role: 'user', content: apiContent });
+  state.messages.push({ role: 'user', content: apiContent, attachments: fileAttachments });
   state.displayLog.push({ type: 'message', role: 'user', content: displayContent });
   appendMessage('user', displayContent, state.displayLog.length - 1);
 

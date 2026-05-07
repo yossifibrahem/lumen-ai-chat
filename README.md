@@ -25,6 +25,7 @@ python app.py
 | **Persistent Conversations** | Saved as JSON files in `./conversations/` |
 | **MCP Tool Calling** | Configure MCP servers in `mcp.json` |
 | **Tool Confirmation** | Every tool call shows name + arguments; requires user approval |
+| **File Attachments** | Upload files/images, preview them in chat|
 
 ## Settings
 

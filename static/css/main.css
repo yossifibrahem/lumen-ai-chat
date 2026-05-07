@@ -156,7 +156,7 @@ svg { flex-shrink: 0; }
 }
 :is(.arg-value, .tr-result) { margin: 0; }
 :is(.arg-name, .tr-section-label) {
-  font-size: .68rem;
+  font-size: .64rem;
   font-weight: 600;
   letter-spacing: .04em;
   text-transform: uppercase;
@@ -285,7 +285,7 @@ svg { flex-shrink: 0; }
 .conv-icon svg { width: 12px; height: 12px; }
 .conv-item.active .conv-icon { background: var(--accent-dim); color: var(--accent); }
 .conv-info { flex: 1; min-width: 0; }
-.conv-title { color: var(--text); font-size: .8rem; font-weight: 400; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conv-title { color: var(--text); font-size: .74rem; font-weight: 400; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .conv-meta { margin-top: 2px; color: var(--text3); font-size: .62rem; }
 .conv-del { padding: 3px; border-radius: 4px; color: var(--text3); opacity: 0; }
 .conv-item:hover .conv-del { opacity: 1; }
@@ -322,7 +322,7 @@ svg { flex-shrink: 0; }
   padding: env(safe-area-inset-top, 0px) 20px 0;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   background: var(--bg);
   flex-shrink: 0;
 }
@@ -428,7 +428,7 @@ svg { flex-shrink: 0; }
   outline: none;
   background: none;
   color: var(--text);
-  font-size: .9rem;
+  font-size: .8rem;
   font-weight: 300;
   line-height: 1.6;
 }
@@ -616,14 +616,107 @@ svg { flex-shrink: 0; }
 }
 .suggestion-chip svg { width: 12px; height: 12px; opacity: .6; }
 
-/* ─── Image previews ─────────────────────────────────────────────────────── */
-.img-preview-wrap { position: relative; }
-.img-preview-thumb { width: 64px; height: 64px; display: block; object-fit: cover; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: opacity .2s; }
-.img-preview-uploading { opacity: .5; }
-.img-preview-error { opacity: .4; border-color: var(--red); filter: grayscale(1); }
-.img-preview-remove { position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: var(--surface2); color: var(--text2); line-height: 1; display: flex; align-items: center; justify-content: center; }
-.img-preview-remove svg { width: 10px; height: 10px; }
-.img-preview-remove:hover { background: rgba(224,112,112,.2); color: var(--red); }
+/* ─── Composer attachment previews ───────────────────────────────────────── */
+.composer-attachment-card {
+  position: relative;
+  width: min(112px, calc(50vw - 44px));
+  aspect-ratio: 1 / 1;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)), var(--surface2);
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.03), 0 6px 20px rgba(0,0,0,.08);
+}
+.composer-image-card { background: var(--surface2); }
+.composer-file-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 10px;
+}
+.composer-attachment-thumb {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transition: opacity .2s, transform .2s;
+}
+.composer-attachment-card:hover .composer-attachment-thumb { transform: scale(1.02); }
+.img-preview-uploading { opacity: .58; }
+.img-preview-error { opacity: .35; border-color: var(--red); filter: grayscale(1); }
+.composer-attachment-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.composer-attachment-meta-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 20px 8px 8px;
+  background: linear-gradient(180deg, transparent, rgba(0,0,0,.78));
+}
+.composer-attachment-name {
+  color: var(--text);
+  font-size: .73rem;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.composer-attachment-subtle {
+  color: var(--text2);
+  font-size: .68rem;
+}
+.composer-attachment-badge-row { margin-top: auto; padding-top: 4px; }
+.composer-attachment-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 0 6px;
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  background: rgba(255,255,255,.035);
+  color: var(--text2);
+  font-family: var(--font-mono);
+  font-size: .62rem;
+  line-height: 1;
+  letter-spacing: .05em;
+}
+.img-preview-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px;
+  background: rgba(17,18,16,.82);
+  color: var(--text2);
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-2px) scale(.96);
+  transition: opacity var(--fast), transform var(--fast), background var(--fast), color var(--fast);
+}
+.composer-attachment-card:hover .img-preview-remove,
+.composer-attachment-card:focus-within .img-preview-remove,
+.img-preview-remove:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+.img-preview-remove svg { width: 11px; height: 11px; }
+.img-preview-remove:hover { background: rgba(224,112,112,.18); color: var(--red); }
 
 /* ─── Messages and markdown content ───────────────────────────────────────── */
 .msg-row { width: 100%; max-width: var(--content-w); margin: 0 auto; padding: 18px 24px 4px; position: relative; animation: fadeUp .22s ease both; }
@@ -640,13 +733,13 @@ svg { flex-shrink: 0; }
 .msg-action-btn { gap: 3px; padding: 3px 5px; border: none; border-radius: 4px; color: var(--text3); font-size: .62rem; background: none; }
 .msg-action-btn:hover { background: var(--surface3); color: var(--text2); }
 .msg-action-btn svg { width: 10px; height: 10px; }
-.msg-content { color: var(--text); font-size: 1rem; font-weight: 300; line-height: 1.75; }
+.msg-content { color: var(--text); font-size: .9rem; font-weight: 300; line-height: 1.75; }
 .msg-content p { margin-bottom: .65em; }
 .msg-content p:last-child { margin-bottom: 0; }
 .msg-content :is(h1, h2, h3, h4) { margin: 1.1em 0 .4em; color: var(--text); font-family: var(--font-tiempos); font-weight: 400; }
 .msg-content h1 { font-size: 1.4rem; }
 .msg-content h2 { font-size: 1.2rem; }
-.msg-content h3 { font-size: 1.05rem; }
+.msg-content h3 { font-size: .9rem; }
 .msg-content :is(ul, ol) { margin-bottom: .65em; padding-left: 1.4em; }
 .msg-content li { margin-bottom: .25em; }
 .msg-content blockquote { margin: .6em 0; padding-left: 1em; border-left: 2px solid var(--accent); color: var(--text2); font-style: italic; }
@@ -665,6 +758,81 @@ svg { flex-shrink: 0; }
 .msg-images { margin-top: 8px; }
 .msg-image { max-width: 280px; max-height: 280px; border: 1px solid var(--border); border-radius: var(--radius); object-fit: contain; cursor: zoom-in; transition: opacity var(--fast); }
 .msg-image:hover { opacity: .88; }
+
+.msg-attachments-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+  margin-bottom: 10px;
+}
+/* Keep attachments aligned with message text. User messages are text-left, so
+   their attachment cards should start from the same left edge instead of
+   floating to the far right. */
+.msg-attachments-grid { justify-content: flex-start; }
+.user-row .msg-attachments-grid { justify-content: flex-start; }
+.msg-attachment-card {
+  position: relative;
+  width: min(112px, calc(50vw - 44px));
+  aspect-ratio: 1 / 1;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)), var(--surface2);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.03), 0 8px 24px rgba(0,0,0,.08);
+}
+.msg-image-card {
+  padding: 0;
+  aspect-ratio: 1 / 1;
+  cursor: zoom-in;
+}
+.msg-attachment-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transition: transform var(--fast), opacity var(--fast);
+}
+.msg-image-card:hover .msg-attachment-image { transform: scale(1.02); opacity: .94; }
+.msg-file-card {
+  min-height: 0;
+  padding: 10px;
+  display: flex;
+}
+.msg-file-card-body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.msg-file-card-name {
+  color: var(--text);
+  font-size: .78rem;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.msg-file-card-subtle { color: var(--text2); font-size: .66rem; line-height: 1.25; }
+.msg-file-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+.msg-file-card-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 0 6px;
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  background: rgba(255,255,255,.035);
+  color: var(--text2);
+  font-family: var(--font-mono);
+  font-size: .62rem;
+  line-height: 1;
+  letter-spacing: .05em;
+}
+.msg-file-card-size { color: var(--text3); font-size: .62rem; font-family: var(--font-mono); }
 
 /* ─── Thinking and tool call strips ───────────────────────────────────────── */
 .thinking-block, .tool-strip { margin: 4px 0 6px; }
@@ -830,7 +998,9 @@ svg { flex-shrink: 0; }
 .msg-edit-save:hover { filter: brightness(1.15); }
 .msg-edit-cancel { background: var(--surface3); color: var(--text2); }
 .msg-edit-cancel:hover { color: var(--text); }
-.msg-edit-image-thumb { opacity: .75; }
+.msg-edit-attachments { margin-top: 0; margin-bottom: 0; }
+.msg-edit-image-card, .msg-edit-file-card { opacity: .9; }
+.msg-edit-image-thumb { opacity: .86; }
 
 /* ─── Responsive ──────────────────────────────────────────────────────────── */
 #sidebar-backdrop { display: none; position: fixed; inset: 0; z-index: 99; background: rgba(0,0,0,.55); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); opacity: 0; transition: opacity .28s; }
@@ -849,6 +1019,10 @@ svg { flex-shrink: 0; }
   .msg-row { padding: 12px 14px 4px; }
   .msg-row:first-child { padding-top: 18px; }
   .msg-content { font-size: .875rem; }
+  .composer-attachment-card, .msg-attachment-card { width: min(104px, calc(50vw - 28px)); min-height: 0; border-radius: 14px; }
+  .msg-file-card { min-height: 0; padding: 9px; }
+  .msg-file-card-name { font-size: .74rem; }
+  .msg-file-card-subtle { font-size: .62rem; }
   .msg-content table { display: block; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .msg-content pre { max-width: 100%; }
   .msg-content pre code { font-size: .75rem; }
@@ -1006,72 +1180,3 @@ html.hide-suggestion-chips #suggestions-bar { display: none !important; }
 
 .field select:focus { border-color: var(--accent-border); outline: none; }
 
-/* Pending regular file attachments */
-.file-preview-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  max-width: 260px;
-  min-height: 42px;
-  padding: 8px 28px 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface2);
-}
-.file-preview-icon {
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text2);
-  flex: 0 0 auto;
-}
-.file-preview-icon svg { width: 18px; height: 18px; }
-.file-preview-meta { min-width: 0; }
-.file-preview-name {
-  max-width: 180px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text);
-  font-size: .78rem;
-}
-.file-preview-size {
-  color: var(--text3);
-  font-size: .68rem;
-  margin-top: 1px;
-}
-
-/* Rendered file attachments in chat messages */
-.msg-files {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 8px;
-}
-.msg-file-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  max-width: 100%;
-  padding: 7px 9px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface2);
-  color: var(--text2);
-  font-size: .78rem;
-}
-.msg-file-chip svg { width: 15px; height: 15px; flex: 0 0 auto; }
-.msg-file-name {
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.msg-file-chip code {
-  color: var(--text3);
-  font-size: .72rem;
-  white-space: nowrap;
-}
