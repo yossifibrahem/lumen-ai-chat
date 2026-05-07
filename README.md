@@ -63,8 +63,8 @@ Open **http://localhost:8080** in your browser, enter your API key and model nam
 **1. Clone and enter the project directory**
 
 ```bash
-git clone https://github.com/your-org/flask-chatbot-ui.git
-cd flask-chatbot-ui
+git clone https://github.com/yossifibrahem/lumen-ai-chat
+cd lumen-ai-chat
 ```
 
 **2. (Recommended) Create a virtual environment**
