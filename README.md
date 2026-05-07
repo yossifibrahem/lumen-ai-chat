@@ -1,4 +1,4 @@
-# Forge · AI Chat
+# lumen · AI Chat
 
 > A self-hosted, Flask-powered chat UI for any OpenAI-compatible AI model — with streaming, MCP tool integration, Docker sandboxes, and a polished frontend.
 
@@ -6,7 +6,7 @@
 
 ## 📋 Project Description
 
-**Forge** is a lightweight, self-hosted web application that gives you a beautiful, full-featured chat interface for any AI model that speaks the OpenAI API format — including GPT-4o, Claude (via compatible proxies), and local models running through Ollama or LM Studio.
+**lumen** is a lightweight, self-hosted web application that gives you a beautiful, full-featured chat interface for any AI model that speaks the OpenAI API format — including GPT-4o, Claude (via compatible proxies), and local models running through Ollama or LM Studio.
 
 Conversations are persisted locally on your filesystem. Each conversation gets its own isolated file workspace and, optionally, a Docker-backed sandbox container so AI-generated code can run safely without touching your host system. MCP (Model Context Protocol) servers can be wired in at any time to give the model access to external tools.
 
@@ -14,10 +14,10 @@ Conversations are persisted locally on your filesystem. Each conversation gets i
 
 ## ✨ Features
 
-- **Any OpenAI-compatible model** — Point Forge at OpenAI, Anthropic, a local Ollama instance, LM Studio, or any other compatible endpoint via a configurable base URL and API key.
+- **Any OpenAI-compatible model** — Point lumen at OpenAI, Anthropic, a local Ollama instance, LM Studio, or any other compatible endpoint via a configurable base URL and API key.
 - **Real-time streaming** — Responses stream token-by-token over Server-Sent Events (SSE) with full support for cancellation mid-reply.
 - **MCP tool integration** — Configure one or more [Model Context Protocol](https://modelcontextprotocol.io) servers in `mcp.json`. Tools are auto-discovered and injected into the model's tool list.
-- **Per-conversation Docker sandboxes** — Each conversation can spin up an isolated `Forge-sandbox` Docker container with a shared `/workspace` volume, so the model can write and execute code safely.
+- **Per-conversation Docker sandboxes** — Each conversation can spin up an isolated `lumen-sandbox` Docker container with a shared `/workspace` volume, so the model can write and execute code safely.
 - **File workspaces** — Upload files to a conversation, browse the workspace directory tree, preview file contents, and download results — all from the sidebar.
 - **Voice input** — Dictate messages using the Web Speech API (Chrome and Edge).
 - **Rich rendering** — Markdown, fenced code blocks with syntax highlighting (highlight.js), and inline/block LaTeX math (KaTeX) all render beautifully.
@@ -94,7 +94,7 @@ mcp>=1.0.0
 If you want the model to be able to execute code in an isolated container, build the sandbox image once:
 
 ```bash
-docker build -f Dockerfile.sandbox -t Forge-sandbox .
+docker build -f Dockerfile.sandbox -t lumen-sandbox .
 ```
 
 Rebuild whenever `Dockerfile.sandbox` changes.
@@ -132,12 +132,12 @@ Override defaults for Docker sandbox behaviour without editing source:
 
 | Variable | Default | Description |
 |---|---|---|
-| `Forge_SANDBOX_IMAGE` | `Forge-sandbox` | Docker image used for per-conversation containers |
-| `Forge_CONTAINERS_ROOT` | `~/.Forge/containers` | Host path for container workspace volumes |
-| `Forge_CONTAINER_MEMORY` | `512m` | Memory limit per sandbox container |
-| `Forge_CONTAINER_CPUS` | `1` | CPU quota per sandbox container |
-| `Forge_CONTAINER_NETWORK` | `bridge` | Docker network mode for sandbox containers |
-| `Forge_CONTAINER_PREFIX` | `Forge-chat-` | Prefix for auto-named containers |
+| `lumen_SANDBOX_IMAGE` | `lumen-sandbox` | Docker image used for per-conversation containers |
+| `lumen_CONTAINERS_ROOT` | `~/.lumen/containers` | Host path for container workspace volumes |
+| `lumen_CONTAINER_MEMORY` | `512m` | Memory limit per sandbox container |
+| `lumen_CONTAINER_CPUS` | `1` | CPU quota per sandbox container |
+| `lumen_CONTAINER_NETWORK` | `bridge` | Docker network mode for sandbox containers |
+| `lumen_CONTAINER_PREFIX` | `lumen-chat-` | Prefix for auto-named containers |
 
 ### MCP tool servers (`mcp.json`)
 
@@ -165,10 +165,10 @@ Tools are discovered automatically on each conversation load and injected into t
 
 ### Persistent data locations
 
-All data is stored under `~/.Forge/` by default:
+All data is stored under `~/.lumen/` by default:
 
 ```
-~/.Forge/
+~/.lumen/
 ├── conversations/   # One JSON file per conversation
 ├── containers/      # Docker workspace volumes (one dir per conversation)
 └── images/          # Uploaded images, keyed by SHA-256 hash
@@ -187,7 +187,7 @@ All data is stored under `~/.Forge/` by default:
 
 ### Voice input
 
-Click the microphone button to start dictating. Forge uses the browser's Web Speech API to transcribe in real time and appends the transcript to the message box. Press the mic button again to stop.
+Click the microphone button to start dictating. lumen uses the browser's Web Speech API to transcribe in real time and appends the transcript to the message box. Press the mic button again to stop.
 
 ### Uploading files to a conversation
 
@@ -212,7 +212,7 @@ Open Settings at any time and change the model. The new model takes effect from 
 
 ## 🧪 Running Tests
 
-Forge does not currently ship a test suite. To add one, the recommended approach is:
+lumen does not currently ship a test suite. To add one, the recommended approach is:
 
 ```bash
 pip install pytest pytest-flask
@@ -298,7 +298,7 @@ This project is released under the [MIT License](LICENSE).
 ```
 MIT License
 
-Copyright (c) 2024 Forge Contributors
+Copyright (c) 2024 lumen Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
