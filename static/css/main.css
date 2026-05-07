@@ -754,6 +754,15 @@ svg { flex-shrink: 0; }
 .code-copy:hover { color: var(--text); background: var(--surface2); }
 .inline-error { color: var(--red); }
 
+.assistant-file-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.assistant-file-link:hover {
+  color: var(--accent-strong);
+}
+
 .msg-images, .msg-edit-images { display: flex; flex-wrap: wrap; gap: 8px; }
 .msg-images { margin-top: 8px; }
 .msg-image { max-width: 280px; max-height: 280px; border: 1px solid var(--border); border-radius: var(--radius); object-fit: contain; cursor: zoom-in; transition: opacity var(--fast); }

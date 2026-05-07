@@ -1,4 +1,6 @@
 // Markdown + LaTeX rendering.
+
+import { state } from './state.js';
 //
 // Strategy: before running marked, stash every LaTeX block in a side
 // array (replacing it with a sentinel).  After markdown is rendered,
@@ -16,7 +18,66 @@ const PURIFY_CONFIG = {
     'class','style','xmlns','viewBox','d','fill','stroke',
     'href','xlink:href','width','height','aria-hidden',
   ],
+  ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|file):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
 };
+
+
+const FILE_LINK_SKIP_SELECTOR = 'button, code, kbd, pre, script, style, textarea';
+
+function fileNameFromPath(path) {
+  return path.split('/').filter(Boolean).pop() || 'file';
+}
+
+function decodeFileHref(rawHref) {
+  const href = String(rawHref || '').trim();
+  if (!href.toLowerCase().startsWith('file:')) return '';
+
+  // Markdown syntax is [label](file:/workspace/report.pdf). Browsers may
+  // expose it as file:/workspace/report.pdf or file:///workspace/report.pdf.
+  let path = href.replace(/^file:\/\//i, '/').replace(/^file:/i, '');
+  try { path = decodeURIComponent(path); } catch {}
+  return path.trim().replace(/\\/g, '/');
+}
+
+function normalizeDownloadFilePath(path) {
+  return String(path || '').trim().replace(/\\/g, '/');
+}
+
+function isSafeWorkspaceFilePath(path) {
+  const normalized = normalizeDownloadFilePath(path);
+  if (!normalized.startsWith('/workspace/')) return false;
+  return !normalized.split('/').some(part => part === '..');
+}
+
+function buildConversationFileDownloadUrl(path) {
+  const safePath = normalizeDownloadFilePath(path);
+  if (!state.convId || !isSafeWorkspaceFilePath(safePath)) return '';
+  return `/api/conversations/${encodeURIComponent(state.convId)}/files/download?path=${encodeURIComponent(safePath)}`;
+}
+
+function enhanceWorkspaceFileLinks(root) {
+  if (!root) return;
+
+  root.querySelectorAll('a[href]').forEach(anchor => {
+    if (anchor.closest(FILE_LINK_SKIP_SELECTOR)) return;
+
+    const filePath = normalizeDownloadFilePath(decodeFileHref(anchor.getAttribute('href')));
+    if (!filePath) return;
+
+    const downloadHref = buildConversationFileDownloadUrl(filePath);
+    if (!downloadHref) {
+      anchor.replaceWith(document.createTextNode(anchor.textContent || filePath));
+      return;
+    }
+
+    const name = fileNameFromPath(filePath);
+    anchor.classList.add('assistant-file-link');
+    anchor.href = downloadHref;
+    anchor.download = name;
+    anchor.title = `Download ${name}`;
+    anchor.dataset.workspacePath = filePath;
+  });
+}
 
 function renderMarkdown(text) {
   const latexBlocks = [];
@@ -50,6 +111,8 @@ function renderMarkdown(text) {
 
 export function applyMarkdown(el, text) {
   el.innerHTML = renderMarkdown(text);
+  enhanceWorkspaceFileLinks(el);
+
   el.querySelectorAll('pre code').forEach(block => {
     hljs.highlightElement(block);
     const btn = document.createElement('button');
