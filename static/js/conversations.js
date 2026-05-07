@@ -6,7 +6,7 @@ import { storage } from './storage.js';
 import { clearMessages, renderAllMessages, escapeHtml } from './renderer.js';
 import { toggleSidebar } from './ui.js';
 import { ICONS } from './icons.js';
-import { resetFilePanel } from './file_panel.js';
+import { refreshFilePanel, resetFilePanel } from './file_panel.js';
 
 // ── Sidebar list ──────────────────────────────────────────────────────────────
 
@@ -79,6 +79,7 @@ export async function openConversation(id) {
   document.getElementById('chat-title-input').value = data.title || '';
   renderAllMessages(state.displayLog);
   resetFilePanel();
+  refreshFilePanel();
   await loadConversationList();
   if (window.innerWidth <= 768) toggleSidebar(false);
 }
@@ -93,6 +94,7 @@ export function startNewChat() {
   document.getElementById('chat-title-input').value = '';
   clearMessages();
   resetFilePanel();
+  refreshFilePanel();
   document.querySelectorAll('.conv-item.active').forEach(el => el.classList.remove('active'));
   if (window.innerWidth <= 768) toggleSidebar(false);
 }
@@ -106,6 +108,7 @@ export async function createNewConversation() {
   storage.set(STORAGE_KEYS.lastConv, data.id);
   document.getElementById('chat-title-input').value = 'New Conversation';
   resetFilePanel();
+  refreshFilePanel();
   await loadConversationList();
 }
 
