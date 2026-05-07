@@ -8,7 +8,7 @@ import { storage }  from './storage.js';
 
 import { openModal, closeModal, toggleSidebar, autoResize, updateCharCount, initMobileKeyboardHandling } from './ui.js';
 import { loadSettings, saveSettings, fetchModels }                           from './settings.js';
-import { loadConversationList, openConversation, createNewConversation, persistConversation, startNewChat } from './conversations.js';
+import { loadConversationList, openConversation, renameConversationTitle, startNewChat } from './conversations.js';
 import { loadMcpConfig, saveMcpConfig, reloadTools, loadCachedTools } from './mcp.js';
 import { sendMessage, stopAssistantTurn, editAndResend, regenerateFrom, initImageAttachments } from './chat.js';
 import { initVoiceInput } from './voice.js';
@@ -153,8 +153,8 @@ function bindInputEvents() {
 
   // Chat title persistence
   const titleInput = document.getElementById('chat-title-input');
-  titleInput.addEventListener('change', persistConversation);
-  titleInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.target.blur(); persistConversation(); } });
+  titleInput.addEventListener('change', renameConversationTitle);
+  titleInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
 
   // Empty-state prompt clicks (event delegation)
   document.getElementById('messages').addEventListener('click', e => {

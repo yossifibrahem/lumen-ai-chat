@@ -242,7 +242,7 @@ export async function executeTool(tc, options = {}) {
 
   try {
     const data = await api.post('/api/mcp/call', {
-      server: toolDef.server, tool: tc.function.name, arguments: args, conv_id: state.convId,
+      server: toolDef.server, tool: tc.function.name, arguments: args, conv_id: options.convId ?? state.convId,
     }, { signal: options.signal });
     return data.result ?? data.error ?? '';
   } catch (err) {

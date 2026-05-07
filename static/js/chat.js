@@ -8,16 +8,17 @@ import {
   cancelAllToolApprovals, finalizeStreamingMessage, setStreamingMessageLogIndex,
   escapeHtml, scrollToBottom, renderAllMessages,
   createThinkingBlock, updateThinkingBlock, finalizeThinkingBlock,
-  createToolStrip, toolStripSetApproval, toolStripSetRunning, toolStripFinalize, getToolDisplayLabel,
+  createToolStrip, toolStripFinalize,
 } from './renderer.js';
 import { applyMarkdown } from './markdown.js';
-import { executeTool, isServerEnabled, isServerAutoApprove } from './mcp.js';
+import { isServerEnabled } from './mcp.js';
 import { buildMcpSystemPrompt as buildMcpPrompt } from './mcp_policy.js';
-import { persistConversation, createNewConversation } from './conversations.js';
+import { persistConversationFor, createNewConversation } from './conversations.js';
 import { refreshFilePanel } from './file_panel.js';
 
 let turnAbortController = null;
 let turnCancelled = false;
+const activeTurns = new Map();
 
 // ── Pending attachments ──────────────────────────────────────────────────────
 
@@ -200,6 +201,15 @@ function buildToolsPayload() {
     }));
 }
 
+function buildMcpToolMetaPayload() {
+  return state.mcpTools
+    .filter(tool => isServerEnabled(tool.server))
+    .map(tool => ({
+      name: tool.name,
+      server: tool.server,
+    }));
+}
+
 /** Fetch a server-stored image and return it as a base64 data-URL. */
 async function imageRefToDataUrl(ref) {
   const resp = await fetch(`/api/images/${ref}`);
@@ -261,11 +271,11 @@ function prepareMessageForApi(message) {
     : cleanMessage;
 }
 
-async function buildApiMessages() {
+async function buildApiMessages(turnMessages) {
   const messages = [];
   const systemParts = [state.systemPrompt, buildMcpPrompt({ tools: state.mcpTools, isServerEnabled })].filter(Boolean);
   if (systemParts.length) messages.push({ role: 'system', content: systemParts.join('\n\n') });
-  messages.push(...state.messages.map(prepareMessageForApi));
+  messages.push(...turnMessages.map(prepareMessageForApi));
   return expandImageRefs(messages);
 }
 
@@ -273,45 +283,295 @@ async function buildApiMessages() {
 
 function setStreaming(active) {
   state.isStreaming = active;
-  document.getElementById('send-btn').hidden = active;
-  document.getElementById('stop-btn').hidden = !active;
+
+  const sendBtn = document.getElementById('send-btn');
+  const stopBtn = document.getElementById('stop-btn');
+  const input = document.getElementById('user-input');
+
+  if (sendBtn) {
+    sendBtn.hidden = active;
+    sendBtn.disabled = active || !(input?.value || '').trim();
+  }
+  if (stopBtn) stopBtn.hidden = !active;
 }
 
-function finishAssistantTurn() {
-  turnAbortController?.abort();
-  turnAbortController = null;
+function isTurnVisible(turn) {
+  return state.convId === turn.convId;
+}
+
+function syncVisibleTurn(turn) {
+  if (!isTurnVisible(turn)) return;
+  state.messages = turn.messages;
+  state.displayLog = turn.displayLog;
+}
+
+function isCurrentStreamContext(turn, ctx) {
+  if (!turn?.convId || !ctx) return true;
+  return activeTurns.get(turn.convId)?.ctx === ctx;
+}
+
+function releaseVisibleStreamingControls(turn, ctx) {
+  if (!turn || !isTurnVisible(turn) || !isCurrentStreamContext(turn, ctx)) return;
   state.streamId = null;
   setStreaming(false);
 }
 
-async function generateConversationTitle() {
-  try {
-    const result = await api.post('/api/generate-title', {
-      api_base: state.apiBase,
-      api_key:  state.apiKey,
-      model:    state.model || 'gpt-4o',
-      messages: state.messages.slice(0, 4),
-    });
-    if (result.title && !result.error) {
-      document.getElementById('chat-title-input').value = result.title;
-      await persistConversation();
-    }
-  } catch { /* silently skip title generation on failure */ }
+function nudgeScrollAfterAssistantDone(ctx) {
+  if (!ctx?.turn || !isTurnVisible(ctx.turn) || !isCurrentStreamContext(ctx.turn, ctx)) return;
+  scrollToBottom();
 }
 
-async function runAssistantTurnAndPersist() {
-  const isFirstMessage = state.messages.length === 1;
-  setStreaming(true);
-  turnCancelled = false;
+function createStreamContext(turn) {
+  const ctx = {
+    accText:            '',
+    accReasoning:       '',
+    reasoningFinalized: false,
+    reasoningBodyEl:    null,
+    contentEl:          null,
+    turn,
+    toolCalls:          null,
+    toolStartNames:     [],
+    toolStrips:         [],
+    toolResultIndex:    0,
+    assistantDone:      false,
+    isVisible:          () => isTurnVisible(turn),
+    getContentEl:       () => {
+      if (!ctx.contentEl && isTurnVisible(turn)) ctx.contentEl = createStreamingMessage();
+      return ctx.contentEl;
+    },
+  };
+  return ctx;
+}
+
+function activeTurnBaseLog(displayLog = []) {
+  const lastUserIndex = [...displayLog]
+    .map((entry, index) => ({ entry, index }))
+    .reverse()
+    .find(item => item.entry?.type === 'message' && item.entry?.role === 'user')?.index;
+  return lastUserIndex === undefined ? [] : displayLog.slice(0, lastUserIndex + 1);
+}
+
+function reattachRuntime(runtime) {
+  if (!runtime || !isTurnVisible(runtime.turn)) return false;
+
+  const { turn, ctx } = runtime;
+  syncVisibleTurn(turn);
+  renderAllMessages(turn.displayLog);
+
+  ctx.contentEl = null;
+  ctx.reasoningBodyEl = null;
+  ctx.toolStrips = [];
+
+  if (ctx.accReasoning) {
+    ctx.reasoningBodyEl = createThinkingBlock();
+    updateThinkingBlock(ctx.reasoningBodyEl, ctx.accReasoning);
+    if (ctx.reasoningFinalized || ctx.accText || ctx.toolCalls) {
+      finalizeThinkingBlock(ctx.reasoningBodyEl, ctx.accReasoning);
+      ctx.reasoningBodyEl = null;
+    }
+  }
+
+  if (ctx.accText) {
+    ctx.contentEl = createStreamingMessage();
+    applyMarkdown(ctx.contentEl, ctx.accText);
+  }
+
+  ctx.toolStartNames.forEach(name => {
+    ctx.toolStrips.push(createToolStrip(name));
+  });
+
+  scrollToBottom(true);
+  return true;
+}
+
+export function reattachActiveTurn(convId) {
+  const runtime = activeTurns.get(convId);
+  return reattachRuntime(runtime);
+}
+
+async function attachServerStream(convId, streamId, data = {}) {
+  if (!convId || !streamId) return false;
+  const existingRuntime = activeTurns.get(convId);
+  if (existingRuntime) {
+    existingRuntime.streamId ||= streamId;
+    const attached = reattachActiveTurn(convId);
+    if (attached && !existingRuntime.ctx?.assistantDone) {
+      state.streamId = existingRuntime.streamId;
+      setStreaming(true);
+    }
+    return attached;
+  }
+
+  const turn = {
+    convId,
+    title:      data.title || currentTitle(),
+    messages:   data.messages || [],
+    displayLog: activeTurnBaseLog(data.displayLog || []),
+  };
+  const ctx = createStreamContext(turn);
+  activeTurns.set(convId, { turn, ctx, streamId });
+
+  if (isTurnVisible(turn)) {
+    syncVisibleTurn(turn);
+    document.getElementById('chat-title-input').value = turn.title || '';
+    renderAllMessages(turn.displayLog);
+    setStreaming(true);
+    state.streamId = streamId;
+  }
+
 
   try {
-    await runChatLoop();
-    await persistConversation();
-    if (isFirstMessage && !turnCancelled) {
-      await generateConversationTitle();
+    turnAbortController = new AbortController();
+    const resp = await api.stream('/api/chat/stream', {
+      stream_id: streamId,
+      conv_id: convId,
+      attach: true,
+    }, { signal: turnAbortController.signal });
+
+    if (!resp.ok) throw new Error(await readResponseError(resp));
+
+    const success = await readSSEStream(resp, ctx);
+    if (!success || turnCancelled) return false;
+
+    if (!ctx.assistantDone) finalizeAssistantAnswer(ctx);
+    if (isCurrentStreamContext(turn, ctx)) {
+      await refreshTurnFromServer(turn);
+      syncFinalAssistantFooter(turn, ctx);
+    }
+    return true;
+  } catch (err) {
+    return false;
+  } finally {
+    finishAssistantTurn(turn, ctx);
+  }
+}
+
+document.addEventListener('chat:conversation-opened', event => {
+  const { convId, data } = event.detail || {};
+  if (data?.active_stream_id) attachServerStream(convId, data.active_stream_id, data);
+  else reattachActiveTurn(convId);
+});
+
+function currentTitle() {
+  return document.getElementById('chat-title-input').value.trim() || 'Untitled';
+}
+
+function applyTurnTitle(turn, title) {
+  const nextTitle = (title || '').trim();
+  if (!turn || !nextTitle || turn.title === nextTitle) return;
+
+  turn.title = nextTitle;
+  if (isTurnVisible(turn)) document.getElementById('chat-title-input').value = nextTitle;
+  document.dispatchEvent(new CustomEvent('chat:conversation-title-updated', {
+    detail: { convId: turn.convId, title: nextTitle },
+  }));
+}
+
+function createTurnContext(convId) {
+  return {
+    convId,
+    title: currentTitle(),
+    messages: state.messages.slice(),
+    displayLog: state.displayLog.slice(),
+  };
+}
+
+async function persistTurnConversation(turn) {
+  await persistConversationFor(turn.convId, {
+    title: turn.title,
+    messages: turn.messages,
+    displayLog: turn.displayLog,
+  });
+}
+
+function finishAssistantTurn(turn = null, ctx = null) {
+  const isCurrent = !turn?.convId || !ctx || isCurrentStreamContext(turn, ctx);
+
+  if (turn?.convId && isCurrent) activeTurns.delete(turn.convId);
+
+  if ((!turn || isTurnVisible(turn)) && isCurrent) {
+    turnAbortController = null;
+    state.streamId = null;
+    setStreaming(false);
+  }
+}
+
+function lastAssistantMessageIndex(displayLog = []) {
+  for (let i = displayLog.length - 1; i >= 0; i--) {
+    const entry = displayLog[i];
+    if (entry?.type === 'message' && entry.role === 'assistant' && String(entry.content ?? '').trim()) return i;
+  }
+  return -1;
+}
+
+function syncFinalAssistantFooter(turn, ctx) {
+  if (!ctx?.contentEl || !isTurnVisible(turn)) return;
+  const logIndex = lastAssistantMessageIndex(turn.displayLog);
+  if (logIndex >= 0) setStreamingMessageLogIndex(ctx.contentEl, logIndex);
+}
+
+function finalizeAssistantAnswer(ctx, messages = null, displayLog = null) {
+  if (!ctx?.turn) return;
+
+  if (Array.isArray(messages)) ctx.turn.messages = messages;
+  if (Array.isArray(displayLog)) ctx.turn.displayLog = displayLog;
+  syncVisibleTurn(ctx.turn);
+
+  if (ctx.assistantDone) {
+    syncFinalAssistantFooter(ctx.turn, ctx);
+    return;
+  }
+
+  ctx.assistantDone = true;
+
+  if (ctx.reasoningBodyEl) {
+    finalizeThinkingBlock(ctx.reasoningBodyEl, ctx.accReasoning);
+    ctx.reasoningBodyEl = null;
+  }
+  if (ctx.contentEl) {
+    finalizeStreamingMessage(ctx.contentEl, ctx.accText);
+    syncFinalAssistantFooter(ctx.turn, ctx);
+  }
+
+  // assistant_done owns the visible UI transition: the answer is finished, so
+  // restore the composer immediately and give sticky autoscroll one final nudge.
+  // Title generation and stream cleanup can still continue afterward.
+  releaseVisibleStreamingControls(ctx.turn, ctx);
+  nudgeScrollAfterAssistantDone(ctx);
+}
+
+async function refreshTurnFromServer(turn) {
+  if (!turn?.convId) return;
+  try {
+    const data = await api.get(`/api/conversations/${encodeURIComponent(turn.convId)}`);
+    applyTurnTitle(turn, data.title || turn.title);
+    turn.messages = data.messages || turn.messages;
+    turn.displayLog = data.displayLog || turn.displayLog;
+    syncVisibleTurn(turn);
+
+    // Do not call renderAllMessages() here. The visible DOM has already been
+    // updated incrementally by the stream; a full render at completion causes
+    // the assistant bubble to flash or disappear if the saved snapshot lags.
+    if (isTurnVisible(turn)) {
+      document.getElementById('chat-title-input').value = turn.title || '';
+      refreshFilePanel({ keepPreview: true }).catch(() => {});
+    }
+  } catch {}
+}
+
+async function runAssistantTurnAndPersist(turn) {
+  setStreaming(true);
+  turnCancelled = false;
+  let ctx = null;
+
+  try {
+    ctx = await runChatLoop(turn);
+    if (isCurrentStreamContext(turn, ctx)) {
+      await refreshTurnFromServer(turn);
+      syncFinalAssistantFooter(turn, ctx);
     }
   } finally {
-    finishAssistantTurn();
+    finishAssistantTurn(turn, ctx);
   }
 }
 
@@ -339,6 +599,7 @@ export async function sendMessage(userText) {
   if (state.isStreaming) return;
   if (!state.convId) await createNewConversation();
 
+  const turn = createTurnContext(state.convId);
   setStreaming(true);
 
   const textToSend        = userText.trim();
@@ -356,23 +617,25 @@ export async function sendMessage(userText) {
     setStreaming(false);
     const plural = failedImageCount === 1 ? '' : 's';
     const errorText = `Image upload failed for ${failedImageCount} attachment${plural}. Remove it or try again before sending.`;
-    state.displayLog.push({ type: 'message', role: 'assistant', content: errorText });
-    appendMessage('assistant', errorText, state.displayLog.length - 1);
+    turn.displayLog.push({ type: 'message', role: 'assistant', content: errorText });
+    syncVisibleTurn(turn);
+    if (isTurnVisible(turn)) appendMessage('assistant', errorText, turn.displayLog.length - 1);
     return;
   }
 
   // Copy regular files into the chat workspace.
   let uploadedFiles = [];
   try {
-    uploadedFiles = await uploadConversationFiles(state.convId, filesToSend);
-    refreshFilePanel({ keepPreview: true }).catch(() => {});
+    uploadedFiles = await uploadConversationFiles(turn.convId, filesToSend);
+    if (isTurnVisible(turn)) refreshFilePanel({ keepPreview: true }).catch(() => {});
   } catch (err) {
     pendingAttachments.unshift(...attachmentsToSend);
     refreshImagePreviewBar();
     setStreaming(false);
     const errorText = `File upload failed: ${err.message}`;
-    state.displayLog.push({ type: 'message', role: 'assistant', content: errorText });
-    appendMessage('assistant', errorText, state.displayLog.length - 1);
+    turn.displayLog.push({ type: 'message', role: 'assistant', content: errorText });
+    syncVisibleTurn(turn);
+    if (isTurnVisible(turn)) appendMessage('assistant', errorText, turn.displayLog.length - 1);
     return;
   }
 
@@ -419,11 +682,13 @@ export async function sendMessage(userText) {
       }
     : textToSend;
 
-  state.messages.push({ role: 'user', content: apiContent, attachments: uploadedFiles });
-  state.displayLog.push({ type: 'message', role: 'user', content: displayContent });
-  appendMessage('user', displayContent, state.displayLog.length - 1);
+  turn.messages.push({ role: 'user', content: apiContent, attachments: uploadedFiles });
+  turn.displayLog.push({ type: 'message', role: 'user', content: displayContent });
+  syncVisibleTurn(turn);
+  if (isTurnVisible(turn)) appendMessage('user', displayContent, turn.displayLog.length - 1);
+  await persistTurnConversation(turn);
 
-  await runAssistantTurnAndPersist();
+  await runAssistantTurnAndPersist(turn);
 }
 
 // ── SSE helpers ───────────────────────────────────────────────────────────────
@@ -434,30 +699,62 @@ function processSSEEvent(raw, ctx) {
 
   if (evt.type === 'reasoning') {
     ctx.accReasoning += evt.content;
-    if (!ctx.reasoningBodyEl) ctx.reasoningBodyEl = createThinkingBlock();
-    updateThinkingBlock(ctx.reasoningBodyEl, ctx.accReasoning);
+    if (!ctx.reasoningBodyEl && ctx.isVisible()) ctx.reasoningBodyEl = createThinkingBlock();
+    if (ctx.reasoningBodyEl) updateThinkingBlock(ctx.reasoningBodyEl, ctx.accReasoning);
 
   } else if (evt.type === 'text') {
     if (ctx.reasoningBodyEl) {
       finalizeThinkingBlock(ctx.reasoningBodyEl, ctx.accReasoning);
       ctx.reasoningBodyEl = null;
     }
+    ctx.reasoningFinalized = true;
     ctx.accText += evt.content;
     const el = ctx.getContentEl();
-    applyMarkdown(el, ctx.accText);
-    scrollToBottom();
+    if (el) {
+      applyMarkdown(el, ctx.accText);
+      scrollToBottom();
+    }
 
   } else if (evt.type === 'tool_start') {
-    // Create the strip immediately so users see "using <tool> [pulse]" during streaming.
-    // Store by insertion order — tool_calls arrives later with the full ordered call list.
-    ctx.toolStrips.push(createToolStrip(evt.name));
+    // Keep indices aligned even when the user is viewing another chat.
+    ctx.toolStartNames.push(evt.name);
+    ctx.toolStrips.push(ctx.isVisible() ? createToolStrip(evt.name) : null);
 
   } else if (evt.type === 'tool_calls') {
+    // Tool execution is server-owned so reloads cannot kill the turn.
     ctx.toolCalls = evt.calls;
+
+  } else if (evt.type === 'tool_result') {
+    if (ctx.reasoningBodyEl) {
+      finalizeThinkingBlock(ctx.reasoningBodyEl, ctx.accReasoning);
+      ctx.reasoningBodyEl = null;
+    }
+    if (ctx.contentEl) {
+      finalizeStreamingMessage(ctx.contentEl, ctx.accText);
+      ctx.contentEl = null;
+    }
+
+    const stripIndex = ctx.toolResultIndex || 0;
+    let strip = ctx.toolStrips[stripIndex];
+    if (!strip && ctx.isVisible()) strip = createToolStrip(evt.name);
+    if (strip) toolStripFinalize(strip, evt.name, evt.args || {}, evt.result || '', evt.displayName || evt.name);
+    ctx.toolResultIndex = stripIndex + 1;
+
+    ctx.accText = '';
+    ctx.accReasoning = '';
+    ctx.reasoningFinalized = false;
+    ctx.toolCalls = null;
+    if (ctx.isVisible()) refreshFilePanel({ keepPreview: true }).catch(() => {});
+
+  } else if (evt.type === 'assistant_done') {
+    finalizeAssistantAnswer(ctx, evt.messages, evt.displayLog);
+
+  } else if (evt.type === 'title') {
+    if (ctx.turn) applyTurnTitle(ctx.turn, evt.title || ctx.turn.title);
 
   } else if (evt.type === 'error') {
     const el = ctx.getContentEl();
-    el.innerHTML = `<span class="inline-error">Error: ${escapeHtml(evt.message)}</span>`;
+    if (el) el.innerHTML = `<span class="inline-error">Error: ${escapeHtml(evt.message)}</span>`;
     return false; // signal abort
   }
 
@@ -506,19 +803,16 @@ async function readSSEStream(resp, ctx) {
 
 // ── SSE loop ──────────────────────────────────────────────────────────────────
 
-async function runChatLoop() {
-  let contentEl = null;
+async function runChatLoop(turn) {
+  const ctx = createStreamContext(turn);
+  const streamId = crypto.randomUUID();
 
-  const ctx = {
-    accText:        '',
-    accReasoning:   '',
-    reasoningBodyEl: null,
-    toolCalls:      null,
-    toolStrips:     [],   // one strip element per tool_start event, in order
-    getContentEl:   () => { if (!contentEl) contentEl = createStreamingMessage(); return contentEl; },
-  };
+  activeTurns.set(turn.convId, { turn, ctx, streamId });
+  state.streamId = streamId;
 
-  state.streamId = crypto.randomUUID();
+  // A newly-started turn already has the user's message appended in-place.
+  // Reattaching here would fully re-render the chat and cause the first flash
+  // right after send. Reattach is only for switching/reloading into a running turn.
 
   try {
     turnAbortController = new AbortController();
@@ -527,10 +821,14 @@ async function runChatLoop() {
       api_base:  state.apiBase,
       api_key:   state.apiKey,
       model:     state.model || 'gpt-4o',
-      messages:  await buildApiMessages(),
-      tools:     buildToolsPayload(),
-      stream_id: state.streamId,
-      conv_id:   state.convId,
+      messages:              await buildApiMessages(turn.messages),
+      conversation_messages: turn.messages,
+      display_log:           turn.displayLog,
+      title:                 turn.title,
+      tools:                 buildToolsPayload(),
+      mcp_tool_meta:         buildMcpToolMetaPayload(),
+      stream_id:             streamId,
+      conv_id:               turn.convId,
     }, { signal: turnAbortController.signal });
 
     if (!resp.ok) throw new Error(await readResponseError(resp));
@@ -538,23 +836,15 @@ async function runChatLoop() {
     const success = await readSSEStream(resp, ctx);
     if (!success || turnCancelled) return;
 
-    if (ctx.reasoningBodyEl) finalizeThinkingBlock(ctx.reasoningBodyEl, ctx.accReasoning);
-    if (contentEl)           finalizeStreamingMessage(contentEl, ctx.accText);
-
-    if (ctx.toolCalls?.length > 0) {
-      await handleToolCalls(ctx.toolCalls, ctx.accText, ctx.accReasoning, ctx.toolStrips);
-    } else if (ctx.accText) {
-      if (ctx.accReasoning) state.displayLog.push({ type: 'thinking', content: ctx.accReasoning });
-      state.messages.push({ role: 'assistant', content: ctx.accText });
-      state.displayLog.push({ type: 'message', role: 'assistant', content: ctx.accText });
-      setStreamingMessageLogIndex(contentEl, state.displayLog.length - 1);
-    }
+    if (!ctx.assistantDone) finalizeAssistantAnswer(ctx);
   } catch (err) {
-    if (turnCancelled || err.name === 'AbortError') return;
+    if (turnCancelled || err.name === 'AbortError') return ctx;
 
     const el = ctx.getContentEl();
-    el.innerHTML = `<span class="inline-error">Network error: ${escapeHtml(err.message)}</span>`;
+    if (el) el.innerHTML = `<span class="inline-error">Network error: ${escapeHtml(err.message)}</span>`;
   }
+
+  return ctx;
 }
 
 // ── Index helpers ────────────────────────────────────────────────────────────
@@ -622,11 +912,14 @@ export async function editAndResend(logIndex, newText, imageUrls = [], files = [
       }
     : textToSend;
 
-  state.messages.push({ role: 'user', content: apiContent, attachments: fileAttachments });
-  state.displayLog.push({ type: 'message', role: 'user', content: displayContent });
-  appendMessage('user', displayContent, state.displayLog.length - 1);
+  const turn = createTurnContext(state.convId);
+  turn.messages.push({ role: 'user', content: apiContent, attachments: fileAttachments });
+  turn.displayLog.push({ type: 'message', role: 'user', content: displayContent });
+  syncVisibleTurn(turn);
+  if (isTurnVisible(turn)) appendMessage('user', displayContent, turn.displayLog.length - 1);
+  await persistTurnConversation(turn);
 
-  await runAssistantTurnAndPersist();
+  await runAssistantTurnAndPersist(turn);
 }
 
 // ── Regenerate ────────────────────────────────────────────────────────────────
@@ -651,66 +944,7 @@ export async function regenerateFrom(logIndex) {
   renderAllMessages(state.displayLog);
 
   if (!state.convId) return;
-  await runAssistantTurnAndPersist();
-}
-
-// ── Tool-call orchestration ───────────────────────────────────────────────────
-
-function parseToolArgs(rawArgs) {
-  try { return JSON.parse(rawArgs || '{}'); } catch { return {}; }
-}
-
-async function handleToolCalls(calls, precedingText, precedingReasoning = '', toolStrips = []) {
-  if (precedingReasoning) state.displayLog.push({ type: 'thinking', content: precedingReasoning });
-  if (precedingText)      state.displayLog.push({ type: 'message', role: 'assistant', content: precedingText });
-
-  // Ensure every call has a strip — fall back to creating one if tool_start didn't fire for it.
-  const strips = calls.map((call, i) => toolStrips[i] ?? createToolStrip(call.function.name));
-
-  // Determine auto-approval per call.
-  const autoApprovedFlags = calls.map(tc => {
-    const toolDef = state.mcpTools.find(t => t.name === tc.function.name);
-    return !!(toolDef && isServerAutoApprove(toolDef.server));
-  });
-
-  // Launch all approval UIs simultaneously; auto-approved resolve immediately.
-  const decisionPromises = calls.map((call, i) =>
-    autoApprovedFlags[i] ? Promise.resolve(true) : toolStripSetApproval(strips[i], call)
-  );
-
-  const decisions = await Promise.all(decisionPromises);
-  if (turnCancelled) return;
-
-  state.messages.push({
-    role:       'assistant',
-    content:    precedingText || null,
-    tool_calls: calls.map(tc => ({
-      id:       tc.id,
-      type:     'function',
-      function: { name: tc.function.name, arguments: tc.function.arguments },
-    })),
-  });
-
-  for (let i = 0; i < calls.length; i++) {
-    if (turnCancelled) return;
-
-    const tc   = calls[i];
-    const args = parseToolArgs(tc.function.arguments);
-    let result;
-
-    if (decisions[i]) {
-      toolStripSetRunning(strips[i], args);
-      result = await executeTool(tc, { signal: turnAbortController?.signal });
-      refreshFilePanel({ keepPreview: true }).catch(() => {});
-    } else {
-      result = 'Tool execution denied by user.';
-    }
-
-    const displayName = getToolDisplayLabel(tc.function.name, args);
-    toolStripFinalize(strips[i], tc.function.name, args, result, displayName);
-    state.displayLog.push({ type: 'tool_result', name: tc.function.name, displayName, args, result });
-    state.messages.push({ role: 'tool', tool_call_id: tc.id, content: result });
-  }
-
-  if (!turnCancelled) await runChatLoop();
+  const turn = createTurnContext(state.convId);
+  await persistTurnConversation(turn);
+  await runAssistantTurnAndPersist(turn);
 }

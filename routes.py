@@ -11,6 +11,7 @@ import mimetypes
 import os
 import re
 import threading
+import time
 import uuid
 from pathlib import Path
 
@@ -27,6 +28,41 @@ blueprint = Blueprint("main", __name__)
 
 # Maps stream_id → threading.Event so POST /api/chat/cancel can stop generation.
 _cancel_events: dict[str, threading.Event] = {}
+
+# Server-owned turns keep running even if the browser reloads or disconnects.
+# Each entry stores replayable stream events for the currently connected client
+# and writes snapshots to the conversation file as the turn progresses.
+_active_streams: dict[str, dict] = {}
+
+
+def _stream_state(stream_id: str, conv_id: str = "") -> dict:
+    state = _active_streams.get(stream_id)
+    if state:
+        return state
+    state = {
+        "stream_id": stream_id,
+        "conv_id": conv_id,
+        "events": [],
+        "done": False,
+        "started": False,
+        "lock": threading.Lock(),
+        "condition": threading.Condition(threading.Lock()),
+    }
+    _active_streams[stream_id] = state
+    return state
+
+
+def _publish_stream_event(state: dict, payload: dict) -> None:
+    with state["condition"]:
+        state["events"].append(payload)
+        state["condition"].notify_all()
+
+
+def _finish_stream_state(state: dict) -> None:
+    with state["condition"]:
+        state["done"] = True
+        state["condition"].notify_all()
+    _active_streams.pop(state.get("stream_id"), None)
 
 
 # ── Request helpers ───────────────────────────────────────────────────────────
@@ -496,12 +532,164 @@ def _extract_title(message) -> str:
     raise ValueError("Model did not return a tool call")
 
 
-@blueprint.route("/api/generate-title", methods=["POST"])
-def generate_title():
-    body   = _body()
-    client = _openai_client(body)
+
+# ── Chat ──────────────────────────────────────────────────────────────────────
+
+@blueprint.route("/api/chat/stream", methods=["POST"])
+def chat_stream():
+    body = _body()
+    stream_id = body.get("stream_id") or str(uuid.uuid4())
+    conv_id = body.get("conv_id", "")
+    attach_only = bool(body.get("attach"))
+
+    # Re-joining a live stream must never create a new empty backend turn.
+    # If the stream no longer exists, let the client simply show the saved
+    # conversation state instead of starting a duplicate worker that can
+    # overwrite messages/title/tools with an empty payload.
+    if attach_only and stream_id not in _active_streams:
+        return jsonify({"error": "Stream not found"}), 404
+
+    cancel_event = _cancel_events.setdefault(stream_id, threading.Event())
+    state = _stream_state(stream_id, conv_id)
+
+    if not attach_only:
+        with state["lock"]:
+            if not state["started"]:
+                state["started"] = True
+                threading.Thread(
+                    target=_run_persistent_chat_turn,
+                    args=(state, body, cancel_event),
+                    daemon=True,
+                ).start()
+
+    def event_stream():
+        cursor = 0
+        while True:
+            with state["condition"]:
+                while cursor >= len(state["events"]) and not state["done"]:
+                    state["condition"].wait(timeout=15)
+                pending = state["events"][cursor:]
+                cursor += len(pending)
+                done = state["done"] and cursor >= len(state["events"])
+
+            for payload in pending:
+                yield stream_module.sse_event(payload)
+            if done:
+                yield "data: [DONE]\n\n"
+                break
+
+    return stream_module.make_streaming_response(event_stream())
+
+
+def _parse_stream_payload(raw_event: str) -> dict | None:
+    raw_event = raw_event.strip()
+    if not raw_event.startswith("data: "):
+        return None
+    payload = raw_event[6:].strip()
+    if payload == "[DONE]":
+        return {"type": "done"}
     try:
-        response = client.chat.completions.create(
+        return json.loads(payload)
+    except Exception:
+        return None
+
+
+def _snapshot_active_turn(conv_id: str, title: str, messages: list, display_log: list, stream_id: str) -> None:
+    if not conv_id:
+        return
+    data = store.load(conv_id) or {"id": conv_id, "created_at": ""}
+    data.update({
+        "title": title or data.get("title") or "Untitled",
+        "messages": messages,
+        "displayLog": display_log,
+        "active_stream_id": stream_id,
+        "streaming": True,
+        "working_directory": str(store.working_directory(conv_id)),
+    })
+    store.save(conv_id, data)
+
+
+def _snapshot_finished_turn(conv_id: str, title: str, messages: list, display_log: list) -> None:
+    if not conv_id:
+        return
+    data = store.load(conv_id) or {"id": conv_id, "created_at": ""}
+    data.update({
+        "title": title or data.get("title") or "Untitled",
+        "messages": messages,
+        "displayLog": display_log,
+        "streaming": False,
+        "working_directory": str(store.working_directory(conv_id)),
+    })
+    data.pop("active_stream_id", None)
+    store.save(conv_id, data)
+
+
+def _display_log_with_partial(base_log: list, reasoning: str, text: str) -> list:
+    log = list(base_log)
+    if reasoning:
+        log.append({"type": "thinking", "content": reasoning})
+    if text:
+        log.append({"type": "message", "role": "assistant", "content": text})
+    return log
+
+
+def _tool_meta_by_name(body: dict) -> dict:
+    return {tool.get("name"): tool for tool in body.get("mcp_tool_meta", []) if tool.get("name")}
+
+
+def _tool_call_message(calls: list, content: str | None) -> dict:
+    return {
+        "role": "assistant",
+        "content": content or None,
+        "tool_calls": [
+            {
+                "id": call.get("id"),
+                "type": "function",
+                "function": {
+                    "name": call.get("function", {}).get("name", ""),
+                    "arguments": call.get("function", {}).get("arguments", "{}"),
+                },
+            }
+            for call in calls
+        ],
+    }
+
+
+def _safe_tool_args(raw_args: str) -> dict:
+    try:
+        return json.loads(raw_args or "{}")
+    except Exception:
+        return {}
+
+
+def _run_mcp_call(conv_id: str, tool_meta: dict, call: dict) -> tuple[dict, str]:
+    name = call.get("function", {}).get("name", "")
+    args = _safe_tool_args(call.get("function", {}).get("arguments", "{}"))
+    server_name = tool_meta.get("server", "")
+    server_config = mcp_service.find_server(server_name)
+    if not server_config:
+        return args, f"Error calling tool '{name}': MCP server '{server_name}' not found"
+    try:
+        result = mcp_service.run_async(
+            mcp_service.invoke_tool(
+                server_name,
+                server_config,
+                name,
+                args,
+                working_dir=str(store.working_directory(conv_id)) if conv_id else None,
+                conv_id=conv_id,
+            )
+        )
+    except ContainerConversationRequired as exc:
+        result = str(exc)
+    except Exception as exc:
+        result = f"Error calling tool '{name}': {exc}"
+    return args, result
+
+
+def _generate_title_for_turn(body: dict, messages: list) -> str | None:
+    try:
+        response = _openai_client(body).chat.completions.create(
             model=body.get("model", "gpt-4o"),
             messages=[
                 {
@@ -513,42 +701,157 @@ def generate_title():
                         "Bad: 'Coding Help' (too vague), 'Asking About Docker' (action not topic), 'General Question' (meaningless)"
                     ),
                 },
-                {"role": "user", "content": _messages_to_text(body.get("messages", []))},
+                {"role": "user", "content": _messages_to_text(messages[:4])},
             ],
             tools=[_SET_TITLE_TOOL],
             tool_choice="required",
             max_tokens=256,
             temperature=0.7,
         )
-        return jsonify({"title": _extract_title(response.choices[0].message)})
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 400
+        return _extract_title(response.choices[0].message)
+    except Exception:
+        return None
 
 
-# ── Chat ──────────────────────────────────────────────────────────────────────
+def _run_persistent_chat_turn(state: dict, body: dict, cancel_event: threading.Event) -> None:
+    stream_id = state["stream_id"]
+    conv_id = body.get("conv_id", "")
+    title = body.get("title") or "Untitled"
+    turn_messages = list(body.get("conversation_messages") or [])
+    display_log = list(body.get("display_log") or [])
+    api_messages = list(body.get("messages") or [])
+    tool_meta = _tool_meta_by_name(body)
+    is_first_message = len([m for m in turn_messages if m.get("role") == "user"]) == 1
+    client = _openai_client(body)
 
-@blueprint.route("/api/chat/stream", methods=["POST"])
-def chat_stream():
-    body = _body()
-    client    = _openai_client(body)
-    stream_id = body.get("stream_id") or str(uuid.uuid4())
+    last_snapshot = {"at": 0.0, "size": -1}
 
-    cancel_event = threading.Event()
-    _cancel_events[stream_id] = cancel_event
+    def save_active(base_log: list, reasoning: str = "", text: str = "", *, force: bool = False) -> None:
+        # Persist enough state for reload recovery without writing the whole
+        # conversation JSON for every token. Final/tool snapshots still force-save.
+        now = time.monotonic()
+        size = len(reasoning) + len(text) + len(base_log)
+        if not force and now - last_snapshot["at"] < 0.75 and size - last_snapshot["size"] < 512:
+            return
+        last_snapshot.update({"at": now, "size": size})
+        _snapshot_active_turn(conv_id, title, turn_messages, _display_log_with_partial(base_log, reasoning, text), stream_id)
 
-    def generator_with_cleanup():
-        try:
-            yield from stream_module.stream_chat_completion(
+    base_log = list(display_log)
+    save_active(base_log, force=True)
+    assistant_completed = False
+
+    def finalize_partial_answer(reasoning: str, text: str) -> bool:
+        """Append the current assistant chunk to the saved turn once.
+
+        This is used for both normal completion and user cancellation so the
+        final snapshot never erases text that was already streamed to the UI.
+        """
+        nonlocal assistant_completed
+        if assistant_completed:
+            return False
+        if reasoning:
+            base_log.append({"type": "thinking", "content": reasoning})
+        if text:
+            base_log.append({"type": "message", "role": "assistant", "content": text})
+            turn_messages.append({"role": "assistant", "content": text})
+        assistant_completed = bool(reasoning or text)
+        return assistant_completed
+
+    try:
+        while not cancel_event.is_set():
+            acc_text = ""
+            acc_reasoning = ""
+            tool_calls = []
+
+            for raw in stream_module.stream_chat_completion(
                 client,
                 model=body.get("model", "gpt-4o"),
-                messages=body.get("messages", []),
+                messages=api_messages,
                 tools=body.get("tools", []),
                 cancel_event=cancel_event,
-            )
-        finally:
-            _cancel_events.pop(stream_id, None)
+            ):
+                event = _parse_stream_payload(raw)
+                if not event:
+                    continue
+                etype = event.get("type")
+                if etype == "done":
+                    break
+                if etype == "tool_calls":
+                    tool_calls = event.get("calls") or []
+                    continue
 
-    return stream_module.make_streaming_response(generator_with_cleanup())
+                if etype == "reasoning":
+                    acc_reasoning += event.get("content", "")
+                    save_active(base_log, acc_reasoning, acc_text)
+                elif etype == "text":
+                    acc_text += event.get("content", "")
+                    save_active(base_log, acc_reasoning, acc_text)
+
+                _publish_stream_event(state, event)
+
+            if cancel_event.is_set():
+                if finalize_partial_answer(acc_reasoning, acc_text):
+                    save_active(base_log, force=True)
+                break
+
+            if tool_calls:
+                if acc_reasoning:
+                    base_log.append({"type": "thinking", "content": acc_reasoning})
+                if acc_text:
+                    base_log.append({"type": "message", "role": "assistant", "content": acc_text})
+                turn_messages.append(_tool_call_message(tool_calls, acc_text or None))
+                api_messages.append(_tool_call_message(tool_calls, acc_text or None))
+
+                for call in tool_calls:
+                    name = call.get("function", {}).get("name", "")
+                    meta = tool_meta.get(name, {})
+                    args, result = _run_mcp_call(conv_id, meta, call)
+                    display_name = args.get("description") or name
+                    event = {
+                        "type": "tool_result",
+                        "name": name,
+                        "displayName": display_name,
+                        "args": args,
+                        "result": result,
+                    }
+                    base_log.append({"type": "tool_result", **{k: v for k, v in event.items() if k != "type"}})
+                    turn_messages.append({"role": "tool", "tool_call_id": call.get("id"), "content": result})
+                    api_messages.append({"role": "tool", "tool_call_id": call.get("id"), "content": result})
+                    save_active(base_log, force=True)
+                    _publish_stream_event(state, event)
+                continue
+
+            finalize_partial_answer(acc_reasoning, acc_text)
+
+            # Persist the completed assistant answer while the stream is still
+            # active. If the user reloads during slower post-processing, the
+            # saved conversation already contains the finished response.
+            save_active(base_log, force=True)
+
+            # Let the browser finalize the visible assistant bubble immediately.
+            # Title generation can take another model call; copy/regenerate must
+            # not wait for that slower cosmetic step.
+            _publish_stream_event(state, {
+                "type": "assistant_done",
+                "messages": turn_messages,
+                "displayLog": base_log,
+            })
+            break
+
+        if assistant_completed and is_first_message and not cancel_event.is_set():
+            generated_title = _generate_title_for_turn(body, turn_messages)
+            if generated_title:
+                title = generated_title
+                _publish_stream_event(state, {"type": "title", "title": title})
+                save_active(base_log, force=True)
+
+        _snapshot_finished_turn(conv_id, title, turn_messages, base_log)
+    except Exception as exc:
+        _publish_stream_event(state, {"type": "error", "message": str(exc)})
+        _snapshot_finished_turn(conv_id, title, turn_messages, base_log)
+    finally:
+        _cancel_events.pop(stream_id, None)
+        _finish_stream_state(state)
 
 
 @blueprint.route("/api/chat/cancel", methods=["POST"])

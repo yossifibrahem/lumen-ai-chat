@@ -70,17 +70,58 @@ function _buildConvItem(conv) {
 
 // ── CRUD ──────────────────────────────────────────────────────────────────────
 
+function updateTitleInput(title) {
+  const titleInput = document.getElementById('chat-title-input');
+  if (!titleInput || document.activeElement === titleInput) return;
+  titleInput.value = title || '';
+}
+
+function updateConversationListTitle(convId, title) {
+  if (!convId || !title) return;
+
+  const item = document.querySelector(`.conv-item[data-id="${CSS.escape(convId)}"]`);
+  const titleEl = item?.querySelector('.conv-title');
+  if (!titleEl) return;
+
+  titleEl.textContent = title;
+
+  const searchInput = document.getElementById('conv-search');
+  const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+  if (query) item.style.display = title.toLowerCase().includes(query) ? '' : 'none';
+}
+
+function setActiveConversationItem(convId) {
+  document.querySelectorAll('.conv-item.active').forEach(item => item.classList.remove('active'));
+  const item = document.querySelector(`.conv-item[data-id="${CSS.escape(convId)}"]`);
+  item?.classList.add('active');
+}
+
+document.addEventListener('chat:conversation-title-updated', event => {
+  const { convId, title } = event.detail || {};
+  updateConversationListTitle(convId, title);
+});
+
+function applyConversationData(id, data) {
+  if (state.convId !== id) return;
+
+  state.messages   = data.messages || [];
+  state.displayLog = data.displayLog || [];
+
+  updateTitleInput(data.title || '');
+  updateConversationListTitle(id, data.title || '');
+  renderAllMessages(state.displayLog);
+}
+
 export async function openConversation(id) {
   const data = await api.get(`/api/conversations/${id}`);
-  state.convId     = id;
-  state.messages   = data.messages   || [];
-  state.displayLog = data.displayLog || [];
+  state.convId = id;
   storage.set(STORAGE_KEYS.lastConv, id);
-  document.getElementById('chat-title-input').value = data.title || '';
-  renderAllMessages(state.displayLog);
+  applyConversationData(id, data);
   resetFilePanel();
   refreshFilePanel();
-  await loadConversationList();
+
+  document.dispatchEvent(new CustomEvent('chat:conversation-opened', { detail: { convId: id, data } }));
+  setActiveConversationItem(id);
   if (window.innerWidth <= 768) toggleSidebar(false);
 }
 
@@ -126,11 +167,26 @@ export async function deleteConversation(convId) {
   await loadConversationList();
 }
 
-export async function persistConversation() {
-  if (!state.convId) return;
-  const title = document.getElementById('chat-title-input').value.trim() || 'Untitled';
-  await api.put(`/api/conversations/${state.convId}`, {
-    title, messages: state.messages, displayLog: state.displayLog,
-  });
-  await loadConversationList();
+export async function persistConversationFor(convId, { title, messages, displayLog }) {
+  if (!convId) return;
+
+  const payload = {};
+  if (title !== undefined) payload.title = title || 'Untitled';
+  if (messages !== undefined) payload.messages = messages || [];
+  if (displayLog !== undefined) payload.displayLog = displayLog || [];
+
+  await api.put(`/api/conversations/${convId}`, payload);
+
+  if (payload.title) updateConversationListTitle(convId, payload.title);
 }
+
+export async function renameConversationTitle() {
+  if (!state.convId) return;
+
+  const titleInput = document.getElementById('chat-title-input');
+  const title = titleInput.value.trim() || 'Untitled';
+  titleInput.value = title;
+
+  await persistConversationFor(state.convId, { title });
+}
+
