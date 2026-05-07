@@ -14,14 +14,14 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from mcp_adapters import conversation_working_directory
+
 CONVERSATIONS_DIR = Path.home() / ".lumen" / "conversations"
 CONVERSATIONS_DIR.mkdir(parents=True, exist_ok=True)
 
 IMAGES_DIR = Path.home() / ".lumen" / "images"
 IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
-WORKING_DIRECTORIES_DIR = Path.home() / ".lumen" / "working_directory"
-WORKING_DIRECTORIES_DIR.mkdir(parents=True, exist_ok=True)
 
 _SAFE_NAME = re.compile(r'^[a-f0-9]{64}\.(png|jpeg|webp|gif)$')
 
@@ -56,15 +56,8 @@ def _path(conv_id: str) -> Path:
 
 
 def working_directory(conv_id: str) -> Path:
-    """Return the isolated MCP working directory for one conversation.
-
-    Every chat gets its own stable folder under ~/.lumen/working_directory/<chat_id>.
-    The folder is created lazily and is safe to pass to MCP servers as WORKING_DIR.
-    """
-    safe_id = re.sub(r"[^a-zA-Z0-9_-]", "_", conv_id or "default")
-    path = WORKING_DIRECTORIES_DIR / safe_id
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+    """Return the isolated MCP working directory for one conversation."""
+    return conversation_working_directory(conv_id)
 
 
 # ── Public API ────────────────────────────────────────────────────────────────

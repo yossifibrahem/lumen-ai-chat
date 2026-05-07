@@ -5,24 +5,16 @@ import { applyMarkdown } from './markdown.js';
 import { $, createElement, remove, setVisible } from './dom.js';
 import { ICONS } from './icons.js';
 import { state } from './state.js';
+import {
+  escapeHtml, getToolDisplayLabel, getToolMetaText, formatArgsHtml, renderToolResultHtml, visibleToolArgs,
+} from './mcp_tool_ui.js';
+export { escapeHtml, getToolDisplayLabel } from './mcp_tool_ui.js';
 
 function getToolIconSvg(toolName) {
   const tool = state.mcpTools.find(t => t.name === toolName);
   if (!tool) return ICONS.plug;
   const iconKey = state.mcpServerSettings[tool.server]?.icon || 'plug';
   return ICONS[iconKey] || ICONS.plug;
-}
-
-export function getToolDisplayLabel(toolName, args = {}) {
-  const description = String(args?.description || '').trim();
-  return description || toolName;
-}
-
-function getToolMetaText(toolName, args = {}) {
-  const pieces = [];
-  if (toolName === 'bash_tool' && args.command) pieces.push(args.command);
-  if ((toolName === 'view' || toolName === 'create_file' || toolName === 'str_replace') && args.path) pieces.push(args.path);
-  return pieces.join(' · ');
 }
 
 const SUGGESTION_CHIPS = [
@@ -37,14 +29,6 @@ const BOTTOM_THRESHOLD = 32;
 let stickToBottom = true;
 // Canceller functions for any strips currently awaiting user approval
 const activeApprovalCancellers = new Set();
-
-export function escapeHtml(value) {
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
 
 const messagesEl = () => $('#messages');
 const formatTime = () => new Date().toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
@@ -561,70 +545,6 @@ export function setStreamingMessageLogIndex(contentEl, logIndex) {
   addAssistantFooter(row, getText, logIndex);
 }
 
-function normalizeBlockText(value) {
-  return String(value ?? '')
-    .replace(/\r\n?/g, '\n')
-    .replace(/^\s*\n+/, '')
-    .replace(/\n+\s*$/, '');
-}
-
-function formatToolValue(value) {
-  if (value == null) return '';
-  if (typeof value === 'object') {
-    return normalizeBlockText(JSON.stringify(value, null, 2));
-  }
-  return normalizeBlockText(value);
-}
-
-function visibleToolArgs(args = {}) {
-  if (!args || typeof args !== 'object') return {};
-  return Object.fromEntries(
-    Object.entries(args).filter(([key]) => key !== 'description')
-  );
-}
-
-function formatArgsHtml(args) {
-  return Object.entries(args).map(([key, value]) => `
-    <div class="arg-item">
-      <span class="arg-name">${escapeHtml(key)}</span>
-      <pre class="arg-value">${escapeHtml(formatToolValue(value))}</pre>
-    </div>`).join('');
-}
-
-function parseToolObject(value) {
-  if (value && typeof value === 'object') return value;
-  if (typeof value !== 'string') return null;
-  const text = value.trim();
-  if (!text || !/^[\[{]/.test(text)) return null;
-  try { return JSON.parse(text); } catch { return null; }
-}
-
-function renderJsonResult(data) {
-  if (Array.isArray(data)) {
-    return `<div class="tr-command-result"><pre class="tr-result">${escapeHtml(formatToolValue(data))}</pre></div>`;
-  }
-
-  const entries = Object.entries(data || {});
-  if (!entries.length) {
-    return `<pre class="tr-result">${escapeHtml(formatToolValue(data))}</pre>`;
-  }
-
-  const blocks = entries.map(([key, value]) => `
-    <div>
-      <div class="tr-section-label">${escapeHtml(key)}</div>
-      <pre class="tr-result">${escapeHtml(formatToolValue(value))}</pre>
-    </div>`).join('');
-
-  return `<div class="tr-command-result">${blocks}</div>`;
-}
-
-function renderResultSection(result) {
-  const data = parseToolObject(result);
-  return data
-    ? renderJsonResult(data)
-    : `<pre class="tr-result">${escapeHtml(formatToolValue(result))}</pre>`;
-}
-
 function createToolResultBody(toolName, args, result) {
   const displayArgs = visibleToolArgs(args);
   const sections = [];
@@ -640,7 +560,7 @@ function createToolResultBody(toolName, args, result) {
   sections.push(`
     <div class="tr-section">
       <div class="tr-section-label">Result</div>
-      ${renderResultSection(result)}
+      ${renderToolResultHtml(result)}
     </div>`);
 
   return sections.join('');
