@@ -14,7 +14,9 @@ import uuid
 from flask import Blueprint, jsonify, render_template, request, send_file
 from openai import OpenAI
 
+import container_service
 import mcp_service
+from mcp_adapters import ContainerConversationRequired
 import store
 import streaming as stream_module
 
@@ -70,6 +72,18 @@ def get_conversation_workspace(conv_id: str):
     return jsonify({"working_directory": str(store.working_directory(conv_id))})
 
 
+@blueprint.route("/api/conversations/<conv_id>/container", methods=["GET"])
+def get_container_status(conv_id: str):
+    """Return the Docker container status for this conversation."""
+    status = container_service.get_status(conv_id)
+    return jsonify({
+        "conv_id": conv_id,
+        "container_name": container_service.container_name(conv_id),
+        "status": status,
+        "workspace": str(store.working_directory(conv_id)),
+    })
+
+
 @blueprint.route("/api/conversations/<conv_id>", methods=["PUT"])
 def update_conversation(conv_id: str):
     data = store.load(conv_id) or {"id": conv_id}
@@ -80,7 +94,12 @@ def update_conversation(conv_id: str):
 
 @blueprint.route("/api/conversations/<conv_id>", methods=["DELETE"])
 def delete_conversation(conv_id: str):
-    return jsonify({"ok": True}) if store.delete(conv_id) else (jsonify({"error": "Not found"}), 404)
+    ok = store.delete(conv_id)
+    if ok:
+        container_service.stop_container(conv_id)
+        container_service.delete_workspace(conv_id)
+        return jsonify({"ok": True})
+    return jsonify({"error": "Not found"}), 404
 
 
 # ── MCP ───────────────────────────────────────────────────────────────────────
@@ -98,10 +117,27 @@ def save_mcp_config():
 
 @blueprint.route("/api/mcp/tools", methods=["GET"])
 def list_mcp_tools():
+    conv_id = request.args.get("conv_id", "")
     servers = mcp_service.load_config().get("mcpServers", {})
     all_tools: list[dict] = []
+    skipped: list[dict] = []
+
     for name, cfg in servers.items():
-        all_tools.extend(mcp_service.run_async(mcp_service.fetch_tools(name, cfg)))
+        try:
+            all_tools.extend(
+                mcp_service.run_async(
+                    mcp_service.fetch_tools(name, cfg, conv_id=conv_id)
+                )
+            )
+        except ContainerConversationRequired as exc:
+            skipped.append({"server": name, "reason": str(exc)})
+            continue
+
+    # Keep backward compatibility: the frontend accepts both a raw array and
+    # {tools: [...]}. Returning metadata here lets us skip container-only tools
+    # gracefully when /api/mcp/tools is called before a chat exists.
+    if skipped:
+        return jsonify({"tools": all_tools, "skipped": skipped})
     return jsonify(all_tools)
 
 
@@ -114,15 +150,19 @@ def call_mcp_tool():
         return jsonify({"error": f"MCP server '{server_name}' not found"}), 404
     conv_id = body.get("conv_id", "")
     working_dir = str(store.working_directory(conv_id)) if conv_id else None
-    result = mcp_service.run_async(
-        mcp_service.invoke_tool(
-            server_name,
-            server_config,
-            body.get("tool", ""),
-            body.get("arguments", {}),
-            working_dir=working_dir,
+    try:
+        result = mcp_service.run_async(
+            mcp_service.invoke_tool(
+                server_name,
+                server_config,
+                body.get("tool", ""),
+                body.get("arguments", {}),
+                working_dir=working_dir,
+                conv_id=conv_id,
+            )
         )
-    )
+    except ContainerConversationRequired as exc:
+        return jsonify({"error": str(exc)}), 400
     return jsonify({"result": result})
 
 

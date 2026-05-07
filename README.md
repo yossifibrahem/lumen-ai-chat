@@ -105,10 +105,10 @@ chatbot/
 
 Lumen now treats the companion `bash-mcp-server` and `filesystem-mcp-server` as first-class chat tools:
 
-- Each conversation gets an isolated workspace at `~/.lumen/working_directory/<chat_id>`.
-- MCP invocations automatically receive that path as `WORKING_DIR`, `PWD`, and process `cwd`, so local servers can use the active chat workspace.
+- Each conversation gets a persistent workspace at `~/.lumen/containers/<chat_id>`.
+- Host-runtime MCP servers receive that host path as `WORKING_DIR`, `PWD`, and process `cwd`; container-runtime MCP servers receive `/workspace`, mounted from the same host folder.
 - The chat UI displays each tool call by its required `description` argument instead of the raw tool name, e.g. `Reading README.md` or `Installing packages with npm`.
-- App-level MCP behavior is isolated in `mcp_adapters.py`, `static/js/mcp_policy.js`, and `static/js/mcp_tool_ui.js`, so future server quirks can be added/removed without scattering changes across routes or render code. Filesystem sandboxing/path enforcement should live in the MCP server itself.
+- App-level MCP behavior is isolated in `mcp_adapters.py`, `static/js/mcp_policy.js`, and `static/js/mcp_tool_ui.js`, so future server quirks can be added/removed without scattering changes across routes or render code.
 
 ### Recommended local configuration
 
@@ -136,4 +136,100 @@ Then open **Settings → MCP Servers**, add the built server paths manually in `
     }
   }
 }
+```
+
+---
+
+## Per-Chat Container Isolation
+
+MCP servers run on the host by default. Local tools that should be isolated must explicitly opt into a per-chat Docker container with `"runtime": "container"`. For backward compatibility, `"sandbox": true` also works. Server names such as `bash` or `filesystem` are **not** containerized automatically.
+
+Each containerized conversation uses its own Docker container (`lumen-chat-<conv_id>`), so bash commands, Python package installs, and filesystem writes are isolated from the host OS and from other chats.
+
+### How it works
+
+| Layer | What changes |
+|---|---|
+| **Default MCP runtime** | Host, unless `"runtime": "container"` is set |
+| **Host workspace** | `~/.lumen/containers/<conv_id>/` |
+| **In-container path** | `/workspace` |
+| **MCP invocation** | `docker exec -i --workdir /workspace --env WORKING_DIR=/workspace lumen-chat-<conv_id> ...` |
+| **Container lifetime** | Created on first containerized tool call, removed when conversation is deleted |
+
+### Quick start
+
+```bash
+# 1. Build the sandbox image once per machine, or whenever Dockerfile.sandbox changes
+docker build -f Dockerfile.sandbox -t lumen-sandbox .
+
+# 2. Run the app as normal
+python app.py
+```
+
+Containers are started automatically on the first containerized MCP tool call. Deleting a conversation removes both its Docker container and its host workspace folder. Orphaned `lumen-chat-*` containers from previous runs are removed at startup.
+
+### Runtime config
+
+Host runtime, useful for remote MCP servers such as Exa:
+
+```json
+{
+  "mcpServers": {
+    "exa": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.exa.ai/mcp"]
+    }
+  }
+}
+```
+
+Container runtime, useful for local bash/filesystem/code execution tools:
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "node",
+      "args": ["/path/to/filesystem-mcp-server/dist/index.js"],
+      "runtime": "container"
+    }
+  }
+}
+```
+
+Legacy config still works:
+
+```json
+{
+  "sandbox": true
+}
+```
+
+Important safety behavior: if a server is configured for container runtime and Docker cannot start the container, the server does **not** fall back to host execution. The tool fails closed instead.
+
+### Container API
+
+```
+GET /api/conversations/<conv_id>/container
+→ { "status": "running"|"stopped"|"missing", "container_name": "lumen-chat-…", "workspace": "…" }
+```
+
+### Resource limits (defaults)
+
+| Limit | Value |
+|---|---|
+| Memory | 512 MB |
+| CPUs | 1 |
+| Network | bridge |
+| Capabilities | minimal (CHOWN, DAC_OVERRIDE, SETUID, SETGID) |
+
+Override these with environment variables instead of editing code:
+
+```bash
+export LUMEN_SANDBOX_IMAGE=lumen-sandbox
+export LUMEN_CONTAINERS_ROOT=~/.lumen/containers
+export LUMEN_CONTAINER_MEMORY=512m
+export LUMEN_CONTAINER_CPUS=1
+export LUMEN_CONTAINER_NETWORK=bridge
+export LUMEN_CONTAINER_PREFIX=lumen-chat-
 ```

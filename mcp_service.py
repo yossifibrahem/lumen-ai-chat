@@ -38,7 +38,13 @@ def find_server(server_name: str) -> dict | None:
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
-def _build_server_params(server_config: dict, *, working_dir: str | None = None) -> Any:
+def _build_server_params(
+    server_name: str,
+    server_config: dict,
+    *,
+    working_dir: str | None = None,
+    conv_id: str = "",
+) -> Any:
     from mcp import StdioServerParameters  # optional dependency
 
     env = {**os.environ, **expand_config_env(server_config.get("env", {}))}
@@ -47,7 +53,14 @@ def _build_server_params(server_config: dict, *, working_dir: str | None = None)
         "args": server_config.get("args", []),
         "env": env,
     }
-    apply_workspace_process_options(params, env, working_dir)
+    apply_workspace_process_options(
+        params,
+        env,
+        working_dir,
+        server_name=server_name,
+        server_config=server_config,
+        conv_id=conv_id,
+    )
 
     try:
         return StdioServerParameters(**params)
@@ -60,12 +73,12 @@ def _build_server_params(server_config: dict, *, working_dir: str | None = None)
 
 # ── Async operations ──────────────────────────────────────────────────────────
 
-async def fetch_tools(server_name: str, server_config: dict) -> list[dict]:
+async def fetch_tools(server_name: str, server_config: dict, conv_id: str = "") -> list[dict]:
     """Connect to an MCP server and return its tool definitions."""
     from mcp import ClientSession
     from mcp.client.stdio import stdio_client
 
-    params = _build_server_params(server_config)
+    params = _build_server_params(server_name, server_config, conv_id=conv_id)
     tools: list[dict] = []
     try:
         async with stdio_client(params) as (reader, writer):
@@ -83,12 +96,12 @@ async def fetch_tools(server_name: str, server_config: dict) -> list[dict]:
     return tools
 
 
-async def invoke_tool(server_name: str, server_config: dict, tool_name: str, arguments: dict, *, working_dir: str | None = None) -> str:
+async def invoke_tool(server_name: str, server_config: dict, tool_name: str, arguments: dict, *, working_dir: str | None = None, conv_id: str = "") -> str:
     """Call a single MCP tool and return its text output."""
     from mcp import ClientSession
     from mcp.client.stdio import stdio_client
 
-    params = _build_server_params(server_config, working_dir=working_dir)
+    params = _build_server_params(server_name, server_config, working_dir=working_dir, conv_id=conv_id)
     try:
         async with stdio_client(params) as (reader, writer):
             async with ClientSession(reader, writer) as session:

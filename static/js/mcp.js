@@ -61,24 +61,48 @@ export async function saveMcpConfig() {
 
 // ── Tool loading ──────────────────────────────────────────────────────────────
 
+
+function normalizeToolsResponse(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.tools)) return payload.tools;
+  const message = payload?.error || 'Unexpected MCP tools response';
+  throw new Error(message);
+}
+
+function toolsEndpoint() {
+  const params = new URLSearchParams();
+  if (state.convId) params.set('conv_id', state.convId);
+  const query = params.toString();
+  return query ? `/api/mcp/tools?${query}` : '/api/mcp/tools';
+}
+
 export function loadCachedTools() {
   loadServerSettings();
   const cached = storage.get(STORAGE_KEYS.mcpTools);
-  if (cached?.length) {
-    state.mcpTools = cached;
-    renderToolList();
+  if (!cached) return;
+
+  try {
+    state.mcpTools = normalizeToolsResponse(cached);
+    if (state.mcpTools.length) renderToolList();
+  } catch {
+    state.mcpTools = [];
+    storage.remove(STORAGE_KEYS.mcpTools);
   }
 }
 
 export async function reloadTools() {
   showStatus('mcp-status', 'Loading tools…', 'ok');
   try {
-    state.mcpTools = await api.get('/api/mcp/tools');
+    const payload = await api.get(toolsEndpoint());
+    state.mcpTools = normalizeToolsResponse(payload);
     storage.set(STORAGE_KEYS.mcpTools, state.mcpTools);
     renderToolList();
     showStatus('mcp-status', `${state.mcpTools.length} tool(s) loaded ✓`, 'ok');
     showToast(`${state.mcpTools.length} tool(s) loaded`);
   } catch (err) {
+    state.mcpTools = [];
+    storage.remove(STORAGE_KEYS.mcpTools);
+    renderToolList();
     showStatus('mcp-status', `Error loading tools: ${err.message}`, 'err');
   }
 }
