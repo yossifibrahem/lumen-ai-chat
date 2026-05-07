@@ -66,7 +66,9 @@ Click **Reload Tools** to connect and list available tools. When the model reque
 ```
 chatbot/
 ├── app.py                  # App factory + entry point
-├── routes.py               # All HTTP routes (one Blueprint)
+├── routes.py               # Thin HTTP routes (one Blueprint)
+├── chat_turn_service.py    # Persistent chat turn orchestration + title generation
+├── workspace_service.py    # /workspace path safety, file listing, preview, uploads
 ├── store.py                # Conversation persistence (file-system CRUD)
 ├── mcp_service.py          # MCP config, tool discovery, tool invocation
 ├── streaming.py            # SSE formatting + OpenAI stream loop
@@ -85,6 +87,7 @@ chatbot/
         ├── api.js          # Typed HTTP client
         ├── markdown.js     # Markdown + LaTeX rendering pipeline
         ├── renderer.js     # DOM rendering (messages, tool dialogs)
+        ├── format.js       # Shared client-side formatting helpers
         ├── conversations.js# Conversation list, open, create, delete
         ├── settings.js     # Settings load/save, model list
         ├── mcp.js          # MCP config, tool list, tool execution

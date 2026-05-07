@@ -6,6 +6,7 @@ import { ICONS } from './icons.js';
 import { applyMarkdown } from './markdown.js';
 import { escapeHtml } from './renderer.js';
 import { showToast } from './ui.js';
+import { formatBytes, fileExtension as ext } from './format.js';
 
 const PANEL_WIDTH_KEY = 'lumen_file_panel_width';
 const MIN_PANEL_WIDTH = 280;
@@ -59,26 +60,9 @@ function savePanelWidth(width) {
   applyPanelWidth(nextWidth);
 }
 
-function formatBytes(bytes = 0) {
-  if (bytes === null || bytes === undefined) return '';
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ['KB', 'MB', 'GB'];
-  let value = bytes / 1024;
-  let unit = units.shift();
-  while (value >= 1024 && units.length) {
-    value /= 1024;
-    unit = units.shift();
-  }
-  return `${value.toFixed(value >= 10 ? 0 : 1)} ${unit}`;
-}
-
 function formatDate(seconds) {
   if (!seconds) return '';
   return new Date(seconds * 1000).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
-}
-
-function ext(name = '') {
-  return (name.split('.').pop() || '').toLowerCase();
 }
 
 function languageFromName(name = '') {

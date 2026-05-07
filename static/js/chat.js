@@ -15,6 +15,7 @@ import { isServerEnabled } from './mcp.js';
 import { buildMcpSystemPrompt as buildMcpPrompt } from './mcp_policy.js';
 import { persistConversationFor, createNewConversation } from './conversations.js';
 import { refreshFilePanel } from './file_panel.js';
+import { formatBytes, fileExtensionLabel } from './format.js';
 
 let turnAbortController = null;
 let turnCancelled = false;
@@ -29,23 +30,6 @@ let pendingAttachments = [];
 let pendingAttachmentAdds = Promise.resolve();
 
 function getImagePreviewBar() { return document.getElementById('image-preview-bar'); }
-
-function formatBytes(bytes = 0) {
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ['KB', 'MB', 'GB'];
-  let value = bytes / 1024;
-  let unit = units.shift();
-  while (value >= 1024 && units.length) {
-    value /= 1024;
-    unit = units.shift();
-  }
-  return `${value.toFixed(value >= 10 ? 0 : 1)} ${unit}`;
-}
-
-function getFileExt(name = '') {
-  const ext = (name.split('.').pop() || '').trim();
-  return ext ? ext.toUpperCase().slice(0, 6) : 'FILE';
-}
 
 function refreshImagePreviewBar() {
   const bar = getImagePreviewBar();
@@ -80,7 +64,7 @@ function refreshImagePreviewBar() {
           <div class="composer-attachment-name" title="${escapeHtml(entry.name || 'file')}">${escapeHtml(entry.name || 'file')}</div>
           <div class="composer-attachment-subtle">${formatBytes(entry.size || 0)}</div>
           <div class="composer-attachment-badge-row">
-            <span class="composer-attachment-badge">${escapeHtml(getFileExt(entry.name || 'file'))}</span>
+            <span class="composer-attachment-badge">${escapeHtml(fileExtensionLabel(entry.name || 'file'))}</span>
           </div>
         </div>
         <button class="img-preview-remove" title="Remove attachment" aria-label="Remove attachment">

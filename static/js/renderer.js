@@ -5,6 +5,7 @@ import { applyMarkdown } from './markdown.js';
 import { $, createElement, remove, setVisible } from './dom.js';
 import { ICONS } from './icons.js';
 import { state } from './state.js';
+import { formatBytes, fileExtensionLabel } from './format.js';
 import {
   escapeHtml, getToolDisplayLabel, getToolMetaText, formatArgsHtml, renderToolResultHtml, visibleToolArgs,
 } from './mcp_tool_ui.js';
@@ -436,24 +437,6 @@ export function appendThinkingBlock(reasoningText) {
   scrollToBottom();
 }
 
-function formatBytes(bytes = 0) {
-  if (!bytes) return '';
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ['KB', 'MB', 'GB'];
-  let value = bytes / 1024;
-  let unit = units.shift();
-  while (value >= 1024 && units.length) {
-    value /= 1024;
-    unit = units.shift();
-  }
-  return `${value.toFixed(value >= 10 ? 0 : 1)} ${unit}`;
-}
-
-function getFileExt(name = '') {
-  const ext = (name.split('.').pop() || '').trim();
-  return ext ? ext.toUpperCase().slice(0, 6) : 'FILE';
-}
-
 function normalizeContentAttachments(content = {}) {
   if (!content || typeof content !== 'object' || Array.isArray(content)) return [];
   if (Array.isArray(content.attachments)) {
@@ -484,8 +467,8 @@ function renderAttachmentCard(attachment, { edit = false } = {}) {
 
   const card = createElement('div', { className: `msg-attachment-card msg-file-card${edit ? ' msg-edit-file-card' : ''}` });
   card.title = attachment.path ? `Available to tools at ${attachment.path}` : '';
-  const badge = getFileExt(attachment.name || 'file');
-  const size = formatBytes(attachment.size || 0);
+  const badge = fileExtensionLabel(attachment.name || 'file');
+  const size = formatBytes(attachment.size || 0, { emptyZero: true });
   card.innerHTML = `
     <div class="msg-file-card-body">
       <div class="msg-file-card-name"></div>
