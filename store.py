@@ -77,10 +77,8 @@ def list_all() -> list[dict]:
         try:
             data = json.loads(path.read_text())
             results.append({
-                "id":            path.stem,
-                "title":         data.get("title", "Untitled"),
-                "updated_at":    data.get("updated_at", ""),
-                "message_count": len(data.get("messages", [])),
+                "id":                path.stem,
+                "title":             data.get("title", "Untitled"),
                 "working_directory": str(working_directory(path.stem)),
             })
         except Exception:

@@ -48,19 +48,16 @@ function _buildConvItem(conv) {
   item.className = `conv-item${conv.id === state.convId ? ' active' : ''}`;
   item.dataset.id = conv.id;
 
-  const date = conv.updated_at
-    ? new Date(conv.updated_at).toLocaleDateString('en', { month: 'short', day: 'numeric' })
-    : '';
+  const title = conv.title || 'Untitled';
 
   item.innerHTML = `
     <div class="conv-icon">
       ${ICONS.chat}
     </div>
     <div class="conv-info">
-      <div class="conv-title">${escapeHtml(conv.title)}</div>
-      <div class="conv-meta">${conv.message_count} msg${conv.message_count !== 1 ? 's' : ''} · ${date}</div>
+      <div class="conv-title">${escapeHtml(title)}</div>
     </div>
-    <button class="conv-del" title="Delete">
+    <button class="conv-del" type="button" title="Delete conversation" aria-label="Delete conversation">
       ${ICONS.close}
     </button>`;
 
@@ -118,7 +115,6 @@ function upsertConversationListItem(conv) {
 
   container.insertBefore(_buildConvItem({
     title: 'New Conversation',
-    message_count: 0,
     ...conv,
   }), container.querySelector('.conv-section-label')?.nextSibling || null);
   setActiveConversationItem(conv.id);
