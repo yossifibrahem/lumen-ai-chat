@@ -5,7 +5,6 @@
   color: var(--text2);
 }
 #btn-toggle-files:hover { color: var(--text); background: var(--surface2); }
-#btn-toggle-files.active { color: var(--accent); background: var(--accent-dim); }
 #btn-toggle-files svg { width: 16px; height: 16px; }
 
 #file-panel {
