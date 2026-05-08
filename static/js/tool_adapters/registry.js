@@ -4,8 +4,13 @@
  * Central store for per-tool UI overrides. Each adapter may override any
  * combination of three extension points:
  *
+ *   labelArg: 'query'           (string, default: 'description')
+ *     Which argument holds the human-readable label shown in the strip header.
+ *     That argument is also stripped from the displayed args block.
+ *     e.g. most tools use 'description'; Exa uses 'query'.
+ *
  *   getMetaText(args)          → string
- *     Short inline preview shown next to the tool name in the strip header
+ *     Short inline preview shown next to the label in the strip header
  *     (e.g. the command for bash, the file path for filesystem tools).
  *     Return '' to show nothing.
  *
@@ -65,4 +70,25 @@ export function adapterFor(toolName) {
  */
 export function registeredTools() {
   return [..._registry.keys()];
+}
+
+/**
+ * Inject a <style> block into <head> exactly once, identified by `id`.
+ * Call this at the top of any adapter that needs its own styles.
+ *
+ * Usage inside an adapter file:
+ *   injectStyles('exa-adapter', `
+ *     .exa-card { background: var(--surface2); }
+ *   `);
+ *
+ * @param {string} id  - Unique id for the <style> element (e.g. 'exa-adapter').
+ * @param {string} css - CSS text to inject.
+ */
+export function injectStyles(id, css) {
+  const styleId = `tool-adapter-styles-${id}`;
+  if (document.getElementById(styleId)) return;
+  const el = document.createElement('style');
+  el.id = styleId;
+  el.textContent = css;
+  document.head.appendChild(el);
 }

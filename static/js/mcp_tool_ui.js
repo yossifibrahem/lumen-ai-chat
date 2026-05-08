@@ -15,8 +15,10 @@ export function escapeHtml(value) {
 }
 
 export function getToolDisplayLabel(toolName, args = {}) {
-  const description = String(args?.description || '').trim();
-  return description || toolName;
+  const adapter = adapterFor(toolName);
+  const labelArg = adapter?.labelArg ?? 'description';
+  const label = String(args?.[labelArg] || '').trim();
+  return label || toolName;
 }
 
 export function getToolMetaText(toolName, args = {}) {
@@ -50,9 +52,11 @@ export function visibleToolArgs(toolNameOrArgs, args) {
 
   if (!rawArgs || typeof rawArgs !== 'object') return {};
 
-  // Strip the `description` sentinel that the model injects for the UI label.
+  // Strip whichever arg is used as the UI label (default: 'description').
+  const adapter = toolName ? adapterFor(toolName) : null;
+  const labelArg = adapter?.labelArg ?? 'description';
   const withoutDescription = Object.fromEntries(
-    Object.entries(rawArgs).filter(([key]) => key !== 'description')
+    Object.entries(rawArgs).filter(([key]) => key !== labelArg)
   );
 
   // Delegate to the adapter's filterArgs if one is registered.
