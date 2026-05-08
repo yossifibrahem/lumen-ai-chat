@@ -139,12 +139,6 @@ function _syncAPIUI() {
   if (temp) { temp.value = state.temperature; }
   const tempBadge = el('temp-badge');
   if (tempBadge) tempBadge.textContent = parseFloat(state.temperature).toFixed(2);
-
-  const maxTok = el('setting-max-tokens');
-  if (maxTok) maxTok.value = state.maxTokens || '';
-
-  const timeout = el('setting-timeout');
-  if (timeout) timeout.value = state.requestTimeout || 120;
 }
 
 function _syncChatUI() {
@@ -162,12 +156,6 @@ function _readAPIControls() {
 
   const temp = document.getElementById('setting-temperature');
   if (temp) state.temperature = parseFloat(temp.value);
-
-  const maxTok = document.getElementById('setting-max-tokens');
-  if (maxTok) state.maxTokens = parseInt(maxTok.value, 10) || 0;
-
-  const timeout = document.getElementById('setting-timeout');
-  if (timeout) state.requestTimeout = parseInt(timeout.value, 10) || 120;
 }
 
 function _readChatControls() {

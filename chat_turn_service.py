@@ -298,8 +298,6 @@ def run_persistent_chat_turn(body: dict, cancel_event: threading.Event, stream_i
                 tools=body.get("tools", []),
                 cancel_event=cancel_event,
                 temperature=float(body.get("temperature", 0.7)),
-                max_tokens=int(body.get("max_tokens", 0)) or None,
-                timeout=float(body.get("request_timeout", 120)) or None,
             ):
                 event = _parse_stream_payload(raw)
                 if not event:

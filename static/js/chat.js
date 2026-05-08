@@ -804,7 +804,6 @@ async function runChatLoop(turn) {
       api_key:   state.apiKey,
       model:     state.model || 'gpt-4o',
       temperature:  state.temperature ?? 0.7,
-      max_tokens:   state.maxTokens   || 0,
       messages:              await buildApiMessages(turn.messages),
       conversation_messages: turn.messages,
       display_log:           turn.displayLog,
@@ -814,7 +813,6 @@ async function runChatLoop(turn) {
       stream_id:             streamId,
       conv_id:               turn.convId,
       auto_generate_titles:  state.autoGenerateTitles ?? true,
-      request_timeout:       state.requestTimeout || 120,
     }, { signal: turnAbortController.signal });
 
     if (!resp.ok) throw new Error(await readResponseError(resp));

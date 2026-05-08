@@ -74,7 +74,6 @@
 
     // Char count
     if (prefs.showCharCount === false) r.classList.add('hide-char-count');
-    if (prefs.wrapCodeLines === true) r.classList.add('wrap-code-lines');
 
     // Suppress all transitions during initial paint so nothing animates in
     r.classList.add('no-transition');
@@ -292,18 +291,6 @@
             <div class="range-labels"><span>Precise (0)</span><span>Balanced</span><span>Creative (2)</span></div>
             <div class="field-note">Controls randomness. Lower = more deterministic, higher = more creative.</div>
           </div>
-
-          <div class="field-row">
-            <div class="field">
-              <label>Response limit</label>
-              <input type="number" id="setting-max-tokens" placeholder="Provider default" min="0" max="128000" step="256" />
-              <div class="field-note">Maximum output tokens. 0 = provider default.</div>
-            </div>
-            <div class="field">
-              <label>Request timeout (s)</label>
-              <input type="number" id="setting-timeout" placeholder="120" min="10" max="600" step="10" />
-            </div>
-          </div>
         </div>
 
       </div>
@@ -513,17 +500,6 @@
             </div>
             <label class="cust-toggle">
               <input type="checkbox" id="cust-char-count" />
-              <span class="cust-toggle-track"><span class="cust-toggle-thumb"></span></span>
-            </label>
-          </div>
-
-          <div class="cust-row">
-            <div class="cust-row-label">
-              <span class="cust-label">Wrap long code lines</span>
-              <span class="cust-hint">Soft-wrap code blocks instead of scrolling horizontally</span>
-            </div>
-            <label class="cust-toggle">
-              <input type="checkbox" id="cust-wrap-code-lines" />
               <span class="cust-toggle-track"><span class="cust-toggle-thumb"></span></span>
             </label>
           </div>

@@ -6,8 +6,6 @@ export const SETTINGS_DEFAULTS = {
   systemPrompt: '',
   // Model parameters
   temperature:        0.7,
-  maxTokens:          0,    // 0 = provider default (not sent)
-  requestTimeout:     120,  // seconds
   // Chat behaviour
   autoGenerateTitles: true,
   enterToSend:        true,
@@ -21,7 +19,6 @@ export const CUSTOMIZATION_DEFAULTS = {
   blocksDefaultExpanded:  false,
   groupSequentialBlocks:  false,
   showCharCount:          true,
-  wrapCodeLines:          false,
   fontSize:              'medium',    // 'small' | 'medium' | 'large'
   fontFamily:            'sora',      // 'sora' | 'tiempos' | 'mono' | 'system'
   theme:                 'dark',      // 'dark' | 'light' | 'auto'
