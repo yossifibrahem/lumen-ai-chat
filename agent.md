@@ -115,7 +115,7 @@ LUMEN_MAX_FILE_LIST_ENTRIES  default: 500
 LUMEN_MAX_UPLOAD_BYTES       default: 50 MiB
 ```
 
-Note: the README currently lists lowercase `lumen_*` env var names, but the code uses uppercase `LUMEN_*`. Prefer the code as source of truth unless intentionally changing both docs and implementation.
+Note: both the README and the code use uppercase `LUMEN_*` env var names. Browser `localStorage` keys (such as `lumen_mcp_server_settings`) intentionally use lowercase and are unrelated to these environment variables.
 
 ## Backend architecture
 
@@ -459,34 +459,11 @@ Recommended future tests:
 
 These were found during the repository pass and should be verified/fixed before relying heavily on MCP tool calls:
 
-### 1. ~~Duplicate positional argument in `chat_turn_service._run_mcp_call()`~~ (resolved)
-
-This was a documented bug where `args` was passed twice to `invoke_tool()`. The call now matches the current signature:
-
-```python
-async def invoke_tool(server_name, server_config, tool_name, arguments, *, conv_id="")
-
-### 2. Undefined `stripIndex` in `static/js/chat.js`
-
-Inside the `tool_result` branch of `processSSEEvent()`, the code does:
-
-```js
-const strip = stripForToolEvent(ctx, evt, 'toolResultIndex');
-if (strip) toolStripFinalize(strip, evt.name, evt.args || {}, evt.result || '');
-ctx.toolResultIndex = stripIndex + 1;
-```
-
-`stripIndex` is not defined in that scope. Also, `stripForToolEvent()` already increments the cursor. This line likely causes a `ReferenceError` when a tool result arrives and should probably be removed.
-
-### 3. README environment variable casing mismatch
-
-The README documents lowercase `lumen_*` env vars, but `container_service.py` and `workspace_service.py` read uppercase `LUMEN_*` names. Fix either the README or the code for consistency.
-
-### 4. Active stream reattach is process-local
+### 1. Active stream reattach is process-local
 
 `routes.py` stores active stream state in memory. This is fine for the dev server and maybe one Gunicorn worker, but it will not work across multiple workers/processes without shared state.
 
-### 5. Tool-name collisions across MCP servers
+### 2. Tool-name collisions across MCP servers
 
 OpenAI tool names are currently just `tool.name`, while tool metadata maps by `name` only. If two enabled MCP servers expose the same tool name, metadata lookup may collide. A future-safe design would namespace tool names or track call-to-server mapping more explicitly.
 

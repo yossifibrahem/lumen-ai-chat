@@ -215,31 +215,7 @@ These files are not stored in the project repository unless you manually copy th
 
 MCP servers are stored in `mcp.json` in the project root. The UI can read and write this file through the MCP settings panel.
 
-Example `mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "filesystem": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "/tmp/workspace"
-      ]
-    },
-    "search": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
-      "env": {
-        "BRAVE_API_KEY": "your-api-key-here"
-      }
-    }
-  }
-}
-```
-
-All MCP servers run inside the conversation's Docker sandbox container, with the workspace mounted at `/workspace`. A basic server configuration looks like this:
+All MCP servers run inside the conversation's Docker sandbox container, with the workspace mounted at `/workspace`. Example `mcp.json`:
 
 ```json
 {
