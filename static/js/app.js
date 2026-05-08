@@ -235,7 +235,8 @@ function bindEvents() {
     clearMessages(); // Show empty state when no conversation exists
   }
 
-  const sidebarOpen = state.sidebarDefaultOpen;
+  const savedSidebarState = storage.get(STORAGE_KEYS.sidebar);
+  const sidebarOpen = savedSidebarState !== null ? savedSidebarState : state.sidebarDefaultOpen;
   // Always start collapsed on mobile — sidebar overlays content there
   const shouldOpen = window.innerWidth <= 768 ? false : sidebarOpen;
   // Remove the CSS pre-collapse class — JS takes over from here
