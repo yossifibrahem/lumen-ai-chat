@@ -39,6 +39,9 @@ const _registry = new Map();
  *
  * @param {Object}   adapter
  * @param {string[]} adapter.tools          - Tool names this adapter handles.
+ * @param {string}   [adapter.labelArg]     - Arg name used as the strip header label (default: 'description').
+ *                                            That arg is also hidden from the expanded args block.
+ *                                            Set this when your tool uses a different key, e.g. 'query', 'command', 'url'.
  * @param {Function} [adapter.getMetaText]  - (args) => string
  * @param {Function} [adapter.filterArgs]   - (args) => object
  * @param {Function} [adapter.renderResult] - (result, args) => string | null

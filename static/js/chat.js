@@ -696,7 +696,9 @@ function processSSEEvent(raw, ctx) {
     const stripIndex = ctx.toolResultIndex || 0;
     let strip = ctx.toolStrips[stripIndex];
     if (!strip && ctx.isVisible()) strip = createToolStrip(evt.name);
-    if (strip) toolStripFinalize(strip, evt.name, evt.args || {}, evt.result || '', evt.displayName || evt.name);
+    // Pass no displayName — renderer.js derives the label via getToolDisplayLabel()
+    // which consults the tool_adapters/ system (each adapter declares its own labelArg).
+    if (strip) toolStripFinalize(strip, evt.name, evt.args || {}, evt.result || '');
     ctx.toolResultIndex = stripIndex + 1;
 
     ctx.accText = '';

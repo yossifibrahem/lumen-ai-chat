@@ -292,11 +292,14 @@ def run_persistent_chat_turn(body: dict, cancel_event: threading.Event, stream_i
                 for call in tool_calls:
                     name = call.get("function", {}).get("name", "")
                     args, result = _run_mcp_call(conv_id, tool_meta.get(name, {}), call)
-                    display_name = args.get("description") or name
+                    # displayName is intentionally omitted here — the JS adapter system
+                    # (tool_adapters/) is the single source of truth for display labels.
+                    # Each adapter declares a `labelArg` (default: 'description') that
+                    # getToolDisplayLabel() reads to pick the right argument, so adding
+                    # a new tool with a different label key requires only a new adapter file.
                     event = {
                         "type": "tool_result",
                         "name": name,
-                        "displayName": display_name,
                         "args": args,
                         "result": result,
                     }

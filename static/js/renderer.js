@@ -607,7 +607,8 @@ function createToolResultBody(toolName, args, result) {
 // appendToolResult is used by renderAllMessages for history replay
 function appendToolResultInline(toolName, args, result, displayName = '') {
   const expanded = state.blocksDefaultExpanded;
-  const label = displayName || getToolDisplayLabel(toolName, args);
+  // Adapter system takes priority; fall back to stored displayName for old history entries.
+  const label = getToolDisplayLabel(toolName, args) || displayName;
   const row = prepareAssistantRow();
   const strip = createElement('div', { className: `tool-strip tool-strip-result tool-inline${expanded ? ' open' : ''}` });
   strip.innerHTML = `
@@ -766,7 +767,11 @@ export function toolStripSetRunning(strip, args = {}) {
 /** Morphs strip into the final collapsible result state. */
 export function toolStripFinalize(strip, toolName, args, result, displayName = '') {
   const expanded = state.blocksDefaultExpanded;
-  const label = displayName || getToolDisplayLabel(toolName, args);
+  // Always derive the label through the adapter system (tool_adapters/index.js).
+  // Each adapter declares a `labelArg` so the right argument is picked automatically.
+  // `displayName` is kept as a last-resort fallback only for legacy stored history
+  // entries that predate the adapter system.
+  const label = getToolDisplayLabel(toolName, args) || displayName;
   strip.className = `tool-strip tool-strip-result tool-inline${expanded ? ' open' : ''}`;
   strip.innerHTML = `
     <button class="tr-summary">
