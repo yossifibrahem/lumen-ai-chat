@@ -7,7 +7,7 @@ import { STORAGE_KEYS, state } from './state.js';
 import { storage }  from './storage.js';
 
 import { openModal, closeModal, toggleSidebar, autoResize, updateCharCount, initMobileKeyboardHandling } from './ui.js';
-import { loadSettings, saveSettings, fetchModels }                           from './settings.js';
+import { loadSettings, saveSettings, saveChatSettings, fetchModels, initKeyToggle, initParameterSliders } from './settings.js';
 import { loadConversationList, openConversation, renameConversationTitle, startNewChat } from './conversations.js';
 import { loadMcpConfig, saveMcpConfig, reloadTools, loadCachedTools } from './mcp.js';
 import { sendMessage, stopAssistantTurn, editAndResend, regenerateFrom, initImageAttachments } from './chat.js';
@@ -108,17 +108,20 @@ function bindModalEvents() {
       document.querySelectorAll(`.tab-footer-btn[data-for-tab="${targetId}"]`).forEach(b => b.classList.add('active'));
     });
   });
-  document.querySelectorAll('.tab-footer-btn[data-for-tab="tab-settings"]').forEach(b => b.classList.add('active'));
+  document.querySelectorAll('.tab-footer-btn[data-for-tab="tab-api"]').forEach(b => b.classList.add('active'));
 }
 
 function bindSettingsEvents() {
   document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
+  document.getElementById('btn-save-chat-settings').addEventListener('click', saveChatSettings);
   document.getElementById('btn-fetch-models').addEventListener('click', fetchModels);
   document.getElementById('btn-save-mcp').addEventListener('click', saveMcpConfig);
   document.getElementById('btn-reload-tools').addEventListener('click', reloadTools);
   document.getElementById('btn-save-customization').addEventListener('click', saveCustomization);
   document.getElementById('btn-reset-customization').addEventListener('click', resetCustomization);
   initSwatchPicker();
+  initKeyToggle();
+  initParameterSliders();
 }
 
 function bindInputEvents() {

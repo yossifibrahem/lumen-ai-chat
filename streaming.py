@@ -37,6 +37,8 @@ def stream_chat_completion(
     messages: list[dict],
     tools: list[dict],
     cancel_event: threading.Event,
+    temperature: float = 0.7,
+    max_tokens: int | None = None,
 ) -> Generator[str, None, None]:
     """Yield SSE strings for a streaming OpenAI chat completion.
 
@@ -46,7 +48,12 @@ def stream_chat_completion(
     """
     openai_stream = None
     try:
-        request_kwargs: dict[str, Any] = {"model": model, "messages": messages, "stream": True}
+        request_kwargs: dict[str, Any] = {
+            "model": model, "messages": messages, "stream": True,
+            "temperature": temperature,
+        }
+        if max_tokens:
+            request_kwargs["max_tokens"] = max_tokens
         if tools:
             request_kwargs["tools"] = tools
             request_kwargs["tool_choice"] = "auto"

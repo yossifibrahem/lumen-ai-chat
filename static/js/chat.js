@@ -781,6 +781,8 @@ async function runChatLoop(turn) {
       api_base:  state.apiBase,
       api_key:   state.apiKey,
       model:     state.model || 'gpt-4o',
+      temperature:  state.temperature ?? 0.7,
+      max_tokens:   state.maxTokens   || 0,
       messages:              await buildApiMessages(turn.messages),
       conversation_messages: turn.messages,
       display_log:           turn.displayLog,

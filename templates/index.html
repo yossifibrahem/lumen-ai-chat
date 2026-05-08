@@ -59,6 +59,25 @@
       r.classList.add('sidebar-init-closed');
     }
 
+    // Theme
+    var theme = prefs.theme || 'dark';
+    if (theme === 'auto') {
+      theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    }
+    r.setAttribute('data-theme', theme);
+
+    // Font family
+    var fontMap = { sora: "'Sora', sans-serif", tiempos: "'Tiempos Text', Georgia, serif", mono: "'JetBrains Mono', monospace", system: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" };
+    if (prefs.fontFamily && fontMap[prefs.fontFamily]) {
+      r.style.setProperty('--font-roman', fontMap[prefs.fontFamily]);
+    }
+
+    // Compact mode
+    if (prefs.compactMode) r.classList.add('compact-mode');
+
+    // Char count
+    if (prefs.showCharCount === false) r.classList.add('hide-char-count');
+
     // Suppress all transitions during initial paint so nothing animates in
     r.classList.add('no-transition');
     document.addEventListener('DOMContentLoaded', function () {
@@ -210,9 +229,22 @@
   <div class="modal">
     <div class="modal-header">
       <nav class="modal-tabs">
-        <button class="modal-tab active" data-tab="tab-settings">Settings</button>
-        <button class="modal-tab"        data-tab="tab-mcp">MCP Servers</button>
-        <button class="modal-tab"        data-tab="tab-customization">Customization</button>
+        <button class="modal-tab active" data-tab="tab-api">
+          <span data-icon="tabApi"></span>
+          API
+        </button>
+        <button class="modal-tab" data-tab="tab-chat">
+          <span data-icon="tabChat"></span>
+          Chat
+        </button>
+        <button class="modal-tab" data-tab="tab-appearance">
+          <span data-icon="tabAppearance"></span>
+          Appearance
+        </button>
+        <button class="modal-tab" data-tab="tab-mcp">
+          <span data-icon="tabMcp"></span>
+          MCP
+        </button>
       </nav>
       <button class="modal-close" data-close="settings-modal">
         <span data-icon="close"></span>
@@ -220,133 +252,315 @@
     </div>
 
     <div class="modal-body">
-      <div id="tab-settings" class="tab-panel active">
-        <div class="section-title">API Configuration</div>
-        <div class="field">
-          <label>API Base URL</label>
-          <input type="text" id="api-base" placeholder="https://api.openai.com/v1" />
-          <div class="field-note">Compatible with any OpenAI-format API</div>
+
+      <!-- ── API tab ── -->
+      <div id="tab-api" class="tab-panel active">
+
+        <div class="settings-section">
+          <div class="section-title">Connection</div>
+          <div class="field">
+            <label>API Base URL</label>
+            <input type="text" id="api-base" placeholder="https://api.openai.com/v1" />
+            <div class="field-note">Compatible with OpenAI, Anthropic proxies, Ollama, LM Studio&hellip;</div>
+          </div>
+          <div class="field">
+            <label>API Key</label>
+            <div class="input-with-eye">
+              <input type="password" id="api-key" placeholder="sk-&hellip;" autocomplete="off" />
+              <button class="eye-btn" id="btn-toggle-key" title="Show / hide key" tabindex="-1">
+                <span id="eye-icon-show" data-icon="eyeShow"></span>
+                <span id="eye-icon-hide" data-icon="eyeHide" style="display:none"></span>
+              </button>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn-secondary" id="btn-fetch-models">
+              <span data-icon="syncIcon"></span>
+              Fetch Models
+            </button>
+          </div>
+          <div id="settings-status" class="status-msg"></div>
+          <div class="model-list" id="model-list"></div>
         </div>
-        <div class="field">
-          <label>API Key</label>
-          <input type="password" id="api-key" placeholder="sk-…" autocomplete="off" />
-        </div>
-        <div class="btn-row">
-          <button class="btn-secondary" id="btn-fetch-models">Fetch Models</button>
-        </div>
-        <div id="settings-status" class="status-msg"></div>
-        <div class="model-list" id="model-list"></div>
+
         <div class="section-sep"></div>
-        <div class="section-title">System Prompt</div>
-        <div class="field">
-          <textarea id="system-prompt" class="textarea-tall" placeholder="You are a helpful assistant…"></textarea>
-          <div class="field-note">Sent as the system message at the start of every conversation.</div>
+
+        <div class="settings-section">
+          <div class="section-title">Model Parameters</div>
+
+          <div class="field">
+            <label>Temperature <span class="param-badge" id="temp-badge">0.7</span></label>
+            <input type="range" id="setting-temperature" min="0" max="2" step="0.05" value="0.7" class="range-slider" />
+            <div class="range-labels"><span>Precise (0)</span><span>Balanced</span><span>Creative (2)</span></div>
+            <div class="field-note">Controls randomness. Lower = more deterministic, higher = more creative.</div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label>Max Tokens</label>
+              <input type="number" id="setting-max-tokens" placeholder="Provider default" min="0" max="128000" step="256" />
+              <div class="field-note">0 = provider default.</div>
+            </div>
+            <div class="field">
+              <label>Timeout (s)</label>
+              <input type="number" id="setting-timeout" placeholder="120" min="10" max="600" step="10" />
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── Chat tab ── -->
+      <div id="tab-chat" class="tab-panel">
+
+        <div class="settings-section">
+          <div class="section-title">System Prompt</div>
+          <div class="field">
+            <textarea id="system-prompt" class="textarea-tall" placeholder="You are a helpful assistant&hellip;"></textarea>
+            <div class="field-note">Sent as the system message at the start of every conversation.</div>
+          </div>
+        </div>
+
+        <div class="section-sep"></div>
+
+        <div class="settings-section">
+          <div class="section-title">Behaviour</div>
+
+          <div class="cust-row">
+            <div class="cust-row-label">
+              <span class="cust-label">Auto-generate titles</span>
+              <span class="cust-hint">Name new conversations automatically after the first reply</span>
+            </div>
+            <label class="cust-toggle">
+              <input type="checkbox" id="setting-auto-titles" />
+              <span class="cust-toggle-track"><span class="cust-toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <div class="cust-row">
+            <div class="cust-row-label">
+              <span class="cust-label">Stream responses</span>
+              <span class="cust-hint">Show tokens as they arrive instead of waiting for the full reply</span>
+            </div>
+            <label class="cust-toggle">
+              <input type="checkbox" id="setting-stream" />
+              <span class="cust-toggle-track"><span class="cust-toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <div class="cust-row">
+            <div class="cust-row-label">
+              <span class="cust-label">Enter sends message</span>
+              <span class="cust-hint">Press Enter to send&nbsp;&mdash;&nbsp;Shift+Enter for a new line</span>
+            </div>
+            <label class="cust-toggle">
+              <input type="checkbox" id="setting-enter-send" />
+              <span class="cust-toggle-track"><span class="cust-toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <div class="field" style="margin-top:16px">
+            <label>Context window <span class="param-badge" id="context-badge">All</span></label>
+            <input type="range" id="setting-context" min="0" max="50" step="1" value="0" class="range-slider" />
+            <div class="range-labels"><span>All messages</span><span>Last 50</span></div>
+            <div class="field-note">Limit how many recent messages are sent to the model. 0 = send everything.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── Appearance tab ── -->
+      <div id="tab-appearance" class="tab-panel">
+
+        <div class="settings-section">
+          <div class="section-title">Theme</div>
+          <div class="theme-cards">
+            <label class="theme-card" data-theme="dark">
+              <input type="radio" name="cust-theme" value="dark" />
+              <div class="theme-card-preview dark-preview">
+                <div class="tp-bar"></div>
+                <div class="tp-msg tp-ai"></div>
+                <div class="tp-msg tp-user"></div>
+              </div>
+              <span>Dark</span>
+            </label>
+            <label class="theme-card" data-theme="light">
+              <input type="radio" name="cust-theme" value="light" />
+              <div class="theme-card-preview light-preview">
+                <div class="tp-bar"></div>
+                <div class="tp-msg tp-ai"></div>
+                <div class="tp-msg tp-user"></div>
+              </div>
+              <span>Light</span>
+            </label>
+            <label class="theme-card" data-theme="auto">
+              <input type="radio" name="cust-theme" value="auto" />
+              <div class="theme-card-preview auto-preview">
+                <div class="tp-bar"></div>
+                <div class="tp-msg tp-ai"></div>
+                <div class="tp-msg tp-user"></div>
+              </div>
+              <span>Auto</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="section-sep"></div>
+
+        <div class="settings-section">
+          <div class="section-title">Typography</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Font size</label>
+              <select id="cust-font-size">
+                <option value="small">Small (12&ndash;14px)</option>
+                <option value="medium">Medium (14&ndash;16px)</option>
+                <option value="large">Large (16&ndash;18px)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Font family</label>
+              <select id="cust-font-family">
+                <option value="sora">Sora (sans-serif)</option>
+                <option value="tiempos">Tiempos Text (serif)</option>
+                <option value="mono">JetBrains Mono</option>
+                <option value="system">System default</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-sep"></div>
+
+        <div class="settings-section">
+          <div class="section-title">Accent Color</div>
+          <div class="cust-swatches">
+            <button class="cust-swatch" data-color="#c9a96e" title="Gold"   style="--sw: #c9a96e;"></button>
+            <button class="cust-swatch" data-color="#6fa3c9" title="Blue"   style="--sw: #6fa3c9;"></button>
+            <button class="cust-swatch" data-color="#6db87a" title="Green"  style="--sw: #6db87a;"></button>
+            <button class="cust-swatch" data-color="#c96e9a" title="Pink"   style="--sw: #c96e9a;"></button>
+            <button class="cust-swatch" data-color="#9a6ec9" title="Purple" style="--sw: #9a6ec9;"></button>
+            <button class="cust-swatch" data-color="#c97a6e" title="Coral"  style="--sw: #c97a6e;"></button>
+            <button class="cust-swatch" data-color="#6ec9be" title="Teal"   style="--sw: #6ec9be;"></button>
+            <button class="cust-swatch" data-color="#c66240" title="Ochre"  style="--sw: #c66240;"></button>
+          </div>
+          <div class="custom-color-row">
+            <label class="custom-color-label">Custom color</label>
+            <div class="custom-color-input-wrap">
+              <input type="color" id="cust-accent-picker" title="Pick a custom color" />
+              <input type="text" id="cust-accent-hex" placeholder="#rrggbb" maxlength="7" spellcheck="false" />
+            </div>
+          </div>
+        </div>
+
+        <div class="section-sep"></div>
+
+        <div class="settings-section">
+          <div class="section-title">Interface</div>
+
+          <div class="cust-row">
+            <div class="cust-row-label">
+              <span class="cust-label">Sidebar open by default</span>
+              <span class="cust-hint">Start with the conversation sidebar visible</span>
+            </div>
+            <label class="cust-toggle">
+              <input type="checkbox" id="cust-sidebar-open" />
+              <span class="cust-toggle-track"><span class="cust-toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <div class="cust-row">
+            <div class="cust-row-label">
+              <span class="cust-label">Show suggestion chips</span>
+              <span class="cust-hint">Prompt shortcuts shown on new conversations</span>
+            </div>
+            <label class="cust-toggle">
+              <input type="checkbox" id="cust-suggestion-chips" />
+              <span class="cust-toggle-track"><span class="cust-toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <div class="cust-row">
+            <div class="cust-row-label">
+              <span class="cust-label">Show message timestamps</span>
+              <span class="cust-hint">Display time next to each message</span>
+            </div>
+            <label class="cust-toggle">
+              <input type="checkbox" id="cust-timestamps" />
+              <span class="cust-toggle-track"><span class="cust-toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <div class="cust-row">
+            <div class="cust-row-label">
+              <span class="cust-label">Expand blocks by default</span>
+              <span class="cust-hint">Thinking and tool-use blocks start expanded</span>
+            </div>
+            <label class="cust-toggle">
+              <input type="checkbox" id="cust-blocks-expanded" />
+              <span class="cust-toggle-track"><span class="cust-toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <div class="cust-row">
+            <div class="cust-row-label">
+              <span class="cust-label">Compact message layout</span>
+              <span class="cust-hint">Tighter spacing between messages</span>
+            </div>
+            <label class="cust-toggle">
+              <input type="checkbox" id="cust-compact-mode" />
+              <span class="cust-toggle-track"><span class="cust-toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <div class="cust-row">
+            <div class="cust-row-label">
+              <span class="cust-label">Show character count</span>
+              <span class="cust-hint">Display character count in the input toolbar</span>
+            </div>
+            <label class="cust-toggle">
+              <input type="checkbox" id="cust-char-count" />
+              <span class="cust-toggle-track"><span class="cust-toggle-thumb"></span></span>
+            </label>
+          </div>
+
         </div>
       </div>
 
+      <!-- ── MCP tab ── -->
       <div id="tab-mcp" class="tab-panel">
-        <div class="section-title">Server Configuration</div>
-        <div class="field">
-          <label>mcp.json</label>
-          <textarea id="mcp-config-editor" spellcheck="false"></textarea>
+        <div class="settings-section">
+          <div class="section-title">Server Configuration</div>
+          <div class="field">
+            <label>mcp.json</label>
+            <textarea id="mcp-config-editor" spellcheck="false"></textarea>
+          </div>
+          <div class="btn-row mcp-actions-row">
+            <button class="btn-secondary" id="btn-reload-tools">
+              <span data-icon="syncIcon"></span>
+              Reload Tools
+            </button>
+          </div>
+          <div id="mcp-status" class="status-msg"></div>
         </div>
-        <div class="btn-row mcp-actions-row">
-          <button class="btn-secondary" id="btn-reload-tools">Reload Tools</button>
-        </div>
-        <div id="mcp-status" class="status-msg"></div>
         <div class="section-sep"></div>
-        <div class="section-title">Available Tools</div>
-        <div id="tool-list">
-          <div class="no-tools-label">No tools loaded — click Reload Tools</div>
+        <div class="settings-section">
+          <div class="section-title">Available Tools</div>
+          <div id="tool-list">
+            <div class="no-tools-label">No tools loaded &mdash; click Reload Tools</div>
+          </div>
         </div>
       </div>
 
-      <div id="tab-customization" class="tab-panel">
-        <!-- Layout -->
-        <div class="section-title">Layout</div>
-        <div class="cust-row">
-          <div class="cust-row-label">
-            <span class="cust-label">Sidebar default state</span>
-            <span class="cust-hint">Whether the sidebar is open when the app loads</span>
-          </div>
-          <label class="cust-toggle">
-            <input type="checkbox" id="cust-sidebar-open" />
-            <span class="cust-toggle-track"><span class="cust-toggle-thumb"></span></span>
-            <span class="cust-toggle-text"></span>
-          </label>
-        </div>
-        <div class="cust-row">
-          <div class="cust-row-label">
-            <span class="cust-label">Show suggestion chips</span>
-            <span class="cust-hint">Prompt shortcuts shown on new conversations</span>
-          </div>
-          <label class="cust-toggle">
-            <input type="checkbox" id="cust-suggestion-chips" />
-            <span class="cust-toggle-track"><span class="cust-toggle-thumb"></span></span>
-            <span class="cust-toggle-text"></span>
-          </label>
-        </div>
-        <div class="cust-row">
-          <div class="cust-row-label">
-            <span class="cust-label">Show message timestamps</span>
-            <span class="cust-hint">Display time next to each message</span>
-          </div>
-          <label class="cust-toggle">
-            <input type="checkbox" id="cust-timestamps" />
-            <span class="cust-toggle-track"><span class="cust-toggle-thumb"></span></span>
-            <span class="cust-toggle-text"></span>
-          </label>
-        </div>
-
-        <div class="cust-row">
-          <div class="cust-row-label">
-            <span class="cust-label">Expand blocks by default</span>
-            <span class="cust-hint">Thinking and tool-use blocks start expanded instead of collapsed</span>
-          </div>
-          <label class="cust-toggle">
-            <input type="checkbox" id="cust-blocks-expanded" />
-            <span class="cust-toggle-track"><span class="cust-toggle-thumb"></span></span>
-            <span class="cust-toggle-text"></span>
-          </label>
-        </div>
-
-        <div class="section-sep"></div>
-
-        <!-- Typography -->
-        <div class="section-title">Typography</div>
-        <div class="field">
-          <label>Font size</label>
-          <select id="cust-font-size">
-            <option value="small">Small (12 – 14px)</option>
-            <option value="medium">Medium (14 – 16px)</option>
-            <option value="large">Large (16 – 18px)</option>
-          </select>
-        </div>
-
-        <div class="section-sep"></div>
-
-        <!-- Accent colour -->
-        <div class="section-title">Accent Color</div>
-        <div class="cust-swatches">
-          <button class="cust-swatch" data-color="#c9a96e" title="Gold" style="--sw: #c9a96e;"></button>
-          <button class="cust-swatch" data-color="#6fa3c9" title="Blue" style="--sw: #6fa3c9;"></button>
-          <button class="cust-swatch" data-color="#6db87a" title="Green" style="--sw: #6db87a;"></button>
-          <button class="cust-swatch" data-color="#c96e9a" title="Pink" style="--sw: #c96e9a;"></button>
-          <button class="cust-swatch" data-color="#9a6ec9" title="Purple" style="--sw: #9a6ec9;"></button>
-          <button class="cust-swatch" data-color="#c97a6e" title="Coral" style="--sw: #c97a6e;"></button>
-          <button class="cust-swatch" data-color="#6ec9be" title="Teal" style="--sw: #6ec9be;"></button>
-          <button class="cust-swatch" data-color="#c66240" title="Ochre" style="--sw: #c66240;"></button>
-        </div>
-
-      </div>
-    </div>
+    </div><!-- /.modal-body -->
 
     <div class="modal-footer">
       <button class="btn-secondary" data-close="settings-modal">Close</button>
-      <button class="btn-secondary tab-footer-btn" data-for-tab="tab-customization" id="btn-reset-customization">Reset</button>
-      <button class="btn-primary tab-footer-btn" data-for-tab="tab-settings" id="btn-save-settings">Save Settings</button>
-      <button class="btn-primary tab-footer-btn" data-for-tab="tab-mcp"      id="btn-save-mcp">Save Config</button>
-      <button class="btn-primary tab-footer-btn" data-for-tab="tab-customization" id="btn-save-customization">Save</button>
+      <button class="btn-secondary  tab-footer-btn" data-for-tab="tab-appearance" id="btn-reset-customization">Reset</button>
+      <button class="btn-primary    tab-footer-btn" data-for-tab="tab-api"        id="btn-save-settings">Save</button>
+      <button class="btn-primary    tab-footer-btn" data-for-tab="tab-chat"       id="btn-save-chat-settings">Save</button>
+      <button class="btn-primary    tab-footer-btn" data-for-tab="tab-appearance" id="btn-save-customization">Save</button>
+      <button class="btn-primary    tab-footer-btn" data-for-tab="tab-mcp"        id="btn-save-mcp">Save Config</button>
     </div>
   </div>
 </div>

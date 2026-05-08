@@ -4,6 +4,15 @@ export const SETTINGS_DEFAULTS = {
   apiKey:       '',
   model:        '',
   systemPrompt: '',
+  // Model parameters
+  temperature:        0.7,
+  maxTokens:          0,    // 0 = provider default (not sent)
+  requestTimeout:     120,  // seconds
+  // Chat behaviour
+  autoGenerateTitles: true,
+  streamResponses:    true,
+  enterToSend:        true,
+  contextMessages:    0,    // 0 = all
 };
 
 export const CUSTOMIZATION_DEFAULTS = {
@@ -11,8 +20,13 @@ export const CUSTOMIZATION_DEFAULTS = {
   showSuggestionChips:   true,
   showTimestamps:        true,
   blocksDefaultExpanded: false,
-  fontSize:              'medium',   // 'small' | 'medium' | 'large'
-  accentColor:           '#c9a96e',  // original gold
+  compactMode:           false,
+  showCharCount:         true,
+  fontSize:              'medium',    // 'small' | 'medium' | 'large'
+  fontFamily:            'sora',      // 'sora' | 'mono' | 'system'
+  theme:                 'dark',      // 'dark' | 'light' | 'auto'
+  accentColor:           '#c9a96e',   // preset swatch
+  customAccentColor:     '',          // user custom hex
 };
 
 export const STORAGE_KEYS = {
