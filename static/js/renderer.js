@@ -263,9 +263,23 @@ function makeGroupSummary(elements) {
   return parts.join(' + ');
 }
 
+function getLastBlockLabel(elements) {
+  const last = elements[elements.length - 1];
+  if (!last) return '';
+  if (last.classList.contains('thinking-block'))
+    return last.querySelector('.thinking-label')?.textContent?.trim() || 'Thinking';
+  if (last.classList.contains('tool-strip'))
+    return last.querySelector('.tr-tool-name')?.textContent?.trim()
+        || last.querySelector('.tc-item-name')?.textContent?.trim()
+        || last.querySelector('.tui-name')?.textContent?.trim()
+        || last.dataset.displayName
+        || 'Tool';
+  return '';
+}
+
 function createGroupBlock(elements) {
-  const count = elements.length;
   const summary = makeGroupSummary(elements);
+  const label   = getLastBlockLabel(elements);
   const expanded = state.blocksDefaultExpanded;
 
   const group = createElement('div', { className: `block-group${expanded ? ' open' : ''}` });
@@ -273,7 +287,7 @@ function createGroupBlock(elements) {
     <button class="group-header">
       <span class="group-chevron">${expanded ? ICONS.chevronDown : ICONS.chevronRight}</span>
       <span class="group-icon">${ICONS.layers}</span>
-      <span class="group-label">${count} step${count > 1 ? 's' : ''}</span>
+      <span class="group-label">${escapeHtml(label)}</span>
       <span class="group-sep">·</span>
       <span class="group-desc">${escapeHtml(summary)}</span>
     </button>
@@ -292,15 +306,15 @@ function createGroupBlock(elements) {
   return group;
 }
 
-/** Re-reads the group body children and refreshes the count + summary in the header. */
+/** Re-reads the group body children and refreshes the label + summary in the header. */
 function updateGroupLabel(group) {
   const body     = group.querySelector('.group-body');
   const elements = [...body.children];
-  const count    = elements.length;
   const summary  = makeGroupSummary(elements);
+  const label    = getLastBlockLabel(elements);
   const lbl = group.querySelector('.group-label');
   const dsc = group.querySelector('.group-desc');
-  if (lbl) lbl.textContent = `${count} step${count !== 1 ? 's' : ''}`;
+  if (lbl) lbl.textContent = label;
   if (dsc) dsc.textContent = summary;
 }
 
@@ -665,6 +679,7 @@ export function createToolStrip(toolName, displayName = '') {
     <span>using <span class="tui-name">${escapeHtml(displayName || toolName)}</span></span>
     <span class="thinking-pulse"></span>`;
   row.appendChild(strip);
+  if (state.groupSequentialBlocks) tryGroupAfterFinalize(strip);
   scrollToBottom();
   return strip;
 }
@@ -679,6 +694,13 @@ export function toolStripSetApproval(strip, call) {
     const metaText = getToolMetaText(call.function.name, args);
     strip.dataset.toolName = call.function.name;
     strip.dataset.displayName = displayName;
+
+    // If the strip is inside a group, pop it out so the approval UI is fully visible.
+    const parentGroup = strip.closest('.block-group');
+    if (parentGroup) {
+      parentGroup.after(strip);
+      updateGroupLabel(parentGroup);
+    }
 
     strip.className = 'tool-strip tool-strip-approval tc-item open';
     strip.innerHTML = `
@@ -720,6 +742,13 @@ export function toolStripSetApproval(strip, call) {
         status.className = `tc-status ${allowed ? 'allowed' : 'denied'}`;
         status.innerHTML = allowed ? `${ICONS.check} allowed` : `${ICONS.close} denied`;
       }
+
+      // Move the strip back into the group now that approval is resolved.
+      if (parentGroup) {
+        parentGroup.querySelector('.group-body').appendChild(strip);
+        updateGroupLabel(parentGroup);
+      }
+
       resolve(allowed);
     };
 
@@ -730,6 +759,12 @@ export function toolStripSetApproval(strip, call) {
     strip.querySelector('.tc-deny')?.addEventListener('click',  () => decide(false));
     scrollToBottom();
   });
+}
+
+/** Refreshes the label of the group containing this strip, if any. */
+function refreshParentGroupLabel(strip) {
+  const group = strip.closest('.block-group');
+  if (group) updateGroupLabel(group);
 }
 
 /** Morphs strip from approval → running state. */
@@ -760,10 +795,9 @@ export function toolStripSetRunning(strip, args = {}) {
       chevronSelector: '.tc-item-chevron',
     });
   }
+  refreshParentGroupLabel(strip);
   scrollToBottom();
 }
-
-/** Morphs strip into the final collapsible result state. */
 export function toolStripFinalize(strip, toolName, args, result, displayName = '') {
   const expanded = state.blocksDefaultExpanded;
   // Always derive the label through the adapter system (tool_adapters/index.js).
@@ -786,8 +820,7 @@ export function toolStripFinalize(strip, toolName, args, result, displayName = '
     chevronSelector: '.tr-chevron',
   });
 
-  // Eagerly group this strip with any adjacent finished blocks.
-  if (state.groupSequentialBlocks) tryGroupAfterFinalize(strip);
+  refreshParentGroupLabel(strip);
   scrollToBottom();
 }
 

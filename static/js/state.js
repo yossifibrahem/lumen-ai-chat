@@ -20,7 +20,7 @@ export const CUSTOMIZATION_DEFAULTS = {
   showSuggestionChips:   true,
   showTimestamps:        true,
   blocksDefaultExpanded:  false,
-  groupSequentialBlocks:  true,
+  groupSequentialBlocks:  false,
   showCharCount:          true,
   fontSize:              'medium',    // 'small' | 'medium' | 'large'
   fontFamily:            'sora',      // 'sora' | 'mono' | 'system'
