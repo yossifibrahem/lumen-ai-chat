@@ -16,6 +16,48 @@ import streaming as stream_module
 
 Publish = Callable[[dict], None]
 
+# ── Tool approval ──────────────────────────────────────────────────────────────
+# Keyed by stream_id → { call_id → {"event": Event, "approved": bool} }
+_pending_approvals: dict[str, dict] = {}
+_pending_approvals_lock = threading.Lock()
+
+
+def resolve_tool_approval(stream_id: str, call_id: str, approved: bool) -> None:
+    """Called from the /api/chat/approve route to unblock a waiting tool call."""
+    with _pending_approvals_lock:
+        slot = _pending_approvals.get(stream_id, {}).get(call_id)
+    if slot:
+        slot["approved"] = approved
+        slot["event"].set()
+
+
+def _request_tool_approval(
+    stream_id: str,
+    call_id: str,
+    name: str,
+    args: dict,
+    publish: Publish,
+    cancel_event: threading.Event,
+) -> bool:
+    """Emit a tool_approval_required event and block until the client responds or the turn is cancelled."""
+    wait_event = threading.Event()
+    slot: dict = {"event": wait_event, "approved": False}
+
+    with _pending_approvals_lock:
+        _pending_approvals.setdefault(stream_id, {})[call_id] = slot
+
+    publish({"type": "tool_approval_required", "call_id": call_id, "name": name, "args": args})
+
+    while not wait_event.is_set() and not cancel_event.is_set():
+        wait_event.wait(timeout=0.5)
+
+    with _pending_approvals_lock:
+        _pending_approvals.get(stream_id, {}).pop(call_id, None)
+
+    if cancel_event.is_set():
+        return False
+    return bool(slot["approved"])
+
 _SET_TITLE_TOOL = {
     "type": "function",
     "function": {
@@ -293,7 +335,33 @@ def run_persistent_chat_turn(body: dict, cancel_event: threading.Event, stream_i
 
                 for call in tool_calls:
                     name = call.get("function", {}).get("name", "")
-                    args, result = _run_mcp_call(conv_id, tool_meta.get(name, {}), call)
+                    meta = tool_meta.get(name, {})
+                    call_id = call.get("id", "")
+                    args_preview = _safe_tool_args(call.get("function", {}).get("arguments", "{}"))
+
+                    # ── Approval gate ──────────────────────────────────────────
+                    if not meta.get("autoApprove", False):
+                        approved = _request_tool_approval(
+                            stream_id, call_id, name, args_preview, publish, cancel_event
+                        )
+                        if not approved or cancel_event.is_set():
+                            result = "Tool call denied by user."
+                            deny_event = {
+                                "type": "tool_result",
+                                "name": name,
+                                "args": args_preview,
+                                "result": result,
+                                "denied": True,
+                            }
+                            display_log.append({"type": "tool_result", **{k: v for k, v in deny_event.items() if k != "type"}})
+                            turn_messages.append({"role": "tool", "tool_call_id": call_id, "content": result})
+                            api_messages.append({"role": "tool", "tool_call_id": call_id, "content": result})
+                            recorder.save(display_log, force=True)
+                            publish(deny_event)
+                            continue
+                    # ──────────────────────────────────────────────────────────
+
+                    args, result = _run_mcp_call(conv_id, meta, call)
                     # displayName is intentionally omitted here — the JS adapter system
                     # (tool_adapters/) is the single source of truth for display labels.
                     # Each adapter declares a `labelArg` (default: 'description') that
@@ -306,8 +374,8 @@ def run_persistent_chat_turn(body: dict, cancel_event: threading.Event, stream_i
                         "result": result,
                     }
                     display_log.append({"type": "tool_result", **{k: v for k, v in event.items() if k != "type"}})
-                    turn_messages.append({"role": "tool", "tool_call_id": call.get("id"), "content": result})
-                    api_messages.append({"role": "tool", "tool_call_id": call.get("id"), "content": result})
+                    turn_messages.append({"role": "tool", "tool_call_id": call_id, "content": result})
+                    api_messages.append({"role": "tool", "tool_call_id": call_id, "content": result})
                     recorder.save(display_log, force=True)
                     publish(event)
                 continue

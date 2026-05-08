@@ -292,6 +292,16 @@ def chat_cancel():
     return jsonify({"ok": True})
 
 
+@blueprint.route("/api/chat/approve", methods=["POST"])
+def chat_approve():
+    body = _body()
+    stream_id = body.get("stream_id", "")
+    call_id = body.get("call_id", "")
+    approved = bool(body.get("approved", False))
+    chat_turn_service.resolve_tool_approval(stream_id, call_id, approved)
+    return jsonify({"ok": True})
+
+
 # ── Models ────────────────────────────────────────────────────────────────────
 
 @blueprint.route("/api/models", methods=["POST"])

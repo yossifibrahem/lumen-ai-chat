@@ -8,10 +8,10 @@ import {
   cancelAllToolApprovals, finalizeStreamingMessage, setStreamingMessageLogIndex,
   escapeHtml, scrollToBottom, renderAllMessages,
   createThinkingBlock, updateThinkingBlock, finalizeThinkingBlock,
-  createToolStrip, toolStripFinalize,
+  createToolStrip, toolStripFinalize, toolStripSetApproval, toolStripSetRunning,
 } from './renderer.js';
 import { applyMarkdown } from './markdown.js';
-import { isServerEnabled } from './mcp.js';
+import { isServerEnabled, isServerAutoApprove } from './mcp.js';
 import { buildMcpSystemPrompt as buildMcpPrompt } from './mcp_policy.js';
 import { persistConversationFor, createNewConversation } from './conversations.js';
 import { refreshFilePanel } from './file_panel.js';
@@ -191,6 +191,7 @@ function buildMcpToolMetaPayload() {
     .map(tool => ({
       name: tool.name,
       server: tool.server,
+      autoApprove: isServerAutoApprove(tool.server),
     }));
 }
 
@@ -654,7 +655,7 @@ export async function sendMessage(userText) {
 // ── SSE helpers ───────────────────────────────────────────────────────────────
 
 /** Parses a single SSE event and mutates the streaming context. Returns false on terminal error. */
-function processSSEEvent(raw, ctx) {
+async function processSSEEvent(raw, ctx) {
   const evt = JSON.parse(raw);
 
   if (evt.type === 'reasoning') {
@@ -682,6 +683,26 @@ function processSSEEvent(raw, ctx) {
 
   } else if (evt.type === 'tool_calls') {
     // Tool execution is server-owned; frontend only renders starts/results.
+
+  } else if (evt.type === 'tool_approval_required') {
+    // Server is paused waiting for the user to approve or deny this tool call.
+    const stripIndex = ctx.toolStartNames.indexOf(evt.name);
+    let strip = stripIndex >= 0 ? ctx.toolStrips[stripIndex] : null;
+    if (!strip && ctx.isVisible()) strip = createToolStrip(evt.name);
+
+    let approved = false;
+    if (strip) {
+      const fakeCall = { function: { name: evt.name, arguments: JSON.stringify(evt.args || {}) } };
+      approved = await toolStripSetApproval(strip, fakeCall);
+      if (approved) toolStripSetRunning(strip, evt.args || {});
+    }
+
+    // Send the decision back to the server so it can unblock and proceed.
+    api.post('/api/chat/approve', {
+      stream_id: state.streamId,
+      call_id:   evt.call_id,
+      approved,
+    }).catch(() => {});
 
   } else if (evt.type === 'tool_result') {
     if (ctx.reasoningBodyEl) {
@@ -754,7 +775,7 @@ async function readSSEStream(resp, ctx) {
       if (raw === '[DONE]') break outer;
 
       try {
-        if (!processSSEEvent(raw, ctx)) return false;
+        if (!await processSSEEvent(raw, ctx)) return false;
       } catch { /* malformed SSE line — skip */ }
     }
   }
