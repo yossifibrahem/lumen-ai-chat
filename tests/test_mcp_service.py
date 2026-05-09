@@ -1,112 +1,172 @@
-"""Unit tests for mcp_service.py — config persistence and server lookup."""
+"""
+Tests for mcp_service.py — config persistence (load, save, find_server).
+
+MCP_CONFIG_FILE is redirected to a temp file for every test via the
+`isolated_mcp_config` fixture so no mcp.json in the project root is
+ever touched.
+
+async tool fetching and invocation (fetch_tools / invoke_tool) require a
+running MCP stdio server and are out of scope here. They are covered by the
+manual verification checklist in agent.md.
+"""
 from __future__ import annotations
 
 import json
-
 import pytest
+from pathlib import Path
 
 import mcp_service
 
 
-# ===========================================================================
+# ---------------------------------------------------------------------------
+# Fixture: isolate MCP_CONFIG_FILE
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def isolated_mcp_config(tmp_path, monkeypatch):
+    """Point MCP_CONFIG_FILE at a writable temp path for every test."""
+    config_path = tmp_path / "mcp.json"
+    monkeypatch.setattr("mcp_service.MCP_CONFIG_FILE", config_path)
+    return config_path
+
+
+# ---------------------------------------------------------------------------
 # load_config
-# ===========================================================================
+# ---------------------------------------------------------------------------
 
 class TestLoadConfig:
-    def test_returns_empty_servers_when_no_file(self):
-        # MCP_CONFIG_FILE redirected to a non-existent tmp file by conftest
-        config = mcp_service.load_config()
-        assert config == {"mcpServers": {}}
 
-    def test_returns_empty_servers_for_corrupt_file(self, tmp_path, monkeypatch):
-        bad = tmp_path / "bad.json"
-        bad.write_text("{ not valid json }")
-        monkeypatch.setattr(mcp_service, "MCP_CONFIG_FILE", bad)
+    def test_returns_empty_servers_when_file_absent(self):
+        result = mcp_service.load_config()
+        assert result == {"mcpServers": {}}
+
+    def test_returns_config_dict_when_file_exists(self, isolated_mcp_config):
+        config = {"mcpServers": {"fs": {"command": "npx", "args": ["-y", "@fs"]}}}
+        isolated_mcp_config.write_text(json.dumps(config))
+        assert mcp_service.load_config() == config
+
+    def test_returns_empty_on_corrupt_json(self, isolated_mcp_config):
+        isolated_mcp_config.write_text("not valid json {{{")
         assert mcp_service.load_config() == {"mcpServers": {}}
 
-    def test_returns_empty_servers_when_top_level_is_list(self, tmp_path, monkeypatch):
-        bad = tmp_path / "bad.json"
-        bad.write_text("[]")
-        monkeypatch.setattr(mcp_service, "MCP_CONFIG_FILE", bad)
+    def test_returns_empty_when_file_is_a_list(self, isolated_mcp_config):
+        isolated_mcp_config.write_text(json.dumps(["not", "a", "dict"]))
         assert mcp_service.load_config() == {"mcpServers": {}}
 
-    def test_loads_valid_config(self):
-        mcp_service.save_config({
-            "mcpServers": {
-                "fs": {"command": "npx", "args": ["-y", "@mcp/fs", "/workspace"]}
-            }
-        })
-        config = mcp_service.load_config()
-        assert "fs" in config["mcpServers"]
+    def test_returns_empty_when_mcp_servers_is_list(self, isolated_mcp_config):
+        isolated_mcp_config.write_text(json.dumps({"mcpServers": ["bad"]}))
+        assert mcp_service.load_config() == {"mcpServers": {}}
 
-    def test_preserves_server_fields(self):
-        payload = {
-            "mcpServers": {
-                "search": {
-                    "command": "node",
-                    "args": ["server.js"],
-                    "env": {"API_KEY": "secret"},
-                }
-            }
-        }
-        mcp_service.save_config(payload)
-        config = mcp_service.load_config()
-        srv = config["mcpServers"]["search"]
-        assert srv["command"] == "node"
-        assert srv["env"]["API_KEY"] == "secret"
+    def test_returns_empty_when_file_is_empty(self, isolated_mcp_config):
+        isolated_mcp_config.write_text("")
+        assert mcp_service.load_config() == {"mcpServers": {}}
+
+    def test_preserves_extra_top_level_keys(self, isolated_mcp_config):
+        config = {"mcpServers": {}, "globalEnv": {"FOO": "bar"}}
+        isolated_mcp_config.write_text(json.dumps(config))
+        result = mcp_service.load_config()
+        assert result.get("globalEnv") == {"FOO": "bar"}
 
 
-# ===========================================================================
+# ---------------------------------------------------------------------------
 # save_config
-# ===========================================================================
+# ---------------------------------------------------------------------------
 
 class TestSaveConfig:
-    def test_saves_to_disk(self):
-        mcp_service.save_config({"mcpServers": {"a": {"command": "x", "args": []}}})
-        assert mcp_service.MCP_CONFIG_FILE.exists()
 
-    def test_written_file_is_valid_json(self):
-        mcp_service.save_config({"mcpServers": {}})
-        raw = mcp_service.MCP_CONFIG_FILE.read_text()
-        parsed = json.loads(raw)
-        assert "mcpServers" in parsed
+    def test_saves_valid_config(self, isolated_mcp_config):
+        config = {"mcpServers": {"srv": {"command": "node", "args": []}}}
+        mcp_service.save_config(config)
+        assert isolated_mcp_config.exists()
+        assert json.loads(isolated_mcp_config.read_text()) == config
 
-    def test_raises_for_non_dict(self):
-        with pytest.raises(ValueError, match="JSON object"):
-            mcp_service.save_config([1, 2, 3])  # type: ignore[arg-type]
-
-    def test_raises_when_mcp_servers_is_list(self):
-        with pytest.raises(ValueError, match="JSON object"):
-            mcp_service.save_config({"mcpServers": ["a", "b"]})
-
-    def test_default_mcp_servers_injected_if_absent(self):
+    def test_adds_default_mcp_servers_key_if_absent(self, isolated_mcp_config):
         mcp_service.save_config({})
-        config = mcp_service.load_config()
-        assert "mcpServers" in config
+        saved = json.loads(isolated_mcp_config.read_text())
+        assert "mcpServers" in saved
 
-    def test_overwrites_previous_config(self):
-        mcp_service.save_config({"mcpServers": {"old": {"command": "old", "args": []}}})
-        mcp_service.save_config({"mcpServers": {"new": {"command": "new", "args": []}}})
-        config = mcp_service.load_config()
-        assert "new" in config["mcpServers"]
-        assert "old" not in config["mcpServers"]
+    def test_raises_value_error_for_non_dict(self):
+        with pytest.raises(ValueError, match="JSON object"):
+            mcp_service.save_config(["not", "a", "dict"])
+
+    def test_raises_value_error_when_mcp_servers_not_dict(self):
+        with pytest.raises(ValueError, match="mcpServers"):
+            mcp_service.save_config({"mcpServers": "wrong-type"})
+
+    def test_raises_value_error_when_mcp_servers_is_list(self):
+        with pytest.raises(ValueError, match="mcpServers"):
+            mcp_service.save_config({"mcpServers": [1, 2, 3]})
+
+    def test_write_is_atomic_no_tmp_files_left(self, isolated_mcp_config):
+        mcp_service.save_config({"mcpServers": {}})
+        residual = list(isolated_mcp_config.parent.glob("*.tmp-*"))
+        assert residual == []
+
+    def test_save_then_load_roundtrip(self, isolated_mcp_config):
+        config = {"mcpServers": {"bash": {"command": "bash", "args": ["-c"]}}}
+        mcp_service.save_config(config)
+        assert mcp_service.load_config() == config
+
+    def test_overwrites_existing_file(self, isolated_mcp_config):
+        mcp_service.save_config({"mcpServers": {"old": {}}})
+        mcp_service.save_config({"mcpServers": {"new": {}}})
+        saved = json.loads(isolated_mcp_config.read_text())
+        assert "new" in saved["mcpServers"]
+        assert "old" not in saved["mcpServers"]
 
 
-# ===========================================================================
+# ---------------------------------------------------------------------------
 # find_server
-# ===========================================================================
+# ---------------------------------------------------------------------------
 
 class TestFindServer:
-    def test_returns_none_when_no_config(self):
+
+    def test_finds_existing_server(self, isolated_mcp_config):
+        config = {"mcpServers": {
+            "bash": {"command": "bash", "args": ["-c"]},
+            "fs":   {"command": "npx",  "args": ["-y", "@fs"]},
+        }}
+        isolated_mcp_config.write_text(json.dumps(config))
+        result = mcp_service.find_server("bash")
+        assert result == {"command": "bash", "args": ["-c"]}
+
+    def test_returns_none_for_missing_server(self, isolated_mcp_config):
+        isolated_mcp_config.write_text(json.dumps({"mcpServers": {}}))
+        assert mcp_service.find_server("nonexistent") is None
+
+    def test_returns_none_when_config_file_absent(self):
         assert mcp_service.find_server("anything") is None
 
-    def test_returns_none_for_unknown_server(self):
-        mcp_service.save_config({"mcpServers": {"known": {"command": "x", "args": []}}})
-        assert mcp_service.find_server("unknown") is None
+    def test_returns_full_server_config(self, isolated_mcp_config):
+        server_cfg = {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"],
+            "env": {"SOME_VAR": "some_val"},
+        }
+        isolated_mcp_config.write_text(json.dumps({"mcpServers": {"fs": server_cfg}}))
+        result = mcp_service.find_server("fs")
+        assert result == server_cfg
 
-    def test_returns_config_for_known_server(self):
-        cfg = {"command": "node", "args": ["server.js"]}
-        mcp_service.save_config({"mcpServers": {"myserver": cfg}})
-        result = mcp_service.find_server("myserver")
-        assert result is not None
-        assert result["command"] == "node"
+
+# ---------------------------------------------------------------------------
+# run_async (sync bridge)
+# ---------------------------------------------------------------------------
+
+class TestRunAsync:
+
+    def test_runs_simple_coroutine(self):
+        import asyncio
+
+        async def _coro():
+            return 42
+
+        assert mcp_service.run_async(_coro()) == 42
+
+    def test_coroutine_exception_propagates(self):
+        import asyncio
+
+        async def _failing():
+            raise ValueError("boom")
+
+        with pytest.raises(ValueError, match="boom"):
+            mcp_service.run_async(_failing())

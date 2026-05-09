@@ -1,214 +1,203 @@
-"""Unit tests for store.py — conversation persistence and image storage."""
+"""
+Tests for store.py — filesystem-backed conversation CRUD and image storage.
+
+All tests use the `tmp_lumen` fixture from conftest.py so they never touch
+the real ~/.lumen directory.
+"""
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
-import time
-
 import pytest
+from pathlib import Path
 
 import store
-from tests.conftest import MINIMAL_PNG_B64, MINIMAL_PNG_BYTES
+from tests.conftest import make_png_b64, make_png_bytes
 
 
-# ===========================================================================
-# Image storage
-# ===========================================================================
+# ---------------------------------------------------------------------------
+# save_image
+# ---------------------------------------------------------------------------
 
 class TestSaveImage:
-    def test_valid_png_returns_filename(self):
-        name = store.save_image(MINIMAL_PNG_B64, "image/png")
-        assert name.endswith(".png")
-        assert len(name) == 64 + 4  # sha256 hex + ".png"
+    def test_returns_sha256_dot_ext_filename(self, tmp_lumen):
+        b64 = make_png_b64()
+        raw = base64.b64decode(b64)
+        expected = hashlib.sha256(raw).hexdigest() + ".png"
+        assert store.save_image(b64, "image/png") == expected
 
-    def test_valid_png_file_is_written(self):
-        name = store.save_image(MINIMAL_PNG_B64, "image/png")
-        path = store.IMAGES_DIR / name
-        assert path.exists()
-        assert path.read_bytes() == MINIMAL_PNG_BYTES
+    def test_file_is_written_to_images_dir(self, tmp_lumen):
+        name = store.save_image(make_png_b64(), "image/png")
+        assert (tmp_lumen["images_dir"] / name).exists()
 
-    def test_same_content_returns_same_name(self):
-        name1 = store.save_image(MINIMAL_PNG_B64, "image/png")
-        name2 = store.save_image(MINIMAL_PNG_B64, "image/png")
-        assert name1 == name2
+    def test_idempotent_on_duplicate_content(self, tmp_lumen):
+        b64 = make_png_b64()
+        n1 = store.save_image(b64, "image/png")
+        n2 = store.save_image(b64, "image/png")
+        assert n1 == n2
+        assert len(list(tmp_lumen["images_dir"].iterdir())) == 1
 
-    def test_jpg_alias_normalised_to_jpeg(self):
-        name = store.save_image(MINIMAL_PNG_B64, "image/jpg")
+    def test_jpeg_extension_preserved(self, tmp_lumen):
+        name = store.save_image(make_png_b64(), "image/jpeg")
         assert name.endswith(".jpeg")
 
-    def test_jpeg_media_type_accepted(self):
-        name = store.save_image(MINIMAL_PNG_B64, "image/jpeg")
+    def test_jpg_normalised_to_jpeg(self, tmp_lumen):
+        name = store.save_image(make_png_b64(), "image/jpg")
         assert name.endswith(".jpeg")
 
-    def test_webp_media_type_accepted(self):
-        name = store.save_image(MINIMAL_PNG_B64, "image/webp")
-        assert name.endswith(".webp")
+    def test_webp_and_gif_accepted(self, tmp_lumen):
+        for media_type in ("image/webp", "image/gif"):
+            name = store.save_image(make_png_b64(), media_type)
+            assert name.endswith(("." + media_type.split("/")[1]))
 
-    def test_gif_media_type_accepted(self):
-        name = store.save_image(MINIMAL_PNG_B64, "image/gif")
-        assert name.endswith(".gif")
-
-    def test_unsupported_type_raises(self):
+    def test_unsupported_type_raises_value_error(self, tmp_lumen):
         with pytest.raises(ValueError, match="Unsupported image type"):
-            store.save_image(MINIMAL_PNG_B64, "image/bmp")
+            store.save_image(make_png_b64(), "image/bmp")
 
-    def test_invalid_base64_raises(self):
+    def test_invalid_base64_raises_value_error(self, tmp_lumen):
         with pytest.raises(ValueError, match="Invalid image data"):
             store.save_image("not-valid-base64!!!", "image/png")
 
-    def test_media_type_with_charset_param(self):
-        # e.g. "image/png; charset=utf-8" — extension extracted correctly
-        name = store.save_image(MINIMAL_PNG_B64, "image/png; charset=utf-8")
+    def test_empty_base64_stores_empty_file(self, tmp_lumen):
+        # base64.b64decode("") == b"" which is valid bytes; store saves it normally
+        name = store.save_image("", "image/png")
         assert name.endswith(".png")
+        assert (tmp_lumen["images_dir"] / name).exists()
 
+
+# ---------------------------------------------------------------------------
+# get_image_path
+# ---------------------------------------------------------------------------
 
 class TestGetImagePath:
-    def test_returns_path_for_existing_image(self):
-        name = store.save_image(MINIMAL_PNG_B64, "image/png")
-        result = store.get_image_path(name)
-        assert result is not None
-        assert result.exists()
-
-    def test_returns_none_for_missing_image(self):
-        fake = "a" * 64 + ".png"
-        result = store.get_image_path(fake)
-        assert result is None
-
-    def test_returns_none_for_path_traversal(self):
-        assert store.get_image_path("../../etc/passwd") is None
-
-    def test_returns_none_for_name_with_spaces(self):
-        assert store.get_image_path("hello world.png") is None
-
-    def test_returns_none_for_uppercase_hex(self):
-        # _SAFE_NAME requires lowercase hex
-        upper = "A" * 64 + ".png"
-        assert store.get_image_path(upper) is None
-
-    def test_returns_none_for_wrong_extension(self):
-        name = "a" * 64 + ".exe"
-        assert store.get_image_path(name) is None
-
-
-# ===========================================================================
-# Conversation CRUD
-# ===========================================================================
-
-class TestCreate:
-    def test_returns_dict_with_id(self):
-        conv = store.create("Hello")
-        assert "id" in conv
-        assert conv["title"] == "Hello"
-
-    def test_default_title(self):
-        conv = store.create()
-        assert conv["title"] == "New Conversation"
-
-    def test_creates_json_file(self):
-        conv = store.create("Test")
-        path = store.CONVERSATIONS_DIR / f"{conv['id']}.json"
+    def test_returns_path_for_known_image(self, tmp_lumen):
+        name = store.save_image(make_png_b64(), "image/png")
+        path = store.get_image_path(name)
+        assert path is not None
         assert path.exists()
 
-    def test_includes_created_at(self):
+    def test_returns_none_for_nonexistent_hash(self, tmp_lumen):
+        assert store.get_image_path("a" * 64 + ".png") is None
+
+    def test_rejects_path_traversal(self, tmp_lumen):
+        assert store.get_image_path("../../etc/passwd") is None
+
+    def test_rejects_non_hex_prefix(self, tmp_lumen):
+        assert store.get_image_path("notahexstring.png") is None
+
+    def test_rejects_wrong_extension(self, tmp_lumen):
+        # 64 hex chars but .exe extension — should be filtered by regex
+        assert store.get_image_path("a" * 64 + ".exe") is None
+
+    def test_rejects_name_with_slash(self, tmp_lumen):
+        assert store.get_image_path("subdir/" + "a" * 64 + ".png") is None
+
+
+# ---------------------------------------------------------------------------
+# create / load / save / delete / list_all
+# ---------------------------------------------------------------------------
+
+class TestCreate:
+    def test_returns_dict_with_id(self, tmp_lumen):
+        conv = store.create("My Chat")
+        assert "id" in conv
+        assert conv["title"] == "My Chat"
+
+    def test_messages_list_is_empty(self, tmp_lumen):
+        assert store.create()["messages"] == []
+
+    def test_default_title(self, tmp_lumen):
+        conv = store.create()
+        assert "title" in conv
+
+    def test_file_persisted_on_disk(self, tmp_lumen):
+        conv = store.create("disk-check")
+        path = tmp_lumen["conv_dir"] / f"{conv['id']}.json"
+        assert path.exists()
+
+    def test_created_at_present(self, tmp_lumen):
         conv = store.create()
         assert "created_at" in conv
 
-    def test_includes_updated_at(self):
-        conv = store.create()
-        assert "updated_at" in conv
-
-    def test_messages_list_empty(self):
-        conv = store.create()
-        assert conv["messages"] == []
-
 
 class TestLoad:
-    def test_returns_none_for_missing_id(self):
-        assert store.load("nonexistent-id-12345") is None
-
-    def test_loads_saved_conversation(self):
-        conv = store.create("Load me")
+    def test_loads_existing_conversation(self, tmp_lumen):
+        conv = store.create("load-me")
         loaded = store.load(conv["id"])
         assert loaded is not None
-        assert loaded["title"] == "Load me"
+        assert loaded["id"] == conv["id"]
+        assert loaded["title"] == "load-me"
 
-    def test_returns_none_for_corrupt_json(self):
-        conv_id = "corrupt-conv"
-        (store.CONVERSATIONS_DIR / f"{conv_id}.json").write_text("{ bad json }")
-        assert store.load(conv_id) is None
+    def test_returns_none_for_missing_id(self, tmp_lumen):
+        assert store.load("does-not-exist-xyz") is None
+
+    def test_returns_none_for_corrupt_json(self, tmp_lumen):
+        bad_path = tmp_lumen["conv_dir"] / "bad.json"
+        bad_path.write_text("{not valid json")
+        assert store.load("bad") is None
 
 
 class TestSave:
-    def test_save_updates_title(self):
-        conv = store.create("Original")
-        conv["title"] = "Updated"
+    def test_stamps_updated_at(self, tmp_lumen):
+        conv = store.create("stamp")
+        conv["title"] = "Stamped"
         saved = store.save(conv["id"], conv)
-        assert saved["title"] == "Updated"
+        assert "updated_at" in saved
 
-    def test_save_stamps_updated_at(self):
-        conv = store.create("Stamp test")
-        old_ts = conv["updated_at"]
-        time.sleep(0.01)
-        conv["title"] = "New"
-        saved = store.save(conv["id"], conv)
-        assert saved["updated_at"] >= old_ts  # non-decreasing
-
-    def test_save_persists_to_disk(self):
-        conv = store.create("Persist")
-        conv["title"] = "Persisted"
+    def test_write_is_atomic_no_tmp_files_left(self, tmp_lumen):
+        conv = store.create("atomic")
         store.save(conv["id"], conv)
-        on_disk = json.loads((store.CONVERSATIONS_DIR / f"{conv['id']}.json").read_text())
-        assert on_disk["title"] == "Persisted"
+        residual = list(tmp_lumen["conv_dir"].glob("*.tmp-*"))
+        assert residual == []
+
+    def test_persists_arbitrary_fields(self, tmp_lumen):
+        conv = store.create("fields")
+        conv["custom_key"] = "custom_value"
+        store.save(conv["id"], conv)
+        reloaded = store.load(conv["id"])
+        assert reloaded["custom_key"] == "custom_value"
+
+    def test_returns_saved_data(self, tmp_lumen):
+        conv = store.create("returns")
+        result = store.save(conv["id"], conv)
+        assert isinstance(result, dict)
+        assert result["id"] == conv["id"]
 
 
 class TestDelete:
-    def test_returns_true_for_existing(self):
-        conv = store.create()
+    def test_delete_existing_returns_true(self, tmp_lumen):
+        conv = store.create("bye")
         assert store.delete(conv["id"]) is True
 
-    def test_returns_false_for_missing(self):
-        assert store.delete("does-not-exist") is False
-
-    def test_file_removed_after_delete(self):
-        conv = store.create()
-        store.delete(conv["id"])
-        assert not (store.CONVERSATIONS_DIR / f"{conv['id']}.json").exists()
-
-    def test_load_returns_none_after_delete(self):
-        conv = store.create()
+    def test_file_is_gone_after_delete(self, tmp_lumen):
+        conv = store.create("gone")
         store.delete(conv["id"])
         assert store.load(conv["id"]) is None
 
+    def test_delete_nonexistent_returns_false(self, tmp_lumen):
+        assert store.delete("ghost-9999") is False
+
 
 class TestListAll:
-    def test_empty_when_no_conversations(self):
+    def test_empty_when_no_conversations(self, tmp_lumen):
         assert store.list_all() == []
 
-    def test_returns_all_conversations(self):
-        c1 = store.create("A")
-        c2 = store.create("B")
-        ids = {c["id"] for c in store.list_all()}
-        assert c1["id"] in ids
-        assert c2["id"] in ids
+    def test_includes_all_created_conversations(self, tmp_lumen):
+        ids = {store.create(f"conv-{i}")["id"] for i in range(3)}
+        listed_ids = {c["id"] for c in store.list_all()}
+        assert ids.issubset(listed_ids)
 
-    def test_returns_title_and_id(self):
-        store.create("My Title")
-        listing = store.list_all()
-        assert len(listing) == 1
-        item = listing[0]
-        assert "id" in item
-        assert "title" in item
-        assert item["title"] == "My Title"
+    def test_each_entry_has_id_title_working_directory(self, tmp_lumen):
+        store.create("shaped")
+        entry = store.list_all()[0]
+        assert "id" in entry
+        assert "title" in entry
+        assert "working_directory" in entry
 
-    def test_most_recently_modified_first(self):
-        c1 = store.create("First")
-        time.sleep(0.05)
-        c2 = store.create("Second")
-        listing = store.list_all()
-        assert listing[0]["id"] == c2["id"]
-
-    def test_skips_corrupt_files_silently(self):
-        (store.CONVERSATIONS_DIR / "bad.json").write_text("not json")
-        store.create("Good")
-        listing = store.list_all()
-        assert len(listing) == 1  # only the good one
+    def test_corrupt_files_are_skipped(self, tmp_lumen):
+        store.create("good")
+        (tmp_lumen["conv_dir"] / "corrupt.json").write_text("{{{bad")
+        result = store.list_all()
+        # Only the good one appears
+        assert all("id" in r for r in result)

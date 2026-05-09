@@ -1,94 +1,103 @@
 """
-Shared pytest fixtures for the Lumen test suite.
+Shared pytest fixtures for Lumen AI Chat tests.
 
-Key concerns addressed:
-- Storage dirs (conversations, images, containers) are redirected to
-  per-test tmp_path so tests never touch ~/.lumen/.
-- mcp_service.MCP_CONFIG_FILE is redirected to a tmp file.
-- Docker is never called; container_service functions that shell out
-  are patched per-test where they would otherwise be exercised.
+Key responsibilities:
+  - Redirect all filesystem paths (conversations, images, containers) to tmp_path
+    so tests never touch ~/.lumen.
+  - Create a Flask test app with Docker startup checks completely bypassed.
+  - Expose a `client` fixture for HTTP integration tests.
 """
 from __future__ import annotations
 
-import base64
-import sys
-from pathlib import Path
-
 import pytest
-
-# Make sure the project root is on sys.path so imports work from tests/.
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+from unittest.mock import patch, MagicMock
 
 
 # ---------------------------------------------------------------------------
-# Minimal valid image fixtures
+# Filesystem isolation
 # ---------------------------------------------------------------------------
 
-# 1×1 white PNG (base64-encoded, no padding issues)
-MINIMAL_PNG_BYTES = (
-    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
-    b"\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00"
-    b"\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82"
-)
-MINIMAL_PNG_B64 = base64.b64encode(MINIMAL_PNG_BYTES).decode()
+@pytest.fixture
+def tmp_lumen(tmp_path, monkeypatch):
+    """
+    Redirect every Lumen storage path to an isolated temp directory.
 
+    Patches module-level constants in `store` and `container_service` so that
+    all fixture-scoped tests read and write to `tmp_path` only.
 
-# ---------------------------------------------------------------------------
-# Autouse: redirect all storage to isolated tmp dirs
-# ---------------------------------------------------------------------------
-
-@pytest.fixture(autouse=True)
-def redirect_storage(tmp_path, monkeypatch):
-    """Redirect every on-disk location to a per-test tmp directory.
-
-    This fixture is *autouse* so no test accidentally touches ~/.lumen/.
+    Returns a dict with the three directory Paths for use in individual tests.
     """
     conv_dir = tmp_path / "conversations"
-    img_dir = tmp_path / "images"
+    images_dir = tmp_path / "images"
     containers_dir = tmp_path / "containers"
-    mcp_config = tmp_path / "mcp.json"
+    conv_dir.mkdir()
+    images_dir.mkdir()
+    containers_dir.mkdir()
 
-    for d in (conv_dir, img_dir, containers_dir):
-        d.mkdir()
-
-    import store
-    import container_service
-    import mcp_service
-
-    monkeypatch.setattr(store, "CONVERSATIONS_DIR", conv_dir)
-    monkeypatch.setattr(store, "IMAGES_DIR", img_dir)
-    monkeypatch.setattr(container_service, "CONTAINERS_ROOT", containers_dir)
-    monkeypatch.setattr(mcp_service, "MCP_CONFIG_FILE", mcp_config)
+    monkeypatch.setattr("store.CONVERSATIONS_DIR", conv_dir)
+    monkeypatch.setattr("store.IMAGES_DIR", images_dir)
+    monkeypatch.setattr("container_service.CONTAINERS_ROOT", containers_dir)
 
     return {
         "conv_dir": conv_dir,
-        "img_dir": img_dir,
+        "images_dir": images_dir,
         "containers_dir": containers_dir,
-        "mcp_config": mcp_config,
+        "root": tmp_path,
     }
 
 
 # ---------------------------------------------------------------------------
-# Flask application / test client
+# Flask app / test client
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
-def flask_app():
-    """Minimal Flask app with the Lumen blueprint — no Docker startup checks."""
-    from flask import Flask
-    from flask_cors import CORS
-    from routes import blueprint
+def app(tmp_lumen):
+    """
+    Create a Flask test application with all Docker calls mocked out.
 
-    app = Flask(__name__, template_folder=str(PROJECT_ROOT / "templates"))
-    CORS(app)
-    app.register_blueprint(blueprint)
-    app.config["TESTING"] = True
-    return app
+    `create_app()` in app.py calls:
+      1. _require_docker()       — subprocess call to `docker info`
+      2. _require_sandbox_image() — subprocess call to `docker image inspect`
+      3. _cleanup_stale_containers() — calls container_service.cleanup_stale
+
+    We patch (1) and (2) at the module level inside app.py (where create_app
+    resolves them via the module's global dict) and stub out (3) entirely.
+    """
+    import app as app_module
+
+    with (
+        patch("app._require_docker"),
+        patch("app._require_sandbox_image"),
+        patch("container_service.cleanup_stale", return_value=[]),
+    ):
+        flask_app = app_module.create_app()
+
+    flask_app.config["TESTING"] = True
+    return flask_app
 
 
 @pytest.fixture
-def client(flask_app):
-    """Flask test client bound to the minimal app."""
-    return flask_app.test_client()
+def client(app):
+    """Flask test client wired to the isolated test app."""
+    return app.test_client()
+
+
+# ---------------------------------------------------------------------------
+# Helpers shared across test modules
+# ---------------------------------------------------------------------------
+
+def make_png_bytes() -> bytes:
+    """Return a valid 1×1 red PNG as raw bytes."""
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        b"\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+        b"\x08\x02\x00\x00\x00\x90wS\xde"
+        b"\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N"
+        b"\x00\x00\x00\x00IEND\xaeB`\x82"
+    )
+
+
+def make_png_b64() -> str:
+    """Return a valid 1×1 PNG as a base64 string (no line breaks)."""
+    import base64
+    return base64.b64encode(make_png_bytes()).decode()

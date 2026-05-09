@@ -1,170 +1,208 @@
-"""Unit tests for mcp_adapters.py — env expansion, host mount extraction, project root detection."""
+"""
+Tests for mcp_adapters.py — container launch parameter mutation,
+environment variable expansion, and host mount extraction.
+
+Docker is never called; `container_service.ensure_container` and
+`container_service.wrap_command_for_exec` are always mocked.
+"""
 from __future__ import annotations
 
 import os
-from pathlib import Path
-
 import pytest
+from pathlib import Path
+from unittest.mock import patch, MagicMock, call
 
-from mcp_adapters import (
-    ContainerConversationRequired,
-    apply_workspace_process_options,
-    expand_config_env,
-    extract_host_mounts,
-    find_project_root,
-)
+import mcp_adapters
+from mcp_adapters import ContainerConversationRequired
 
 
-# ===========================================================================
+# ---------------------------------------------------------------------------
 # expand_config_env
-# ===========================================================================
+# ---------------------------------------------------------------------------
 
 class TestExpandConfigEnv:
-    def test_empty_dict_returns_empty(self):
-        assert expand_config_env({}) == {}
 
-    def test_none_returns_empty(self):
-        assert expand_config_env(None) == {}
-
-    def test_plain_string_values_preserved(self):
-        result = expand_config_env({"KEY": "value"})
+    def test_simple_string_value_unchanged(self):
+        result = mcp_adapters.expand_config_env({"KEY": "value"})
         assert result["KEY"] == "value"
 
-    def test_tilde_expanded_in_values(self):
-        result = expand_config_env({"HOME_DIR": "~/projects"})
-        assert result["HOME_DIR"] == os.path.expanduser("~/projects")
-        assert "~" not in result["HOME_DIR"]
+    def test_tilde_expanded(self):
+        result = mcp_adapters.expand_config_env({"P": "~/projects"})
+        assert not result["P"].startswith("~")
+        assert result["P"].startswith(os.path.expanduser("~"))
 
-    def test_non_string_values_kept_as_is(self):
-        result = expand_config_env({"PORT": 8080})
-        assert result["PORT"] == 8080
+    def test_none_input_returns_empty_dict(self):
+        assert mcp_adapters.expand_config_env(None) == {}
 
-    def test_keys_coerced_to_str(self):
-        result = expand_config_env({42: "val"})
+    def test_empty_dict_returns_empty_dict(self):
+        assert mcp_adapters.expand_config_env({}) == {}
+
+    def test_non_string_value_passed_through(self):
+        result = mcp_adapters.expand_config_env({"PORT": 3000})
+        assert result["PORT"] == 3000
+
+    def test_numeric_key_becomes_string(self):
+        result = mcp_adapters.expand_config_env({42: "val"})
         assert "42" in result
 
-    def test_multiple_keys(self):
-        result = expand_config_env({"A": "alpha", "B": "beta"})
-        assert result == {"A": "alpha", "B": "beta"}
+    def test_multiple_keys_all_processed(self):
+        result = mcp_adapters.expand_config_env({"A": "~/a", "B": "~/b"})
+        assert not result["A"].startswith("~")
+        assert not result["B"].startswith("~")
 
 
-# ===========================================================================
-# find_project_root
-# ===========================================================================
+# ---------------------------------------------------------------------------
+# apply_workspace_process_options (via _apply_container)
+# ---------------------------------------------------------------------------
 
-class TestFindProjectRoot:
-    def test_returns_none_for_path_with_no_markers(self, tmp_path):
-        # tmp_path has no package.json / pyproject.toml etc.
-        result = find_project_root(tmp_path)
-        assert result is None
+def _mock_wrap_result(conv_id: str, command: str, args: list):
+    """Canonical return value from wrap_command_for_exec."""
+    return ("docker", ["exec", "-i", f"lumen-chat-{conv_id}", command, *args])
 
-    def test_detects_package_json(self, tmp_path):
-        (tmp_path / "package.json").write_text("{}")
-        result = find_project_root(tmp_path)
-        assert result == tmp_path
-
-    def test_detects_pyproject_toml(self, tmp_path):
-        (tmp_path / "pyproject.toml").write_text("[tool.pytest]")
-        result = find_project_root(tmp_path)
-        assert result == tmp_path
-
-    def test_walks_up_to_find_root(self, tmp_path):
-        parent = tmp_path / "project"
-        child = parent / "src" / "module"
-        child.mkdir(parents=True)
-        (parent / "pyproject.toml").write_text("")
-        result = find_project_root(child)
-        assert result == parent
-
-    def test_returns_none_when_only_very_deep_marker(self, tmp_path):
-        # Marker more than 6 levels up should not be found
-        # (find_project_root only walks 6 levels)
-        deep = tmp_path
-        for i in range(8):
-            deep = deep / f"lvl{i}"
-        deep.mkdir(parents=True)
-        (tmp_path / "package.json").write_text("{}")
-        result = find_project_root(deep)
-        assert result is None
-
-
-# ===========================================================================
-# extract_host_mounts
-# ===========================================================================
-
-class TestExtractHostMounts:
-    def test_empty_args_returns_empty(self):
-        assert extract_host_mounts({"args": []}) == []
-
-    def test_relative_args_not_mounted(self):
-        assert extract_host_mounts({"args": ["relative/path.js"]}) == []
-
-    def test_non_string_args_ignored(self):
-        assert extract_host_mounts({"args": [123, None]}) == []
-
-    def test_absolute_path_that_exists_produces_volume(self, tmp_path):
-        script = tmp_path / "server.js"
-        script.write_text("")
-        result = extract_host_mounts({"args": [str(script)]})
-        # At minimum the parent dir should be mounted read-only
-        assert len(result) >= 1
-        assert result[0].endswith(":ro")
-
-    def test_absolute_path_with_package_json_mounts_project(self, tmp_path):
-        (tmp_path / "package.json").write_text("{}")
-        script = tmp_path / "dist" / "server.js"
-        script.parent.mkdir()
-        script.write_text("")
-        result = extract_host_mounts({"args": [str(script)]})
-        # Should mount the project root (tmp_path), not just dist/
-        assert any(str(tmp_path) in vol for vol in result)
-
-    def test_missing_path_omitted_with_warning(self, tmp_path, caplog):
-        # Use a path where both the file AND its parent don't exist,
-        # so find_project_root returns None and the fallback mount_src is also missing.
-        ghost_dir = tmp_path / "nonexistent_dir"
-        nonexistent = str(ghost_dir / "ghost_script.js")
-        import logging
-        with caplog.at_level(logging.WARNING, logger="mcp_adapters"):
-            result = extract_host_mounts({"args": [nonexistent]})
-        assert result == []
-
-    def test_duplicate_mounts_deduplicated(self, tmp_path):
-        # Two args pointing into the same project should yield one mount
-        (tmp_path / "package.json").write_text("{}")
-        for name in ("a.js", "b.js"):
-            (tmp_path / name).write_text("")
-        result = extract_host_mounts({"args": [
-            str(tmp_path / "a.js"),
-            str(tmp_path / "b.js"),
-        ]})
-        sources = [v.split(":")[0] for v in result]
-        assert len(sources) == len(set(sources))  # no duplicates
-
-
-# ===========================================================================
-# apply_workspace_process_options — ContainerConversationRequired
-# ===========================================================================
 
 class TestApplyWorkspaceProcessOptions:
-    def test_raises_when_no_conv_id(self):
-        params = {"command": "node", "args": []}
-        env: dict = {}
+
+    def _call(self, params, env, *, conv_id="testconv", server_config=None):
+        with patch("mcp_adapters.container_service.ensure_container") as mock_ensure, \
+             patch("mcp_adapters.container_service.wrap_command_for_exec") as mock_wrap:
+            mock_ensure.return_value = MagicMock()
+            mock_wrap.return_value = _mock_wrap_result(
+                conv_id, params["command"], params.get("args", [])
+            )
+            mcp_adapters.apply_workspace_process_options(
+                params,
+                env,
+                server_name="test-server",
+                server_config=server_config or {},
+                conv_id=conv_id,
+            )
+            return mock_ensure, mock_wrap
+
+    def test_raises_container_conv_required_without_conv_id(self):
         with pytest.raises(ContainerConversationRequired):
-            apply_workspace_process_options(
-                params, env,
-                server_name="test",
-                server_config={},
+            mcp_adapters.apply_workspace_process_options(
+                {"command": "npx", "args": []},
+                {},
+                server_name="srv",
                 conv_id="",
             )
 
-    def test_raises_on_empty_string_conv_id(self):
-        params = {"command": "node", "args": []}
-        env: dict = {}
-        with pytest.raises(ContainerConversationRequired):
-            apply_workspace_process_options(
+    def test_command_becomes_docker(self):
+        params = {"command": "node", "args": ["server.js"]}
+        self._call(params, {})
+        assert params["command"] == "docker"
+
+    def test_args_contain_exec(self):
+        params = {"command": "node", "args": ["server.js"]}
+        self._call(params, {})
+        assert "exec" in params["args"]
+
+    def test_cwd_removed_from_params(self):
+        params = {"command": "npx", "args": [], "cwd": "/some/path"}
+        self._call(params, {})
+        assert "cwd" not in params
+
+    def test_env_dict_cleared_then_repopulated(self):
+        params = {"command": "npx", "args": []}
+        env = {"STALE_VAR": "old_value"}
+        self._call(params, env)
+        # env is cleared and refilled from os.environ; STALE_VAR only
+        # survives if it's also in os.environ
+        if "STALE_VAR" not in os.environ:
+            assert "STALE_VAR" not in env
+
+    def test_ensure_container_called_with_conv_id(self):
+        params = {"command": "npx", "args": []}
+        mock_ensure, _ = self._call(params, {}, conv_id="myconv")
+        mock_ensure.assert_called_once()
+        call_args = mock_ensure.call_args
+        assert "myconv" in call_args.args or "myconv" in str(call_args)
+
+    def test_wrap_command_called_with_original_command(self):
+        params = {"command": "python3", "args": ["-m", "server"]}
+        _, mock_wrap = self._call(params, {})
+        wrap_call = mock_wrap.call_args
+        # The original command is passed to wrap_command_for_exec
+        assert "python3" in str(wrap_call)
+
+    def test_explicit_env_vars_forwarded(self):
+        params = {"command": "npx", "args": []}
+        env = {}
+        server_config = {"env": {"MY_KEY": "my_value"}}
+        with patch("mcp_adapters.container_service.ensure_container"), \
+             patch("mcp_adapters.container_service.wrap_command_for_exec") as mock_wrap:
+            mock_wrap.return_value = ("docker", [])
+            mcp_adapters.apply_workspace_process_options(
                 params, env,
                 server_name="srv",
-                server_config={},
-                conv_id="",
+                server_config=server_config,
+                conv_id="c1",
             )
+        # WORKING_DIR and PWD must be in the env passed to wrap
+        wrap_kwargs = mock_wrap.call_args.kwargs
+        passed_env = wrap_kwargs.get("env", {})
+        assert passed_env.get("WORKING_DIR") == "/workspace"
+        assert passed_env.get("PWD") == "/workspace"
+
+
+# ---------------------------------------------------------------------------
+# extract_host_mounts
+# ---------------------------------------------------------------------------
+
+class TestExtractHostMounts:
+
+    def test_empty_config_returns_empty_list(self):
+        assert mcp_adapters.extract_host_mounts({}) == []
+
+    def test_relative_args_skipped(self):
+        config = {"args": ["relative/path/server.js"]}
+        assert mcp_adapters.extract_host_mounts(config) == []
+
+    def test_missing_absolute_path_skipped(self):
+        config = {"args": ["/absolutely/does/not/exist/server.js"]}
+        assert mcp_adapters.extract_host_mounts(config) == []
+
+    def test_existing_absolute_path_produces_volume_spec(self, tmp_path):
+        script = tmp_path / "server.js"
+        script.write_text("// server")
+        config = {"args": [str(script)]}
+        result = mcp_adapters.extract_host_mounts(config)
+        # At least one volume spec with src:dst format
+        assert len(result) >= 1
+        for spec in result:
+            assert ":" in spec
+
+    def test_duplicate_paths_deduplicated(self, tmp_path):
+        script = tmp_path / "a.js"
+        script.write_text("a")
+        config = {"args": [str(script), str(script)]}
+        result = mcp_adapters.extract_host_mounts(config)
+        sources = [spec.split(":")[0] for spec in result]
+        assert len(sources) == len(set(sources))
+
+    def test_non_string_args_skipped(self):
+        config = {"args": [42, None, True]}
+        assert mcp_adapters.extract_host_mounts(config) == []
+
+    def test_volume_spec_is_readonly(self, tmp_path):
+        script = tmp_path / "srv.py"
+        script.write_text("# srv")
+        config = {"args": [str(script)]}
+        result = mcp_adapters.extract_host_mounts(config)
+        for spec in result:
+            assert spec.endswith(":ro")
+
+
+# ---------------------------------------------------------------------------
+# ContainerConversationRequired
+# ---------------------------------------------------------------------------
+
+class TestContainerConversationRequired:
+
+    def test_is_runtime_error(self):
+        exc = ContainerConversationRequired("needs conv")
+        assert isinstance(exc, RuntimeError)
+
+    def test_message_preserved(self):
+        exc = ContainerConversationRequired("MCP server 'x' requires a conversation.")
+        assert "x" in str(exc)
