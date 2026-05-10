@@ -23,7 +23,7 @@ The app is intentionally lightweight: no database, no build step, no frontend fr
 
 ```text
 .
-├── app.py                         # Flask app factory and startup cleanup
+├── app.py                         # Flask app factory, startup cleanup, and shutdown cleanup
 ├── routes.py                      # HTTP API routes and SSE stream endpoint
 ├── chat_turn_service.py           # Long-running chat turn orchestration
 ├── streaming.py                   # OpenAI streaming generator + SSE helpers
@@ -143,6 +143,7 @@ Note: both the README and the code use uppercase `LUMEN_*` env var names. Browse
 - Creates the Flask app with CORS enabled.
 - Registers the single blueprint from `routes.py`.
 - On startup, attempts to remove stale Docker containers whose conversation JSON no longer exists.
+- On shutdown, kills all running `lumen-chat-*` containers via `_shutdown_containers()`, registered with both `atexit` (covers normal exit and Ctrl-C) and a `SIGTERM` handler (covers gunicorn, systemd, `docker stop`). A `_shutdown_done` guard prevents double execution when both fire in the same shutdown sequence. Uses `docker kill` (immediate SIGKILL) rather than `docker stop` because the sandbox runs `sleep infinity` and ignores SIGTERM, making any grace period wasted time.
 - Docker cleanup is non-fatal; the app should still start when Docker is unavailable.
 
 ### `routes.py`
@@ -264,7 +265,8 @@ Covered by tests: no-`conv_id` discovery, discovery start/stop/reuse, skipped-se
 - Containers are started with `/workspace` mounted to the host workspace.
 - The sandbox drops all capabilities, then adds back a minimal set: `CHOWN`, `DAC_OVERRIDE`, `SETUID`, `SETGID`.
 - Provides stale container cleanup, container removal, workspace deletion, status inspection, and `docker exec` command wrapping.
-- **Idle reaper**: a daemon thread stops conversation containers that have been idle beyond `LUMEN_CONTAINER_IDLE_TIMEOUT` (default 600 s / 10 min). Activity is tracked via `_touch(conv_id)`, called automatically from `ensure_container()` and `wrap_command_for_exec()`. The reaper uses `stop_container_process()` (soft stop, not removal), so the container can be restarted instantly on next use. Set `LUMEN_CONTAINER_IDLE_TIMEOUT=0` to disable. The MCP discovery container is explicitly excluded from reaping.
+- **Shutdown cleanup**: `stop_all_containers()` issues a single `docker kill` against all running `lumen-chat-*` containers. All names are passed in one call so Docker kills them concurrently. Uses `docker kill` (SIGKILL) not `docker stop` because the sandbox runs `sleep infinity` and will never self-exit on SIGTERM — the grace period of `docker stop` would always be wasted. Stopped containers are not removed; `ensure_container()` restarts them on next use, and `cleanup_stale()` at startup removes any orphaned ones.
+- **Idle reaper**: a daemon thread stops conversation containers that have been idle beyond `LUMEN_CONTAINER_IDLE_TIMEOUT` (default 1800 s / 30 min). Activity is tracked via `_touch(conv_id)`, called automatically from `ensure_container()` and `wrap_command_for_exec()`. The reaper uses `stop_container_process()` (soft stop, not removal), so the container can be restarted instantly on next use. Set `LUMEN_CONTAINER_IDLE_TIMEOUT=0` to disable. The MCP discovery container is explicitly excluded from reaping.
 
 The Docker container command is `sleep infinity`, so it stays alive for later `docker exec` MCP calls.
 
