@@ -128,7 +128,7 @@ LUMEN_CONTAINER_MEMORY    default: 512m
 LUMEN_CONTAINER_CPUS      default: 1
 LUMEN_CONTAINER_NETWORK   default: bridge
 LUMEN_CONTAINER_PREFIX    default: lumen-chat-
-LUMEN_CONTAINER_IDLE_TIMEOUT default: 1800 (seconds; 0 disables idle reaping)
+LUMEN_CONTAINER_IDLE_TIMEOUT default: 600 (seconds; 0 disables idle reaping)
 LUMEN_MAX_FILE_PREVIEW_BYTES default: 512 KiB
 LUMEN_MAX_FILE_LIST_ENTRIES  default: 500
 LUMEN_MAX_UPLOAD_BYTES       default: 50 MiB
@@ -262,7 +262,7 @@ Covered by tests: no-`conv_id` discovery, discovery start/stop/reuse, skipped-se
 - Containers are started with `/workspace` mounted to the host workspace.
 - The sandbox drops all capabilities, then adds back a minimal set: `CHOWN`, `DAC_OVERRIDE`, `SETUID`, `SETGID`.
 - Provides stale container cleanup, container removal, workspace deletion, status inspection, and `docker exec` command wrapping.
-- **Idle reaper**: a daemon thread stops conversation containers that have been idle beyond `LUMEN_CONTAINER_IDLE_TIMEOUT` (default 1800 s / 30 min). Activity is tracked via `_touch(conv_id)`, called automatically from `ensure_container()` and `wrap_command_for_exec()`. The reaper uses `stop_container_process()` (soft stop, not removal), so the container can be restarted instantly on next use. Set `LUMEN_CONTAINER_IDLE_TIMEOUT=0` to disable. The MCP discovery container is explicitly excluded from reaping.
+- **Idle reaper**: a daemon thread stops conversation containers that have been idle beyond `LUMEN_CONTAINER_IDLE_TIMEOUT` (default 600 s / 10 min). Activity is tracked via `_touch(conv_id)`, called automatically from `ensure_container()` and `wrap_command_for_exec()`. The reaper uses `stop_container_process()` (soft stop, not removal), so the container can be restarted instantly on next use. Set `LUMEN_CONTAINER_IDLE_TIMEOUT=0` to disable. The MCP discovery container is explicitly excluded from reaping.
 
 The Docker container command is `sleep infinity`, so it stays alive for later `docker exec` MCP calls.
 
