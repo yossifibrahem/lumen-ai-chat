@@ -1,62 +1,76 @@
 # Agent Guide for Lumen AI Chat
 
-This file is a working guide for agents modifying this repository. It is based on a codebase pass over `README.md`, the Flask backend modules, the frontend ES modules, MCP integration code, workspace/file handling, streaming logic, and Docker sandbox support.
+This file is the working guide for agents modifying this repository. It reflects the current post-cleanup codebase, including server-side API provider settings, typed internal streaming events, cached conversation indexing, and the per-turn MCP session pool.
 
 ## Project at a glance
 
 Lumen is a self-hosted Flask chat UI for OpenAI-compatible chat-completions APIs. It supports:
 
 - Streaming responses over Server-Sent Events (SSE)
-- OpenAI-compatible model settings from the browser UI
+- OpenAI-compatible API base/model/temperature settings from the browser UI
+- Server-side API key storage through `app_config.py` and `/api/settings`
 - Local filesystem conversation persistence under `~/.lumen/`
 - Per-conversation workspace directories mounted as `/workspace`
 - Docker sandbox containers per conversation
 - MCP server configuration through `mcp.json` and the UI
 - MCP tool discovery, tool-call execution, approval/deny UI, and tool-result rendering
+- Per-turn MCP stdio session reuse through `McpSessionPool`
 - Image uploads stored by content hash
 - Regular file uploads stored in the conversation workspace
 - Markdown, code highlighting, KaTeX, voice input, theming, and conversation search
 
-The app is intentionally lightweight: no database, no build step, no frontend framework, and no automated test suite currently included.
+The app is intentionally lightweight: no database, no frontend framework, no bundler/build step, and plain browser ES modules served directly by Flask.
 
 ## Repository map
 
 ```text
 .
-├── app.py                         # Flask app factory, startup cleanup, and shutdown cleanup
+├── app.py                         # Flask app factory, startup checks, CORS, shutdown cleanup
+├── app_config.py                  # Server-side API provider config and API key storage
 ├── routes.py                      # HTTP API routes and SSE stream endpoint
 ├── chat_turn_service.py           # Long-running chat turn orchestration
-├── streaming.py                   # OpenAI streaming generator + SSE helpers
-├── mcp_service.py                 # MCP config, tool discovery, tool invocation
+├── streaming.py                   # Typed OpenAI streaming event generator + SSE helpers
+├── mcp_service.py                 # MCP config, tool discovery, invocation, per-turn session pool
 ├── mcp_adapters.py                # Host/container MCP launch helpers
 ├── container_service.py           # Docker container lifecycle and command wrapping
 ├── workspace_service.py           # Workspace listing, reading, upload, download path safety
-├── store.py                       # Filesystem persistence for conversations and images
+├── store.py                       # Filesystem persistence for conversations/images + cached index
 ├── Dockerfile.sandbox             # Required per-chat sandbox image
+├── gunicorn.conf.py               # Single-worker/threaded production default
 ├── requirements.txt               # Flask, CORS, OpenAI SDK, MCP SDK
 ├── requirements-dev.txt           # Adds pytest and pytest-mock on top of requirements.txt
-├── pytest.ini                     # Test discovery config: pythonpath = ., testpaths = tests
+├── pytest.ini                     # Test discovery config
 ├── README.md                      # User-facing project description and setup docs
+├── agent.md                       # This agent/developer guide
 ├── templates/index.html           # Full app shell and modal markup
 ├── tests/
-│   ├── conftest.py                # Shared fixtures: tmp_lumen (filesystem isolation), app, client
-│   ├── test_store.py              # Image storage and conversation CRUD unit tests
+│   ├── conftest.py                # Shared fixtures and filesystem isolation
+│   ├── test_app_config.py         # Server-side API config tests
+│   ├── test_store.py              # Image storage, conversation CRUD, cached index tests
 │   ├── test_workspace_service.py  # Path safety, listing, reading, upload, _unique_path
-│   ├── test_chat_turn_service.py  # _parse_stream_payload, _extract_title, TurnRecorder, etc.
-│   ├── test_streaming.py          # SSE formatting, event ordering, cancellation, tool accumulation
-│   ├── test_mcp_service.py        # Config load/save/find, run_async bridge
-│   ├── test_mcp_adapters.py       # apply_workspace_process_options, find_project_root, extract_host_mounts
-│   ├── test_container_service.py  # _safe_id, wrap_command_for_exec, _is_name_conflict, _volume_args
+│   ├── test_chat_turn_service.py  # Turn orchestration helpers, approvals, title generation
+│   ├── test_streaming.py          # Typed stream event ordering, cancellation, tool accumulation
+│   ├── test_mcp_service.py        # Config cache, run_async, McpSessionPool behavior
+│   ├── test_mcp_adapters.py       # Docker process option and volume extraction helpers
+│   ├── test_container_service.py  # Container naming, lifecycle helpers, idle reaping
 │   └── test_routes.py             # Flask HTTP integration tests via test client
 └── static/
     ├── css/                       # CSS entrypoint and module files
     └── js/
         ├── app.js                 # Browser bootstrapping and event binding
         ├── api.js                 # Thin fetch wrapper
-        ├── chat.js                # Message sending, attachments, SSE client, regeneration/editing
+        ├── chat.js                # Chat orchestration exports / compatibility surface
+        ├── chat_attachments.js    # Image/file attachment lifecycle helpers
+        ├── chat_edit.js           # Edit, resend, regenerate helpers
+        ├── chat_payloads.js       # API message/payload construction
+        ├── chat_send.js           # Send flow and stream start/handling
+        ├── stream_consumer.js     # SSE response reader and error response helpers
         ├── conversations.js       # Conversation CRUD and sidebar list
         ├── customization.js       # Theme/font/accent/customization state
+        ├── dom.js                 # Shared DOM lookup helpers
         ├── file_panel.js          # Workspace browser/preview/download UI
+        ├── format.js              # Formatting helpers
+        ├── icons.js               # SVG icon strings
         ├── markdown.js            # Markdown rendering and safe file-link enhancement
         ├── mcp.js                 # MCP config UI, tool loading, enable/auto-approve toggles
         ├── mcp_policy.js          # System prompt injected when MCP tools are enabled
@@ -70,6 +84,8 @@ The app is intentionally lightweight: no database, no build step, no frontend fr
         └── tool_adapters/         # Tool-specific display/rendering adapters
 ```
 
+Root-level duplicate test files should not exist. In particular, keep `test_mcp_service.py` only under `tests/`.
+
 ## How to run locally
 
 Install dependencies:
@@ -78,7 +94,7 @@ Install dependencies:
 pip install -r requirements-dev.txt
 ```
 
-Run the test suite (no Docker or API key required):
+Run the test suite:
 
 ```bash
 pytest
@@ -96,17 +112,19 @@ Open:
 http://localhost:8080
 ```
 
-Required sandbox image (build once before first run):
+Build the required sandbox image before using MCP tools:
 
 ```bash
 docker build -f Dockerfile.sandbox -t lumen-sandbox .
 ```
 
-Production-ish entrypoint from the README:
+Production-ish entrypoint:
 
 ```bash
-gunicorn -w 4 -b 0.0.0.0:8080 "app:create_app()"
+gunicorn -c gunicorn.conf.py "app:create_app()"
 ```
+
+`gunicorn.conf.py` intentionally uses one worker and multiple threads because active stream state and cancellation events are currently process-local.
 
 ## Persistence and runtime locations
 
@@ -114,37 +132,58 @@ The backend stores user data outside the repo by default:
 
 ```text
 ~/.lumen/
-├── conversations/   # one JSON file per conversation
-├── containers/      # one workspace directory per conversation
-└── images/          # uploaded images keyed by SHA-256 hash
+├── config.json       # server-side API provider config, unless LUMEN_CONFIG_FILE overrides it
+├── conversations/    # one JSON file per conversation
+├── containers/       # one workspace directory per conversation
+└── images/           # uploaded images keyed by SHA-256 hash
 ```
 
 Important environment variables:
 
 ```text
-LUMEN_SANDBOX_IMAGE       default: lumen-sandbox
-LUMEN_CONTAINERS_ROOT     default: ~/.lumen/containers
-LUMEN_CONTAINER_MEMORY    default: 512m
-LUMEN_CONTAINER_CPUS      default: 1
-LUMEN_CONTAINER_NETWORK   default: bridge
-LUMEN_CONTAINER_PREFIX    default: lumen-chat-
-LUMEN_CONTAINER_IDLE_TIMEOUT default: 600 (seconds; 0 disables idle reaping)
+OPENAI_API_KEY              overrides saved API key
+OPENAI_BASE_URL             overrides saved API base URL
+OPENAI_API_BASE             fallback alias for API base URL
+LUMEN_CONFIG_FILE           path to server-side config JSON
+LUMEN_SANDBOX_IMAGE         default: lumen-sandbox
+LUMEN_CONTAINERS_ROOT       default: ~/.lumen/containers
+LUMEN_CONTAINER_MEMORY      default: 512m
+LUMEN_CONTAINER_CPUS        default: 1
+LUMEN_CONTAINER_NETWORK     default: bridge
+LUMEN_CONTAINER_PREFIX      default: lumen-chat-
+LUMEN_CONTAINER_IDLE_TIMEOUT default: 1800 seconds; 0 disables idle reaping
 LUMEN_MAX_FILE_PREVIEW_BYTES default: 512 KiB
 LUMEN_MAX_FILE_LIST_ENTRIES  default: 500
 LUMEN_MAX_UPLOAD_BYTES       default: 50 MiB
+LUMEN_MCP_CONFIG_CACHE_TTL   default: 5 seconds
 ```
 
-Note: both the README and the code use uppercase `LUMEN_*` env var names. Browser `localStorage` keys (such as `lumen_mcp_server_settings`) intentionally use lowercase and are unrelated to these environment variables.
+Browser `localStorage` keys such as `lumen_settings`, `lumen_models`, and `lumen_mcp_server_settings` are unrelated to the uppercase environment variables.
 
 ## Backend architecture
 
 ### `app.py`
 
-- Creates the Flask app with CORS enabled.
+- Creates the Flask app.
+- Sets `MAX_CONTENT_LENGTH` to cap request body size globally.
+- Configures CORS to localhost origins by default.
+- Verifies Docker and the sandbox image at startup.
 - Registers the single blueprint from `routes.py`.
-- On startup, attempts to remove stale Docker containers whose conversation JSON no longer exists.
-- On shutdown, kills all running `lumen-chat-*` containers via `_shutdown_containers()`, registered with both `atexit` (covers normal exit and Ctrl-C) and a `SIGTERM` handler (covers gunicorn, systemd, `docker stop`). A `_shutdown_done` guard prevents double execution when both fire in the same shutdown sequence. Uses `docker kill` (immediate SIGKILL) rather than `docker stop` because the sandbox runs `sleep infinity` and ignores SIGTERM, making any grace period wasted time.
-- Docker cleanup is non-fatal; the app should still start when Docker is unavailable.
+- Calls stale container cleanup at startup.
+- Registers shutdown cleanup through `atexit` and `SIGTERM`, guarded against double execution.
+
+### `app_config.py`
+
+Server-side provider config lives here. Sensitive API keys should not be stored in browser `localStorage` or sent in `/api/chat/stream` request bodies.
+
+Key behavior:
+
+- Config defaults to `~/.lumen/config.json`.
+- `LUMEN_CONFIG_FILE` can override the config path.
+- `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `OPENAI_API_BASE` override saved config at load time.
+- `public_config()` returns only safe browser metadata: `api_base` and `has_api_key`.
+- `save_config()` persists allowed keys atomically with a temp-file replace.
+- Blank API key updates intentionally keep the existing saved key.
 
 ### `routes.py`
 
@@ -166,14 +205,17 @@ Main route groups:
 - `/api/chat/stream` starts or reattaches to a streaming chat turn.
 - `/api/chat/cancel` cancels an active stream.
 - `/api/chat/approve` approves or denies a pending MCP tool call.
-- `/api/models` proxies model-list fetching through the configured OpenAI-compatible endpoint.
+- `/api/settings` reads/writes server-side API provider config.
+- `/api/models` proxies model-list fetching through the server-side OpenAI-compatible config.
+
+Conversation update is whitelisted. `PUT /api/conversations/<conv_id>` should only accept allowed user-facing fields such as `title` and `system_prompt`; do not reintroduce `data.update(_body())`.
 
 Streaming state is stored in module-level dictionaries:
 
 - `_cancel_events`: `stream_id -> threading.Event`
 - `_active_streams`: `stream_id -> replayable stream state`
 
-Because these are in-memory, active stream reattach works only within the same Python process. Multiple Gunicorn workers may not share active stream state.
+Because these are in-memory, active stream reattach works only within the same Python process. Multiple worker processes are unsafe for cancellation/reattach until stream state moves to shared storage or a broker.
 
 ### `chat_turn_service.py`
 
@@ -181,22 +223,25 @@ This is the core backend orchestration layer for a chat turn.
 
 Key responsibilities:
 
-- Create an OpenAI client using the user-provided API key/base URL.
+- Create an OpenAI client from `app_config.load_config()`.
 - Stream model chunks through `streaming.stream_chat_completion()`.
 - Accumulate text and `reasoning_content`.
 - Persist partial assistant output using `TurnRecorder`.
 - Detect streamed tool calls.
-- Pre-mount host volumes for all enabled MCP servers at turn start by calling mcp_service.collect_all_extra_volumes() and container_service.ensure_container()
+- Pre-mount host volumes for all enabled MCP servers at turn start by calling `mcp_service.collect_all_extra_volumes()` and `container_service.ensure_container()`.
 - Request frontend approval for tools unless the server is set to auto-approve.
-- Invoke MCP tools through `mcp_service.invoke_tool()`.
+- Invoke MCP tools through a per-turn `mcp_service.McpSessionPool` when tools are available.
 - Append tool messages back into the API message history.
 - Loop until the model completes without more tool calls.
 - Emit final `assistant_done` and optional generated `title` events.
+
+`TurnRecorder` saves conversation checkpoints during long streams and removes `active_stream_id` on finalize.
 
 SSE event types produced/forwarded include:
 
 ```text
 reasoning
+done
 text
 tool_start
 tool_calls
@@ -213,38 +258,48 @@ The model-facing messages and UI-facing `displayLog` are related but not identic
 ### `streaming.py`
 
 - Wraps OpenAI streaming chat completions.
-- Converts chunks to JSON SSE events.
+- Yields typed Python dictionaries internally, not already-serialized SSE strings.
 - Merges incremental tool-call deltas by tool-call index.
 - Emits `tool_start` as soon as a tool name appears.
 - Emits `tool_calls` when the finish reason is `tool_calls`.
 - Supports cancellation by closing the OpenAI stream when the cancellation event is set.
+- Provides `sse_event(payload)` for HTTP-boundary serialization.
+- Provides `make_streaming_response(generator)` for Flask streaming responses.
 
-The generator yields already-formatted SSE strings, so callers parse those strings again in `chat_turn_service._parse_stream_payload()`.
+Do not restore the old internal SSE encode/decode round-trip. Keep stream internals dict-based and serialize only at the HTTP boundary.
 
 ### `mcp_service.py`
 
 - Persists `mcp.json` in the project root.
-- Validates only the top-level shape: `{"mcpServers": {...}}`.
+- Caches MCP config for a short TTL to avoid reading `mcp.json` on every tool call.
+- Validates only the top-level config shape: `{"mcpServers": {...}}`.
 - Connects to each MCP server through stdio.
 - Uses `mcp_adapters.apply_workspace_process_options()` to configure the container runtime for each MCP server.
-- `collect_all_extra_volumes()` gathers the union of host mount volumes for a list of server names — used by `chat_turn_service` to pre-warm the container.
+- `collect_all_extra_volumes()` gathers the union of host mount volumes for a list of server names.
 - `fetch_tools()` returns OpenAI-tool-like metadata for the frontend.
-- `invoke_tool()` returns text output by joining result content blocks.
+- `invoke_tool()` remains available for one-off calls.
 - `run_async()` bridges async MCP calls into Flask sync route/service code.
+
+#### `McpSessionPool`
+
+`McpSessionPool` reuses MCP stdio sessions across multiple tool calls in one chat turn.
+
+Important implementation detail: AnyIO-backed MCP context managers must be exited from the same asyncio Task that entered them. The pool uses one dedicated worker coroutine for the whole turn so session open, tool invocation, `ClientSession.__aexit__`, and `stdio_client.__aexit__` happen in the same Task. Do not replace this with `run_coroutine_threadsafe()` per call unless you also preserve same-task cleanup semantics.
+
+The pool is used by `chat_turn_service.run_persistent_chat_turn()` and closed in the `finally` block.
 
 ### `mcp_adapters.py`
 
-All MCP servers run inside the per-conversation Docker container. There is no host runtime fallback.
+All MCP servers run inside the per-conversation Docker container. There is no host runtime fallback for normal chat execution.
 
 Container runtime:
 
-- Requires `conv_id`; otherwise raises `ContainerConversationRequired`.
+- Requires `conv_id` for real conversation execution; otherwise raises `ContainerConversationRequired` unless discovery behavior applies.
 - Ensures the per-conversation Docker container is running.
 - Mounts the conversation workspace as `/workspace`.
 - Wraps the MCP command with `docker exec -i --workdir /workspace ...`.
 - Injects explicit MCP env vars into the container with `docker exec --env`.
 - Extracts absolute script/project paths from server args and mounts nearby project roots read-only.
-
 
 ### MCP discovery container
 
@@ -254,9 +309,7 @@ Keep this behavior intact:
 
 - Stale-container cleanup must skip `__mcp_discovery__`.
 - Real chat tool discovery/calls must still use the actual conversation `conv_id`.
-- Remote MCP servers may log harmless `AbortError`/SSE shutdown noise when discovery stops the container after tools load.
-
-Covered by tests: no-`conv_id` discovery, discovery start/stop/reuse, skipped-server response preservation, stale-cleanup skip, and normal `conv_id` behavior.
+- Remote MCP servers may log harmless shutdown noise when discovery stops the container after tools load.
 
 ### `container_service.py`
 
@@ -265,10 +318,9 @@ Covered by tests: no-`conv_id` discovery, discovery start/stop/reuse, skipped-se
 - Containers are started with `/workspace` mounted to the host workspace.
 - The sandbox drops all capabilities, then adds back a minimal set: `CHOWN`, `DAC_OVERRIDE`, `SETUID`, `SETGID`.
 - Provides stale container cleanup, container removal, workspace deletion, status inspection, and `docker exec` command wrapping.
-- **Shutdown cleanup**: `stop_all_containers()` issues a single `docker kill` against all running `lumen-chat-*` containers. All names are passed in one call so Docker kills them concurrently. Uses `docker kill` (SIGKILL) not `docker stop` because the sandbox runs `sleep infinity` and will never self-exit on SIGTERM — the grace period of `docker stop` would always be wasted. Stopped containers are not removed; `ensure_container()` restarts them on next use, and `cleanup_stale()` at startup removes any orphaned ones.
-- **Idle reaper**: a daemon thread stops conversation containers that have been idle beyond `LUMEN_CONTAINER_IDLE_TIMEOUT` (default 1800 s / 30 min). Activity is tracked via `_touch(conv_id)`, called automatically from `ensure_container()` and `wrap_command_for_exec()`. The reaper uses `stop_container_process()` (soft stop, not removal), so the container can be restarted instantly on next use. Set `LUMEN_CONTAINER_IDLE_TIMEOUT=0` to disable. The MCP discovery container is explicitly excluded from reaping.
-
-The Docker container command is `sleep infinity`, so it stays alive for later `docker exec` MCP calls.
+- Uses per-conversation locks to avoid concurrent create/start races.
+- The idle reaper stops conversation containers that have been idle beyond `LUMEN_CONTAINER_IDLE_TIMEOUT`; `0` disables idle reaping.
+- The MCP discovery container is excluded from stale cleanup/reaping.
 
 ### `workspace_service.py`
 
@@ -289,7 +341,11 @@ Important safety behaviors:
 - Conversations are JSON files under `~/.lumen/conversations`.
 - Images are stored under `~/.lumen/images` using SHA-256 filenames.
 - `working_directory(conv_id)` delegates to `mcp_adapters.conversation_working_directory()`, which delegates to `container_service`.
-- Writes are atomic-ish: write temp file, then replace target.
+- Writes use temp-file replace.
+- `list_all()` uses a cached in-memory conversation summary index.
+- The cached index is protected by `_index_lock`, a `threading.RLock()`, because threaded Flask/Gunicorn can mutate the index concurrently.
+
+When editing the index, keep lock coverage around `_rebuild_index()`, `_update_index_for()`, `_remove_index_entry()`, and `list_all()` read/copy access.
 
 ## Frontend architecture
 
@@ -297,7 +353,7 @@ The frontend is plain browser ES modules. `templates/index.html` defines the DOM
 
 ### Shared state
 
-`static/js/state.js` exports a single mutable `state` object. Major fields:
+`static/js/state.js` exports a single mutable `state` object. Major fields include:
 
 ```js
 state.convId
@@ -308,25 +364,40 @@ state.mcpServerSettings
 state.isStreaming
 state.streamId
 state.apiBase
-state.apiKey
 state.model
 state.systemPrompt
 state.temperature
 state.autoGenerateTitles
 state.enterToSend
 state.autoScrollStreaming
+state.serverHasApiKey
 ```
 
-Settings and customization are persisted in `localStorage` using keys from `STORAGE_KEYS`.
+The API key should not be persisted in `state` or localStorage. The settings UI may accept a key and send it to `/api/settings`, but it should clear the input after saving and only retain `serverHasApiKey` metadata in browser state.
 
 ### App startup: `app.js`
 
-- Loads settings, customization, cached MCP tools, and conversation list.
+- Loads server/client settings, customization, cached MCP tools, and conversation list.
 - Binds sidebar, modal, settings, input, keyboard, model picker, MCP, voice, attachments, and file-panel events.
 - Initializes icons.
 - Opens the last active conversation if available.
 
-### Chat flow: `chat.js`
+Because chat behavior is now split across several modules, keep imports explicit and verify browser module exports after refactors. `chat.js` intentionally re-exports some helpers for compatibility, but new code should usually import from the owning module.
+
+### Chat modules
+
+The previous oversized `chat.js` has been decomposed.
+
+- `chat.js`: compatibility surface and high-level chat exports.
+- `chat_send.js`: send flow, stream start, stream event handling, cancellation.
+- `chat_payloads.js`: builds model/API messages and chat request payloads.
+- `chat_attachments.js`: pending image/file attachment processing and helpers such as `hasPendingAttachments`.
+- `chat_edit.js`: edit, resend, regenerate, and related mapping helpers.
+- `stream_consumer.js`: reads SSE responses and forwards raw event strings to a callback; also reads response error bodies.
+
+`stream_consumer.readSSEStream(response, onEvent)` requires a callback. It should fail loudly if called incorrectly rather than silently swallowing stream data.
+
+### Chat flow
 
 When the user sends a message:
 
@@ -334,13 +405,13 @@ When the user sends a message:
 2. A conversation is created if none exists.
 3. Images are uploaded to `/api/images` and stored as `image_ref` blocks in local message history.
 4. Regular files are uploaded to `/api/conversations/<conv_id>/files` and their `/workspace/uploads/...` paths are attached to the user message metadata.
-5. The user message is appended to `turn.messages` and `turn.displayLog`.
+5. The user message is appended to `state.messages` and `state.displayLog`.
 6. The conversation is persisted before model streaming starts.
 7. `buildApiMessages()` constructs the API payload:
    - Prepends system prompt and MCP policy prompt.
    - Adds file attachment context into user content.
    - Expands stored image refs to base64 `image_url` blocks for OpenAI-compatible vision input.
-8. `/api/chat/stream` is called with API settings, messages, tools, MCP metadata, stream id, and conversation id.
+8. `/api/chat/stream` is called without an API key in the body.
 9. The frontend reads SSE lines and updates the UI incrementally.
 
 ### Conversation history model
@@ -449,36 +520,45 @@ Follow the existing separation of concerns:
 - Prefer adding frontend tool adapters for tool-specific UI instead of hardcoding tool names in renderer logic.
 - Keep workspace path handling strict. Do not weaken traversal checks.
 - Avoid introducing a frontend build step unless the whole project intentionally moves that direction.
-- Remember that MCP servers always run in Docker; ensure the sandbox image is built and Docker is running before testing MCP behaviour.
+- Do not send API keys in chat/model request bodies. Use `app_config.py` and `/api/settings`.
+- Remember that MCP servers run in Docker; ensure the sandbox image is built and Docker is running before testing MCP behavior.
 - Be cautious with module-level Python state if changing deployment assumptions; multi-worker servers will not share active streams/cancellation events.
+- Keep cached module-level state protected where threaded access can mutate it.
 
 ## Automated test suite
 
-Run `pytest` from the project root. All 255 tests must pass before merging any change.
+Run `pytest` from the project root. Current expected status:
 
 ```bash
 pytest
-# 255 passed in ~3s
+# 268 passed
 ```
 
-Tests are isolated: `conftest.py` redirects all filesystem paths to `tmp_path`, patches `_require_docker` and `_require_sandbox_image` in the app factory, and stubs `container_service.cleanup_stale`. No Docker daemon, real API key, or running server is needed.
+Tests are isolated: `conftest.py` redirects filesystem paths to `tmp_path`, patches Docker startup checks in the app factory, and stubs container cleanup where needed. No Docker daemon, real API key, or running server is required for the unit/integration-style tests.
 
-**Coverage summary:**
+Coverage summary:
 
 | File | Key contracts verified |
 | --- | --- |
-| `test_store.py` | SHA-256 image naming, media type validation, conversation CRUD atomicity, `list_all` newest-first ordering |
-| `test_workspace_service.py` | Path traversal rejection (all forms), `resolve_workspace_path` boundary check, preview size limit, `save_uploads` 413 with rollback, `_unique_path` collision deduplication |
-| `test_chat_turn_service.py` | `_parse_stream_payload` (all 4 SSE parse paths), `_extract_title` (3 model-format paths), `_safe_tool_args` silent failure, `_tool_call_message` OpenAI wire format, `TurnRecorder` throttle and force-bypass |
-| `test_streaming.py` | SSE event ordering, multi-delta tool name accumulation, parallel tool calls, cancellation closes stream, errors produce error+done events |
-| `test_mcp_service.py` | Config load/save/roundtrip, malformed-config handling, atomic writes, `run_async` exception propagation |
-| `test_mcp_adapters.py` | `apply_workspace_process_options` param mutation, `find_project_root` depth limit (prevents mounting `/home`/`/`), `extract_host_mounts` deduplication and `:ro` flag |
-| `test_container_service.py` | `_safe_id` character sanitisation (shell-safety), `wrap_command_for_exec` argv and env ordering, `_is_name_conflict` race detection, `_touch` timestamp recording, `_reap_once` idle stop/skip/discovery-exclusion/disable |
-| `test_routes.py` | All HTTP routes via Flask test client, including 400/404/413 error paths |
+| `test_app_config.py` | Server-side config loading/saving, env overrides, public config, atomic persistence |
+| `test_store.py` | SHA-256 image naming, media type validation, conversation CRUD, cached index ordering, index locking/concurrency |
+| `test_workspace_service.py` | Path traversal rejection, `resolve_workspace_path` boundary check, preview size limit, upload rollback/collision handling |
+| `test_chat_turn_service.py` | Tool approval flow, title extraction, safe tool args, tool message format, `TurnRecorder` throttle/finalize behavior |
+| `test_streaming.py` | Typed event ordering, multi-delta tool name accumulation, parallel tool calls, cancellation closes stream, error+done events |
+| `test_mcp_service.py` | Config cache, malformed-config handling, atomic writes, `run_async`, `McpSessionPool` same-task cleanup behavior |
+| `test_mcp_adapters.py` | Docker exec param mutation, project-root detection, host mount extraction/deduplication |
+| `test_container_service.py` | Safe container names, exec argv/env ordering, name-conflict handling, idle reaper behavior |
+| `test_routes.py` | HTTP routes, route error paths, settings routes, conversation update whitelist |
+
+Also syntax-check frontend modules after JS refactors:
+
+```bash
+find static/js -name '*.js' -print0 | xargs -0 -n1 node --check
+```
 
 ## Manual verification checklist
 
-Run this checklist manually after changes that touch streaming, MCP, or Docker — areas that involve real subprocesses that cannot be fully mocked:
+Run this checklist manually after changes that touch streaming, MCP, Docker, or frontend module exports:
 
 1. Python files compile:
 
@@ -486,64 +566,82 @@ Run this checklist manually after changes that touch streaming, MCP, or Docker �
    python -m py_compile *.py
    ```
 
-2. App starts:
+2. Frontend modules parse:
+
+   ```bash
+   find static/js -name '*.js' -print0 | xargs -0 -n1 node --check
+   ```
+
+3. Test suite passes:
+
+   ```bash
+   pytest
+   ```
+
+4. App starts:
 
    ```bash
    python app.py
    ```
 
-3. Browser opens `/` and renders the app.
-4. Creating, renaming, opening, and deleting conversations works.
-5. A basic chat response streams token-by-token.
-6. Stop/cancel works during streaming.
-7. Settings save and reload from localStorage.
-8. Model list fetch works for the chosen OpenAI-compatible endpoint.
-9. Image upload sends image input successfully.
-10. Regular file upload appears in `/workspace/uploads` and the file panel.
-11. Workspace preview/download works for text files.
-12. MCP config save/load works.
-13. MCP tool reload discovers tools.
-14. Tool calls render `tool_start`, approval, running, and final result states.
-15. Auto-approved tool calls skip approval and still render running/result states.
-16. Reopening a conversation during an active stream can reattach if still in the same backend process.
-17. Docker container is created for a new conversation and MCP tools are discoverable once the conversation is open.
+5. Browser opens `/` and renders the app.
+6. API settings save through `/api/settings`; API key field clears and only shows saved-key metadata.
+7. Creating, renaming, opening, and deleting conversations works.
+8. A basic chat response streams token-by-token.
+9. Stop/cancel works during streaming.
+10. Settings save and reload.
+11. Model list fetch works for the chosen OpenAI-compatible endpoint.
+12. Image upload sends image input successfully.
+13. Regular file upload appears in `/workspace/uploads` and the file panel.
+14. Workspace preview/download works for text files.
+15. MCP config save/load works.
+16. MCP tool reload discovers tools.
+17. Tool calls render `tool_start`, approval, running, and final result states.
+18. Auto-approved tool calls skip approval and still render running/result states.
+19. Multi-tool turns against the same MCP server do not log AnyIO cancel-scope cleanup errors.
+20. Reopening a conversation during an active stream can reattach if still in the same backend process.
+21. Docker container is created for a new conversation and MCP tools are discoverable once the conversation is open.
 
-Recommended future tests:
-
-- Flask route tests with `pytest` and Flask test client.
-- Unit tests for `workspace_service.workspace_relpath()` and `resolve_workspace_path()`.
-- Unit tests for `store.save_image()` and invalid image handling.
-- Unit tests for `mcp_adapters.apply_workspace_process_options()` and container launch parameter mutation.
-- Integration-ish tests for chat stream event ordering using mocked OpenAI streams.
-
-## Known issues and things to inspect before feature work
-
-These were found during the repository pass and should be verified/fixed before relying heavily on MCP tool calls:
+## Known limitations and things to inspect before feature work
 
 ### 1. Active stream reattach is process-local
 
-`routes.py` stores active stream state in memory. This is fine for the dev server and maybe one Gunicorn worker, but it will not work across multiple workers/processes without shared state.
+`routes.py` stores active stream state in memory. This is fine for the dev server and a single Gunicorn worker, but it will not work across multiple worker processes without shared state.
+
+Short-term deployment default: one worker with threads, as in `gunicorn.conf.py`.
+
+Long-term fix: move cancellation and stream event delivery to Redis/pub-sub or another shared backend.
 
 ### 2. Tool-name collisions across MCP servers
 
 OpenAI tool names are currently just `tool.name`, while tool metadata maps by `name` only. If two enabled MCP servers expose the same tool name, metadata lookup may collide. A future-safe design would namespace tool names or track call-to-server mapping more explicitly.
 
+### 3. No authentication/user accounts
+
+The app is local-first and self-hosted. Do not expose it publicly without adding authentication, stricter CORS, rate limiting, and stronger secret handling.
+
+### 4. No database or migration layer
+
+Persistent JSON shapes should remain backward-compatible, or migration code should be added deliberately.
+
 ## Safe editing advice for agents
 
 Before editing:
 
-1. Read `README.md` first for intended behavior.
+1. Read `README.md` and this file first for intended behavior.
 2. Read the backend service that owns the behavior, not just the route.
-3. Read the corresponding frontend module; many features are split across backend and JS state/rendering.
+3. Read the corresponding frontend module; many features span backend, JS state, and renderer code.
 4. Search for the event/type/string you plan to modify across the whole repo.
 5. Preserve persistent JSON shapes unless you add migration/backward-compatible handling.
+6. Run the relevant tests before and after the change.
 
 When changing chat streaming:
 
 - Preserve event ordering.
 - Preserve cancellation behavior.
 - Preserve partial persistence.
-- Test with plain responses and tool-call responses.
+- Keep `streaming.py` dict-based internally.
+- Test plain responses and tool-call responses.
 - Test switching away from and back to a streaming conversation.
 
 When changing MCP:
@@ -552,19 +650,22 @@ When changing MCP:
 - Test approval and auto-approval.
 - Test tool display labels and result rendering.
 - Avoid assuming all MCP result content is JSON.
+- Preserve `McpSessionPool` same-task lifecycle semantics.
 
 When changing workspace files:
 
 - Keep `/workspace` path normalization strict.
-- Never permit arbitrary absolute host paths through the file panel routes.
+- Never permit arbitrary absolute host paths through file panel routes.
 - Treat upload filenames as untrusted.
-- Keep preview limits to avoid accidentally loading huge files into the browser.
+- Keep preview limits to avoid loading huge files into the browser.
 
-When changing frontend rendering:
+When changing frontend rendering or module boundaries:
 
 - Render current live stream and historical `displayLog` consistently.
 - Keep edit/regenerate actions aligned with `displayLog` to `messages` index mapping.
 - Avoid injecting unsanitized HTML unless it is controlled UI markup and escaped user data.
+- Run `node --check` on all `static/js/**/*.js` files.
+- Open the browser console and verify there are no missing module exports.
 
 ## Useful search commands
 
@@ -572,24 +673,29 @@ When changing frontend rendering:
 # Find route definitions
 grep -R "@blueprint.route" -n .
 
-# Find all SSE event types
-grep -R "type.*tool_\|assistant_done\|reasoning\|stream_id" -n *.py static/js
+# Find all stream event types
+grep -R "tool_\|assistant_done\|reasoning\|stream_id\|tool_calls" -n *.py static/js
 
 # Find MCP-specific code
-grep -R "mcp\|MCP\|tool_calls\|tool_result" -n *.py static/js
+grep -R "mcp\|MCP\|tool_calls\|tool_result\|McpSessionPool" -n *.py static/js tests
 
 # Find workspace path handling
 grep -R "workspace\|/workspace\|file:/" -n *.py static/js
+
+# Check for accidental API key body usage
+grep -R "api_key" -n static/js *.py tests
+
+# Check for duplicate root tests
+find . -maxdepth 1 -name 'test_*.py' -print
 ```
 
 ## Current non-goals / absent pieces
 
 - No database layer
 - No formal migration system
-- No bundled automated tests
 - No frontend package/build system
 - No authentication/user accounts
 - No shared backend state for multi-worker active stream reattach
-- No server-side encryption for stored conversations, images, or workspaces
+- No server-side encryption for stored conversations, images, config, or workspaces
 
 Keep these assumptions in mind before adding features that depend on users, accounts, distributed processes, or durable job queues.

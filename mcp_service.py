@@ -181,16 +181,18 @@ def run_async(coro) -> Any:
 class McpSessionPool:
     """Reuse MCP stdio sessions for multiple tool calls in one chat turn.
 
-    The app's chat orchestration is synchronous, while MCP sessions are async
-    context managers. This pool owns a dedicated event loop thread so sessions
-    stay bound to one loop and can be reused safely across sequential tool calls
-    during a turn. Call close() at turn end to tear down subprocesses cleanly.
+    AnyIO-backed MCP context managers must be exited from the same asyncio task
+    that entered them. A naive ``run_coroutine_threadsafe`` call creates a new
+    Task for every invocation, which works for calls but fails during cleanup
+    with ``Attempted to exit cancel scope in a different task``. This pool uses
+    one dedicated worker coroutine for the whole turn, so open, invoke, and
+    close all happen in the same Task.
     """
 
     def __init__(self, conv_id: str = "") -> None:
         self.conv_id = conv_id
-        self._loop = asyncio.new_event_loop()
-        self._thread = None
+        self._jobs: "queue.Queue[tuple]" | None = None
+        self._thread: threading.Thread | None = None
         self._sessions: dict[str, dict] = {}
         self._closed = False
         self._lock = threading.Lock()
@@ -205,14 +207,42 @@ class McpSessionPool:
     def start(self) -> None:
         if self._thread:
             return
-        import threading as _threading
-        self._thread = _threading.Thread(target=self._loop.run_forever, name="mcp-session-pool", daemon=True)
+        import queue
+
+        self._jobs = queue.Queue()
+        self._thread = threading.Thread(target=self._thread_main, name="mcp-session-pool", daemon=True)
         self._thread.start()
 
-    def _run(self, coro):
-        self.start()
-        future = asyncio.run_coroutine_threadsafe(coro, self._loop)
-        return future.result()
+    def _thread_main(self) -> None:
+        try:
+            asyncio.run(self._worker())
+        except Exception:
+            log.exception("[mcp] session pool worker crashed")
+
+    async def _worker(self) -> None:
+        if self._jobs is None:
+            raise RuntimeError("MCP session pool was not started")
+
+        while True:
+            job = await asyncio.to_thread(self._jobs.get)
+            op = job[0]
+            if op == "invoke":
+                _, server_name, server_config, tool_name, arguments, future = job
+                try:
+                    result = await self._invoke(server_name, server_config, tool_name, arguments)
+                except Exception as exc:
+                    future.set_exception(exc)
+                else:
+                    future.set_result(result)
+            elif op == "close":
+                _, future = job
+                try:
+                    await self._close_async()
+                except Exception as exc:
+                    future.set_exception(exc)
+                else:
+                    future.set_result(None)
+                break
 
     async def _get_session(self, server_name: str, server_config: dict):
         if server_name in self._sessions:
@@ -245,8 +275,16 @@ class McpSessionPool:
     def invoke_tool(self, server_name: str, server_config: dict, tool_name: str, arguments: dict) -> str:
         if self._closed:
             raise RuntimeError("MCP session pool is closed")
+        self.start()
+        if self._jobs is None:
+            raise RuntimeError("MCP session pool failed to start")
+
+        from concurrent.futures import Future
+
+        future: Future = Future()
         with self._lock:
-            return self._run(self._invoke(server_name, server_config, tool_name, arguments))
+            self._jobs.put(("invoke", server_name, server_config, tool_name, arguments, future))
+            return future.result()
 
     async def _close_async(self) -> None:
         for entry in reversed(list(self._sessions.values())):
@@ -264,10 +302,14 @@ class McpSessionPool:
         if self._closed:
             return
         self._closed = True
-        try:
-            self._run(self._close_async())
-        finally:
-            self._loop.call_soon_threadsafe(self._loop.stop)
-            if self._thread:
-                self._thread.join(timeout=2)
-            self._loop.close()
+        if not self._thread:
+            return
+        if self._jobs is None:
+            raise RuntimeError("MCP session pool failed to start")
+
+        from concurrent.futures import Future
+
+        future: Future = Future()
+        self._jobs.put(("close", future))
+        future.result()
+        self._thread.join(timeout=2)

@@ -11,6 +11,7 @@ manual verification checklist in agent.md.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import pytest
 from pathlib import Path
@@ -216,9 +217,11 @@ class TestMcpSessionPool:
 
             async def __aenter__(self):
                 self.entered += 1
+                self.enter_task = asyncio.current_task()
                 return "reader", "writer"
 
             async def __aexit__(self, exc_type, exc, tb):
+                assert asyncio.current_task() is self.enter_task
                 self.exited += 1
 
         class FakeClientSession:
@@ -233,9 +236,11 @@ class TestMcpSessionPool:
 
             async def __aenter__(self):
                 self.entered += 1
+                self.enter_task = asyncio.current_task()
                 return self
 
             async def __aexit__(self, exc_type, exc, tb):
+                assert asyncio.current_task() is self.enter_task
                 self.exited += 1
 
             async def initialize(self):
