@@ -241,6 +241,19 @@ Container runtime:
 - Injects explicit MCP env vars into the container with `docker exec --env`.
 - Extracts absolute script/project paths from server args and mounts nearby project roots read-only.
 
+
+### MCP discovery container
+
+`/api/mcp/tools` can run without an open conversation. When `conv_id` is missing, it uses the reusable `__mcp_discovery__` container, lists MCP tools, then stops it for idle reuse.
+
+Keep this behavior intact:
+
+- Stale-container cleanup must skip `__mcp_discovery__`.
+- Real chat tool discovery/calls must still use the actual conversation `conv_id`.
+- Remote MCP servers may log harmless `AbortError`/SSE shutdown noise when discovery stops the container after tools load.
+
+Covered by tests: no-`conv_id` discovery, discovery start/stop/reuse, skipped-server response preservation, stale-cleanup skip, and normal `conv_id` behavior.
+
 ### `container_service.py`
 
 - Creates and reuses Docker containers named with `LUMEN_CONTAINER_PREFIX` plus a sanitized conversation id.
@@ -435,11 +448,11 @@ Follow the existing separation of concerns:
 
 ## Automated test suite
 
-Run `pytest` from the project root. All 240 tests must pass before merging any change.
+Run `pytest` from the project root. All 245 tests must pass before merging any change.
 
 ```bash
 pytest
-# 240 passed in ~2s
+# 245 passed in ~3s
 ```
 
 Tests are isolated: `conftest.py` redirects all filesystem paths to `tmp_path`, patches `_require_docker` and `_require_sandbox_image` in the app factory, and stubs `container_service.cleanup_stale`. No Docker daemon, real API key, or running server is needed.
