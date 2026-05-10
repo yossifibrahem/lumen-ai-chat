@@ -185,6 +185,7 @@ Key responsibilities:
 - Accumulate text and `reasoning_content`.
 - Persist partial assistant output using `TurnRecorder`.
 - Detect streamed tool calls.
+- Pre-mount host volumes for all enabled MCP servers at turn start by calling mcp_service.collect_all_extra_volumes() and container_service.ensure_container()
 - Request frontend approval for tools unless the server is set to auto-approve.
 - Invoke MCP tools through `mcp_service.invoke_tool()`.
 - Append tool messages back into the API message history.
@@ -225,6 +226,7 @@ The generator yields already-formatted SSE strings, so callers parse those strin
 - Validates only the top-level shape: `{"mcpServers": {...}}`.
 - Connects to each MCP server through stdio.
 - Uses `mcp_adapters.apply_workspace_process_options()` to configure the container runtime for each MCP server.
+- `collect_all_extra_volumes()` gathers the union of host mount volumes for a list of server names — used by `chat_turn_service` to pre-warm the container.
 - `fetch_tools()` returns OpenAI-tool-like metadata for the frontend.
 - `invoke_tool()` returns text output by joining result content blocks.
 - `run_async()` bridges async MCP calls into Flask sync route/service code.
