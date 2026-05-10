@@ -64,6 +64,9 @@ export async function fetchModels() {
     btn.title = 'Loading models…';
     btn.setAttribute('aria-label', 'Loading models');
   }
+
+  storage.set(STORAGE_KEYS.models, []);
+  renderModelList([]);
   _setModelStatus('Loading models…', 'Checking the API connection.', 'ok');
 
   try {
