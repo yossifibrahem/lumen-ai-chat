@@ -260,6 +260,43 @@ def delete_workspace(conv_id: str) -> None:
     log.info("[container] deleted workspace %s", path)
 
 
+def stop_all_containers() -> list[str]:
+    """Kill every running lumen-chat-* container.
+
+    Called on app shutdown so containers are not left running indefinitely
+    after the process exits.  Uses ``docker kill`` (immediate SIGKILL) rather
+    than ``docker stop`` because the sandbox runs ``sleep infinity`` which
+    ignores SIGTERM, making the grace period of ``docker stop`` pure wasted
+    time.  Containers are left in the stopped state rather than removed so
+    that ``ensure_container()`` can restart them quickly on the next launch;
+    ``cleanup_stale()`` at startup handles any orphaned ones.
+    """
+    result = _run([
+        "docker", "ps",
+        "--filter", f"name={CONTAINER_PREFIX}",
+        "--format", "{{.Names}}",
+    ])
+    if result.returncode != 0:
+        log.warning("[container] shutdown cleanup skipped: %s", result.stderr.strip())
+        return []
+
+    names = [
+        line.strip()
+        for line in result.stdout.splitlines()
+        if line.strip().startswith(CONTAINER_PREFIX)
+    ]
+    if not names:
+        return []
+
+    print(f"Stopping {len(names)} container(s)...", flush=True)
+    r = _run(["docker", "kill", *names])
+    if r.returncode == 0:
+        log.info("[container] shutdown: killed %s", names)
+    else:
+        log.warning("[container] shutdown: could not kill containers: %s", r.stderr.strip())
+    return names if r.returncode == 0 else []
+
+
 # ---------------------------------------------------------------------------
 # Idle reaper
 # ---------------------------------------------------------------------------

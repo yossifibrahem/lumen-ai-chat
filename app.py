@@ -6,7 +6,9 @@ that owns all routes.  On startup, Docker availability and the
 sandbox image are validated (both are required), then stale
 containers from previous runs are cleaned up.
 """
+import atexit
 import logging
+import signal
 import subprocess
 import sys
 
@@ -18,6 +20,11 @@ import container_service
 
 log = logging.getLogger(__name__)
 
+# Track whether we have already registered the shutdown handler so that
+# multiple create_app() calls in tests do not stack duplicate registrations.
+_shutdown_registered = False
+_shutdown_done = False
+
 
 def create_app() -> Flask:
     _require_docker()
@@ -26,7 +33,35 @@ def create_app() -> Flask:
     CORS(app)
     app.register_blueprint(blueprint)
     _cleanup_stale_containers()
+    _register_shutdown_cleanup()
     return app
+
+
+def _register_shutdown_cleanup() -> None:
+    """Register container stop hooks for normal exit and SIGTERM.
+
+    ``atexit`` fires on ``sys.exit()`` and ``KeyboardInterrupt`` (Ctrl-C) but
+    *not* on ``SIGTERM``.  The explicit ``SIGTERM`` handler covers production
+    deployments (gunicorn, systemd, Docker stop) where the process receives
+    SIGTERM rather than a keyboard interrupt.
+    """
+    global _shutdown_registered
+    if _shutdown_registered:
+        return
+    _shutdown_registered = True
+
+    atexit.register(_shutdown_containers)
+
+    original_sigterm = signal.getsignal(signal.SIGTERM)
+
+    def _sigterm_handler(signum, frame):
+        _shutdown_containers()
+        # Restore the previous handler and re-raise so gunicorn / the shell
+        # can observe the signal and perform its own teardown.
+        signal.signal(signal.SIGTERM, original_sigterm)
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, _sigterm_handler)
 
 
 def _require_docker() -> None:
@@ -74,6 +109,26 @@ def _cleanup_stale_containers() -> None:
             log.info("[startup] removed %d stale container(s): %s", len(removed), removed)
     except Exception as exc:
         log.warning("[startup] stale container cleanup skipped: %s", exc)
+
+
+def _shutdown_containers() -> None:
+    """Kill all running lumen-chat-* containers on app shutdown.
+
+    Non-fatal: a failure to reach Docker (e.g. Docker daemon itself was
+    stopped) is logged as a warning and does not prevent the process from
+    exiting cleanly.  The guard prevents double execution when both the
+    SIGTERM handler and atexit fire in the same shutdown sequence.
+    """
+    global _shutdown_done
+    if _shutdown_done:
+        return
+    _shutdown_done = True
+    try:
+        stopped = container_service.stop_all_containers()
+        if stopped:
+            log.info("[shutdown] stopped %d container(s): %s", len(stopped), stopped)
+    except Exception as exc:
+        log.warning("[shutdown] container stop failed: %s", exc)
 
 
 if __name__ == "__main__":
