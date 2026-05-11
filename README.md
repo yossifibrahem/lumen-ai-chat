@@ -11,7 +11,7 @@ Lumen is built for developers who want a capable local AI chat application witho
 <table>
   <tr>
     <td align="center" width="50%"><img src="https://github.com/user-attachments/assets/8c8040eb-56f1-4f37-a331-9eddaa560294" alt="new chat" /><br/><sub>New chat screen</sub></td>
-    <td align="center" width="50%"><img src="https://github.com/user-attachments/assets/e474ab80-6009-422d-ab5c-d83dd923e53e" alt="latex" /><br/><sub>LaTeX math rendering and conversation management</sub></td>
+    <td align="center" width="50%"><img src="https://github.com/user-attachments/assets/e474ab80-6009-422d-ab5c-d83dd923e53e" alt="latex" /><br/><sub>LaTeX math rendering</sub></td>
   </tr>
   <tr>
     <td align="center"><img src="https://github.com/user-attachments/assets/71b706e1-3ec6-4f2e-bdbd-145e9dcff9fb" alt="image upload" /><br/><sub>Image upload</sub></td>
