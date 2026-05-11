@@ -15,8 +15,8 @@ export const SETTINGS_DEFAULTS = {
 export const CUSTOMIZATION_DEFAULTS = {
   showSuggestionChips:   true,
   showTimestamps:        true,
-  blocksDefaultExpanded:  true,
-  groupSequentialBlocks:  true,
+  blocksDefaultExpanded:  false,
+  groupSequentialBlocks:  false,
   showCharCount:          true,
   fontSize:              'medium',    // 'small' | 'medium' | 'large'
   fontFamily:            'sora',      // 'sora' | 'tiempos' | 'mono' | 'system'
