@@ -17,7 +17,8 @@
   .msg-row { padding: 12px 14px 4px; }
   .msg-row:first-child { padding-top: 18px; }
   .msg-content { font-size: .875rem; }
-  .composer-attachment-card, .msg-attachment-card { width: min(104px, calc(50vw - 28px)); min-height: 0; border-radius: 14px; }
+  .composer-attachment-card { flex-basis: min(104px, calc(50vw - 28px)); width: min(104px, calc(50vw - 28px)); min-height: 0; border-radius: 14px; }
+  .msg-attachment-card { width: min(104px, calc(50vw - 28px)); min-height: 0; border-radius: 14px; }
   .msg-file-card { min-height: 0; padding: 9px; }
   .msg-file-card-name { font-size: .74rem; }
   .msg-file-card-subtle { font-size: .62rem; }
