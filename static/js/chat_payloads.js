@@ -33,17 +33,41 @@ export function buildMcpToolMetaPayload() {
     }));
 }
 
-/** Fetch a server-stored image and return it as a base64 data-URL. */
+/** Fetch a server-stored image and return it as a base64 data-URL.
+ *
+ * Uses a simple LRU cache (insertion-order Map, evict oldest when over cap)
+ * to avoid accumulating unbounded base64 blobs in long sessions.
+ */
+const IMAGE_CACHE_MAX = 50;
 const imageDataUrlCache = new Map();
 
+function _cacheGet(ref) {
+  if (!imageDataUrlCache.has(ref)) return undefined;
+  // Re-insert to mark as most-recently-used.
+  const val = imageDataUrlCache.get(ref);
+  imageDataUrlCache.delete(ref);
+  imageDataUrlCache.set(ref, val);
+  return val;
+}
+
+function _cacheSet(ref, url) {
+  if (imageDataUrlCache.has(ref)) imageDataUrlCache.delete(ref);
+  imageDataUrlCache.set(ref, url);
+  if (imageDataUrlCache.size > IMAGE_CACHE_MAX) {
+    // Evict the oldest entry (first key in insertion order).
+    imageDataUrlCache.delete(imageDataUrlCache.keys().next().value);
+  }
+}
+
 async function imageRefToDataUrl(ref) {
-  if (imageDataUrlCache.has(ref)) return imageDataUrlCache.get(ref);
+  const cached = _cacheGet(ref);
+  if (cached !== undefined) return cached;
   const resp = await fetch(`/api/images/${ref}`);
   const blob = await resp.blob();
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload  = () => {
-      imageDataUrlCache.set(ref, reader.result);
+      _cacheSet(ref, reader.result);
       resolve(reader.result);
     };
     reader.onerror = reject;

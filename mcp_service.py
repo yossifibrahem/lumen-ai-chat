@@ -14,7 +14,9 @@ from typing import Any
 
 from mcp_adapters import apply_workspace_process_options, expand_config_env, extract_host_mounts
 
-MCP_CONFIG_FILE = Path("mcp.json")
+_MCP_CONFIG_DIR = Path.home() / ".lumen"
+_MCP_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+MCP_CONFIG_FILE = Path(os.getenv("LUMEN_MCP_CONFIG_FILE", str(_MCP_CONFIG_DIR / "mcp.json")))
 log = logging.getLogger(__name__)
 
 _config_cache: dict | None = None
@@ -169,15 +171,21 @@ async def invoke_tool(server_name: str, server_config: dict, tool_name: str, arg
 
 # ── Sync bridge ───────────────────────────────────────────────────────────────
 
+# Shared executor for bridging async MCP calls into sync Flask code.
+# One thread per concurrent caller is enough; each thread runs its own event
+# loop via asyncio.run().  A module-level pool avoids creating and tearing down
+# a ThreadPoolExecutor on every tool call (which was the previous behaviour).
+_async_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="mcp-async")
+
+
 def run_async(coro) -> Any:
-    """Run an async coroutine from sync code without spawning a thread unless one is needed."""
+    """Run an async coroutine from sync code without spawning a new thread unless one is needed."""
     try:
         asyncio.get_running_loop()
     except RuntimeError:
         return asyncio.run(coro)
 
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(asyncio.run, coro).result()
+    return _async_executor.submit(asyncio.run, coro).result()
 
 # ── Per-turn session pool ─────────────────────────────────────────────────────
 

@@ -5,6 +5,7 @@ responses. Long-running chat and workspace file logic live in dedicated modules.
 """
 from __future__ import annotations
 
+import re
 import threading
 import uuid
 
@@ -67,11 +68,36 @@ def _json_result(result: tuple[dict, int]):
     return jsonify(payload), status
 
 
+_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+
+
+def _bad_conv_id(conv_id: str):
+    """Return a 404 response if conv_id is not a well-formed UUID, else None.
+
+    Returns 404 (not 400) so that malformed ids are indistinguishable from
+    missing ones — callers learn nothing about the id format from the error.
+    """
+    if not _UUID_RE.match(conv_id):
+        return jsonify({"error": "Not found"}), 404
+    return None
+
+
 # ── UI ────────────────────────────────────────────────────────────────────────
 
 @blueprint.route("/")
 def index():
     return render_template("index.html")
+
+
+# ── Health ────────────────────────────────────────────────────────────────────
+
+@blueprint.route("/health")
+def health():
+    """Minimal liveness probe for container orchestrators and load balancers."""
+    return jsonify({"ok": True})
 
 
 # ── Conversations ─────────────────────────────────────────────────────────────
@@ -88,6 +114,8 @@ def create_conversation():
 
 @blueprint.route("/api/conversations/<conv_id>", methods=["GET"])
 def get_conversation(conv_id: str):
+    if err := _bad_conv_id(conv_id):
+        return err
     data = store.load(conv_id)
     if not data:
         return jsonify({"error": "Not found"}), 404
@@ -97,11 +125,15 @@ def get_conversation(conv_id: str):
 
 @blueprint.route("/api/conversations/<conv_id>/workspace", methods=["GET"])
 def get_conversation_workspace(conv_id: str):
+    if err := _bad_conv_id(conv_id):
+        return err
     return jsonify({"working_directory": str(store.working_directory(conv_id))})
 
 
 @blueprint.route("/api/conversations/<conv_id>/container", methods=["GET"])
 def get_container_status(conv_id: str):
+    if err := _bad_conv_id(conv_id):
+        return err
     return jsonify({
         "conv_id": conv_id,
         "container_name": container_service.container_name(conv_id),
@@ -112,6 +144,8 @@ def get_container_status(conv_id: str):
 
 @blueprint.route("/api/conversations/<conv_id>", methods=["PUT"])
 def update_conversation(conv_id: str):
+    if err := _bad_conv_id(conv_id):
+        return err
     allowed_fields = {"title", "system_prompt"}
     body = _body()
     data = store.load(conv_id)
@@ -126,6 +160,8 @@ def update_conversation(conv_id: str):
 
 @blueprint.route("/api/conversations/<conv_id>", methods=["DELETE"])
 def delete_conversation(conv_id: str):
+    if err := _bad_conv_id(conv_id):
+        return err
     if not store.delete(conv_id):
         return jsonify({"error": "Not found"}), 404
     container_service.stop_container(conv_id)
@@ -207,6 +243,8 @@ def call_mcp_tool():
 
 @blueprint.route("/api/conversations/<conv_id>/files", methods=["GET", "POST"])
 def conversation_files(conv_id: str):
+    if err := _bad_conv_id(conv_id):
+        return err
     if request.method == "GET":
         return _json_result(workspace_service.list_dir(conv_id, request.args.get("path", "")))
 
@@ -218,11 +256,15 @@ def conversation_files(conv_id: str):
 
 @blueprint.route("/api/conversations/<conv_id>/files/content", methods=["GET"])
 def get_conversation_file_content(conv_id: str):
+    if err := _bad_conv_id(conv_id):
+        return err
     return _json_result(workspace_service.read_file(conv_id, request.args.get("path", "")))
 
 
 @blueprint.route("/api/conversations/<conv_id>/files/download", methods=["GET"])
 def download_conversation_file(conv_id: str):
+    if err := _bad_conv_id(conv_id):
+        return err
     if not store.load(conv_id):
         return jsonify({"error": "Conversation not found"}), 404
     try:
