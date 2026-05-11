@@ -73,7 +73,7 @@ The app is intentionally lightweight: no database, no frontend framework, no bun
         ├── icons.js               # SVG icon strings
         ├── markdown.js            # Markdown rendering and safe file-link enhancement
         ├── mcp.js                 # MCP config UI, tool loading, enable/auto-approve toggles
-        ├── mcp_policy.js          # System prompt injected when MCP tools are enabled
+        ├── app_policy.js          # App-level system prompt guidance
         ├── mcp_tool_ui.js         # Generic tool-result rendering helpers
         ├── renderer.js            # Chat/message/thinking/tool strip rendering
         ├── settings.js            # API/model/chat settings UI
@@ -429,7 +429,7 @@ There are two parallel histories:
 
 Do not assume they have the same indices. Use helper mapping logic when editing/regenerating messages.
 
-### MCP frontend: `mcp.js`, `mcp_policy.js`, `mcp_tool_ui.js`, `tool_adapters/`
+### MCP/app frontend: `mcp.js`, `app_policy.js`, `mcp_tool_ui.js`, `tool_adapters/`
 
 `mcp.js` handles:
 
@@ -440,13 +440,13 @@ Do not assume they have the same indices. Use helper mapping logic when editing/
 - Per-server icon selection.
 - Rendering grouped tool lists.
 
-`mcp_policy.js` injects model instructions when MCP tools are enabled. It tells the model:
+`app_policy.js` injects app-level model instructions. It tells the model:
 
-- Which tools are available.
-- Workspace semantics for the container runtime.
-- To include a concise `description` argument first for each MCP tool call.
-- To view files before and after filesystem edits.
+- That it is running in Lumen AI Chat with per-chat workspace files.
+- How to use uploaded file paths appended to user messages.
 - To use `file:/workspace/...` links only for real workspace files.
+
+Tool-specific behavior belongs in the MCP tool schemas/Zod definitions, not in `app_policy.js`. Keep this file focused on app-level behavior only.
 
 `mcp_tool_ui.js` and `tool_adapters/` control how tool calls/results are displayed. To add rich rendering for a new MCP tool, prefer adding a tool adapter rather than special-casing in `renderer.js`.
 

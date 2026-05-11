@@ -3,7 +3,7 @@
 import { api } from './api.js';
 import { state } from './state.js';
 import { isServerEnabled, isServerAutoApprove } from './mcp.js';
-import { buildMcpSystemPrompt as buildMcpPrompt } from './mcp_policy.js';
+import { buildAppSystemPrompt } from './app_policy.js';
 
 function namespacedToolName(tool) {
   return `${tool.server}_${tool.name}`;
@@ -126,7 +126,7 @@ function prepareMessageForApi(message) {
 
 export async function buildApiMessages(turnMessages) {
   const messages = [];
-  const systemParts = [state.systemPrompt, buildMcpPrompt({ tools: state.mcpTools, isServerEnabled })].filter(Boolean);
+  const systemParts = [state.systemPrompt, buildAppSystemPrompt()].filter(Boolean);
   if (systemParts.length) messages.push({ role: 'system', content: systemParts.join('\n\n') });
 
   messages.push(...turnMessages.map(prepareMessageForApi));
