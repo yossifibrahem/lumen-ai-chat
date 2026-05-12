@@ -1,16 +1,21 @@
 /* Sidebar layout, search, conversation list, and sidebar footer actions. */
 
 /* ─── Sidebar ─────────────────────────────────────────────────────────────── */
+#btn-toggle-sidebar { color: var(--text2); }
+#btn-toggle-sidebar:hover { color: var(--text); background: var(--surface); }
+#btn-toggle-sidebar svg { width: 16px; height: 16px; }
+
 #sidebar {
   width: var(--sidebar-w);
-  min-width: var(--sidebar-w);
-  height: 100dvh;
-  background: var(--bg);
-  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+
   position: relative;
   z-index: 10;
+  min-width: var(--sidebar-w);
+  height: 100dvh;
 }
 #sidebar.collapsed { transform: translateX(calc(-1 * var(--sidebar-w))); position: fixed; }
 #sidebar-header { padding: 14px 10px 6px; }

@@ -40,7 +40,7 @@ export function toggleSidebar(forceOpen) {
       backdrop = document.createElement('div');
       backdrop.id = 'sidebar-backdrop';
       document.body.appendChild(backdrop);
-      backdrop.addEventListener('click', () => toggleSidebar(false));
+      backdrop.addEventListener('click', () => toggleSidebar(true));
     }
     if (open) {
       backdrop.classList.add('visible');
