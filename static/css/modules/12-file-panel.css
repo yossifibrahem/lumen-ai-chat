@@ -96,6 +96,9 @@ body.file-panel-resizing { cursor: col-resize; user-select: none; }
 .file-preview-actions svg { width: 14px; height: 14px; }
 #btn-back-files { color: var(--text2); }
 
+#btn-toggle-md-view { transition: color var(--fast), background var(--fast); }
+#btn-toggle-md-view.active { color: var(--accent); background: var(--accent-subtle, var(--surface2)); }
+
 #file-panel-list {
   flex: 1;
   min-height: 0;
@@ -221,4 +224,3 @@ body.file-panel-resizing { cursor: col-resize; user-select: none; }
   .file-panel-header,
   .file-preview-header { min-height: calc(50px + env(safe-area-inset-top, 0px)); }
 }
-

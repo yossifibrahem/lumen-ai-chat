@@ -15,6 +15,8 @@ const DEFAULT_PANEL_WIDTH = 380;
 let currentPath = '/workspace';
 let selectedPath = null;
 let isOpen = false;
+let mdViewMode = 'render'; // 'render' | 'code' — only relevant when a markdown file is open
+let _lastMarkdownContent = null; // raw content of the currently-previewed markdown file
 
 const els = () => ({
   panel:    document.getElementById('file-panel'),
@@ -32,6 +34,7 @@ const els = () => ({
   body:     document.getElementById('file-preview-body'),
   copy:     document.getElementById('btn-copy-file'),
   download: document.getElementById('btn-download-file'),
+  mdToggle: document.getElementById('btn-toggle-md-view'),
 });
 
 function maxPanelWidth() {
@@ -83,6 +86,51 @@ function isMissingWorkspacePath(error = '') {
   return ['Path not found', 'File not found', 'Path is not a file'].includes(error);
 }
 
+// ── Markdown view-mode toggle helpers ────────────────────────────────────────
+
+function setMdToggleVisible(visible, name = '') {
+  const { mdToggle } = els();
+  if (!mdToggle) return;
+  mdToggle.hidden = !visible;
+  if (visible) _updateMdToggleIcon();
+}
+
+function _updateMdToggleIcon() {
+  const { mdToggle } = els();
+  if (!mdToggle) return;
+  const span = mdToggle.querySelector('span[data-icon]');
+  if (!span) return;
+  if (mdViewMode === 'render') {
+    // Currently showing rendered — icon hints "switch to code"
+    span.dataset.icon = 'eyeShow';
+    span.innerHTML = ICONS.eyeShow;
+    mdToggle.title = 'View source';
+    mdToggle.setAttribute('aria-label', 'View source');
+    mdToggle.classList.remove('active');
+  } else {
+    // Currently showing code — icon hints "switch to rendered"
+    span.dataset.icon = 'eyeHide';
+    span.innerHTML = ICONS.eyeHide;
+    mdToggle.title = 'View rendered';
+    mdToggle.setAttribute('aria-label', 'View rendered');
+    mdToggle.classList.add('active');
+  }
+}
+
+function _applyMdView(body, content) {
+  const preview = document.createElement('div');
+  body.innerHTML = '';
+  if (mdViewMode === 'render') {
+    preview.className = 'file-preview-content msg-content';
+    body.appendChild(preview);
+    applyMarkdown(preview, content, { copyCodeButtons: false });
+  } else {
+    preview.className = 'file-preview-content msg-content file-preview-code';
+    body.appendChild(preview);
+    applyMarkdown(preview, codeFenceFor(content, 'markdown'), { copyCodeButtons: false });
+  }
+}
+
 function setPanelOpen(open, { persist = true } = {}) {
   isOpen = open;
   if (persist) storage.set(STORAGE_KEYS.filePanelOpen, open);
@@ -101,8 +149,10 @@ function setPreviewOpen(open) {
 }
 
 function resetPreview() {
-  const { title, meta, body, copy, download } = els();
+  const { title, meta, body, copy, download, mdToggle } = els();
   selectedPath = null;
+  _lastMarkdownContent = null;
+  mdViewMode = 'render';
   title.textContent = 'Preview';
   meta.textContent = '';
   body.innerHTML = '';
@@ -110,6 +160,7 @@ function resetPreview() {
   copy.removeAttribute('data-content');
   download.disabled = true;
   download.removeAttribute('data-path');
+  if (mdToggle) mdToggle.hidden = true;
 }
 
 function closePreview() {
@@ -199,10 +250,17 @@ async function loadFileList(path = currentPath, { fallbackToRoot = true } = {}) 
 
 async function loadFilePreview(path) {
   if (!state.convId || !path) return;
+
+  // Reset view mode when navigating to a different file
+  if (path !== selectedPath) {
+    mdViewMode = 'render';
+    _lastMarkdownContent = null;
+  }
+
   selectedPath = path;
   setPreviewOpen(true);
 
-  const { body, title, meta, copy, download } = els();
+  const { body, title, meta, copy, download, mdToggle } = els();
   if (!body.children.length) {
     body.innerHTML = '<div class="file-panel-empty">Loading preview…</div>';
   }
@@ -210,6 +268,7 @@ async function loadFilePreview(path) {
   copy.removeAttribute('data-content');
   download.disabled = true;
   download.removeAttribute('data-path');
+  if (mdToggle) mdToggle.hidden = true;
 
   const data = await api.get(`/api/conversations/${encodeURIComponent(state.convId)}/files/content?path=${encodeURIComponent(path)}`);
   if (data.error) {
@@ -241,14 +300,21 @@ async function loadFilePreview(path) {
   copy.disabled = false;
   copy.dataset.content = data.content || '';
 
-  const preview = document.createElement('div');
-  preview.className = `file-preview-content msg-content${isMarkdown(data.name) ? '' : ' file-preview-code'}`;
-  body.innerHTML = '';
-  body.appendChild(preview);
+  if (isMarkdown(data.name)) {
+    _lastMarkdownContent = data.content || '';
+    setMdToggleVisible(true, data.name);
+    _applyMdView(body, _lastMarkdownContent);
+  } else {
+    _lastMarkdownContent = null;
+    if (mdToggle) mdToggle.hidden = true;
+    const preview = document.createElement('div');
+    preview.className = 'file-preview-content msg-content file-preview-code';
+    body.innerHTML = '';
+    body.appendChild(preview);
+    const language = languageFromName(data.name);
+    applyMarkdown(preview, codeFenceFor(data.content || '', language), { copyCodeButtons: false });
+  }
 
-  const language = languageFromName(data.name);
-  const markdown = isMarkdown(data.name) ? data.content || '' : codeFenceFor(data.content || '', language);
-  applyMarkdown(preview, markdown, { copyCodeButtons: false });
   return true;
 }
 
@@ -308,7 +374,7 @@ export function resetFilePanel() {
 
 
 export function initFilePanel() {
-  const { toggle, close, refresh, previewRefresh, previewClose, back, copy, download } = els();
+  const { toggle, close, refresh, previewRefresh, previewClose, back, copy, download, mdToggle } = els();
   initPanelResize();
   setPanelOpen(storage.get(STORAGE_KEYS.filePanelOpen, false), { persist: false });
   setEmptyPreview();
@@ -324,6 +390,14 @@ export function initFilePanel() {
   back?.addEventListener('click', closePreview);
   refresh?.addEventListener('click', refreshPanel);
   previewRefresh?.addEventListener('click', refreshPanel);
+
+  mdToggle?.addEventListener('click', () => {
+    if (!_lastMarkdownContent) return;
+    mdViewMode = mdViewMode === 'render' ? 'code' : 'render';
+    _updateMdToggleIcon();
+    const { body } = els();
+    _applyMdView(body, _lastMarkdownContent);
+  });
 
   copy?.addEventListener('click', async () => {
     try {
