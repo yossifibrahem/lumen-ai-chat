@@ -42,11 +42,10 @@
   border: 0px solid var(--border2);
   border-radius: 5px;
   color: var(--text3);
-  opacity: 0;
+  background: transparent;
 }
 .code-copy svg { width: 12px; height: 12px; }
-.msg-content pre:hover .code-copy { opacity: 1; }
-.code-copy:hover { color: var(--text); background: var(--surface2); }
+.code-copy:hover { color: var(--text); background: var(--surface); }
 .inline-error { color: var(--red); }
 
 .msg-content a,
