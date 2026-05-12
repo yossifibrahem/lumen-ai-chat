@@ -101,7 +101,7 @@
   align-items: center;
   gap: 9px;
   min-height: 44px;
-  padding: 8px;
+  padding: 0 8px 0 8px;
   margin-bottom: 2px;
   border: 1px solid transparent;
   border-radius: 8px;
@@ -115,27 +115,9 @@
 }
 .conv-item.active {
   background: var(--surface);
-  /* border-color: var(--border2); */
   color: var(--text);
 }
-.conv-icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  display: grid;
-  place-items: center;
-  background: transparent;
-  color: var(--text3);
-}
-.conv-icon svg { width: 12px; height: 12px; }
-.conv-item:hover .conv-icon { color: var(--text2); }
-.conv-item.active .conv-icon {
-  color: var(--accent);
-}
-.conv-info {
-  flex: 1;
-  min-width: 0;
-}
+.conv-item.active .conv-menu-btn { opacity: 1; }
 .conv-title {
   color: inherit;
   font-size: .74rem;
@@ -145,11 +127,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.conv-menu-wrap { position: relative; }
+.conv-menu-wrap { position: absolute; right: 8px; }
 .conv-menu-btn {
   width: 28px;
   height: 28px;
-  padding: 0;
+  padding: 1px;
   border-radius: 8px;
   color: var(--text3);
   opacity: 0;

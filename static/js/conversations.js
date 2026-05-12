@@ -51,9 +51,6 @@ function _buildConvItem(conv) {
   const title = conv.title || 'Untitled';
 
   item.innerHTML = `
-    <div class="conv-icon">
-      ${ICONS.chat}
-    </div>
     <div class="conv-info">
       <div class="conv-title">${escapeHtml(title)}</div>
     </div>
@@ -278,4 +275,3 @@ export async function renameConversationTitle() {
 
   await persistConversationFor(state.convId, { title });
 }
-

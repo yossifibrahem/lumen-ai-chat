@@ -132,7 +132,7 @@ function createCopyAction(getText) {
   const btn = createMessageAction(ICONS.copy, () => {
     navigator.clipboard.writeText(getText());
     btn.textContent = '✓ copied';
-    setTimeout(() => { btn.innerHTML = `${ICONS.copy} copy`; }, 1500);
+    setTimeout(() => { btn.innerHTML = `${ICONS.copy}`; }, 1500);
   });
   return btn;
 }
