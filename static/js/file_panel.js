@@ -3,6 +3,7 @@
 import { api } from './api.js';
 import { STORAGE_KEYS, state } from './state.js';
 import { ICONS } from './icons.js';
+
 import { applyMarkdown, codeFenceFor } from './markdown.js';
 import { showToast } from './ui.js';
 import { storage } from './storage.js';
@@ -15,8 +16,8 @@ const DEFAULT_PANEL_WIDTH = 380;
 let currentPath = '/workspace';
 let selectedPath = null;
 let isOpen = false;
-let mdViewMode = 'render'; // 'render' | 'code' — only relevant when a markdown file is open
-let _lastMarkdownContent = null; // raw content of the currently-previewed markdown file
+let renderMode = 'render';   // 'render' | 'code'
+let currentFileData = null;  // last loaded file payload, for re-rendering without re-fetch
 
 const els = () => ({
   panel:    document.getElementById('file-panel'),
@@ -34,7 +35,7 @@ const els = () => ({
   body:     document.getElementById('file-preview-body'),
   copy:     document.getElementById('btn-copy-file'),
   download: document.getElementById('btn-download-file'),
-  mdToggle: document.getElementById('btn-toggle-md-view'),
+  toggleRender: document.getElementById('btn-toggle-render'),
 });
 
 function maxPanelWidth() {
@@ -82,53 +83,16 @@ function isMarkdown(name = '') {
   return ['md', 'markdown'].includes(ext(name));
 }
 
+function isHtml(name = '') {
+  return ['html', 'htm'].includes(ext(name));
+}
+
+function isRenderable(name = '') {
+  return isMarkdown(name) || isHtml(name);
+}
+
 function isMissingWorkspacePath(error = '') {
   return ['Path not found', 'File not found', 'Path is not a file'].includes(error);
-}
-
-// ── Markdown view-mode toggle helpers ────────────────────────────────────────
-
-function setMdToggleVisible(visible, name = '') {
-  const { mdToggle } = els();
-  if (!mdToggle) return;
-  mdToggle.hidden = !visible;
-  if (visible) _updateMdToggleIcon();
-}
-
-function _updateMdToggleIcon() {
-  const { mdToggle } = els();
-  if (!mdToggle) return;
-  const span = mdToggle.querySelector('span[data-icon]');
-  if (!span) return;
-  if (mdViewMode === 'render') {
-    // Currently showing rendered — icon hints "switch to code"
-    span.dataset.icon = 'eyeShow';
-    span.innerHTML = ICONS.eyeShow;
-    mdToggle.title = 'View source';
-    mdToggle.setAttribute('aria-label', 'View source');
-    mdToggle.classList.remove('active');
-  } else {
-    // Currently showing code — icon hints "switch to rendered"
-    span.dataset.icon = 'eyeHide';
-    span.innerHTML = ICONS.eyeHide;
-    mdToggle.title = 'View rendered';
-    mdToggle.setAttribute('aria-label', 'View rendered');
-    mdToggle.classList.add('active');
-  }
-}
-
-function _applyMdView(body, content) {
-  const preview = document.createElement('div');
-  body.innerHTML = '';
-  if (mdViewMode === 'render') {
-    preview.className = 'file-preview-content msg-content';
-    body.appendChild(preview);
-    applyMarkdown(preview, content, { copyCodeButtons: false });
-  } else {
-    preview.className = 'file-preview-content msg-content file-preview-code';
-    body.appendChild(preview);
-    applyMarkdown(preview, codeFenceFor(content, 'markdown'), { copyCodeButtons: false });
-  }
 }
 
 function setPanelOpen(open, { persist = true } = {}) {
@@ -148,11 +112,73 @@ function setPreviewOpen(open) {
   panel?.classList.toggle('preview-open', open);
 }
 
+function updateToggleButton(name, mode) {
+  const { toggleRender } = els();
+  if (!toggleRender) return;
+
+  if (!isRenderable(name)) {
+    toggleRender.hidden = true;
+    return;
+  }
+
+  toggleRender.hidden = false;
+  if (mode === 'render') {
+    toggleRender.innerHTML = ICONS.eyeShow;
+    toggleRender.title = 'View source';
+    toggleRender.setAttribute('aria-label', 'View source');
+    toggleRender.classList.add('active');
+  } else {
+    toggleRender.innerHTML = ICONS.eyeHide;
+    toggleRender.title = 'Preview';
+    toggleRender.setAttribute('aria-label', 'Preview');
+    toggleRender.classList.remove('active');
+  }
+}
+
+function renderContent(data, mode) {
+  const { body } = els();
+  body.innerHTML = '';
+
+  if (isHtml(data.name)) {
+    if (mode === 'render') {
+      const iframe = document.createElement('iframe');
+      iframe.className = 'file-preview-iframe';
+      iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+      iframe.srcdoc = data.content || '';
+      body.appendChild(iframe);
+    } else {
+      const preview = document.createElement('div');
+      preview.className = 'file-preview-content msg-content file-preview-code';
+      body.appendChild(preview);
+      applyMarkdown(preview, codeFenceFor(data.content || '', 'html'), { copyCodeButtons: false });
+    }
+  } else if (isMarkdown(data.name)) {
+    if (mode === 'render') {
+      const preview = document.createElement('div');
+      preview.className = 'file-preview-content msg-content';
+      body.appendChild(preview);
+      applyMarkdown(preview, data.content || '', { copyCodeButtons: false });
+    } else {
+      const preview = document.createElement('div');
+      preview.className = 'file-preview-content msg-content file-preview-code';
+      body.appendChild(preview);
+      applyMarkdown(preview, codeFenceFor(data.content || '', 'markdown'), { copyCodeButtons: false });
+    }
+  } else {
+    const language = languageFromName(data.name);
+    const preview = document.createElement('div');
+    preview.className = 'file-preview-content msg-content file-preview-code';
+    body.appendChild(preview);
+    applyMarkdown(preview, codeFenceFor(data.content || '', language), { copyCodeButtons: false });
+  }
+}
+
+
 function resetPreview() {
-  const { title, meta, body, copy, download, mdToggle } = els();
+  const { title, meta, body, copy, download, toggleRender } = els();
   selectedPath = null;
-  _lastMarkdownContent = null;
-  mdViewMode = 'render';
+  currentFileData = null;
+  renderMode = 'render';
   title.textContent = 'Preview';
   meta.textContent = '';
   body.innerHTML = '';
@@ -160,7 +186,7 @@ function resetPreview() {
   copy.removeAttribute('data-content');
   download.disabled = true;
   download.removeAttribute('data-path');
-  if (mdToggle) mdToggle.hidden = true;
+  if (toggleRender) toggleRender.hidden = true;
 }
 
 function closePreview() {
@@ -250,17 +276,10 @@ async function loadFileList(path = currentPath, { fallbackToRoot = true } = {}) 
 
 async function loadFilePreview(path) {
   if (!state.convId || !path) return;
-
-  // Reset view mode when navigating to a different file
-  if (path !== selectedPath) {
-    mdViewMode = 'render';
-    _lastMarkdownContent = null;
-  }
-
   selectedPath = path;
   setPreviewOpen(true);
 
-  const { body, title, meta, copy, download, mdToggle } = els();
+  const { body, title, meta, copy, download } = els();
   if (!body.children.length) {
     body.innerHTML = '<div class="file-panel-empty">Loading preview…</div>';
   }
@@ -268,7 +287,6 @@ async function loadFilePreview(path) {
   copy.removeAttribute('data-content');
   download.disabled = true;
   download.removeAttribute('data-path');
-  if (mdToggle) mdToggle.hidden = true;
 
   const data = await api.get(`/api/conversations/${encodeURIComponent(state.convId)}/files/content?path=${encodeURIComponent(path)}`);
   if (data.error) {
@@ -300,21 +318,10 @@ async function loadFilePreview(path) {
   copy.disabled = false;
   copy.dataset.content = data.content || '';
 
-  if (isMarkdown(data.name)) {
-    _lastMarkdownContent = data.content || '';
-    setMdToggleVisible(true, data.name);
-    _applyMdView(body, _lastMarkdownContent);
-  } else {
-    _lastMarkdownContent = null;
-    if (mdToggle) mdToggle.hidden = true;
-    const preview = document.createElement('div');
-    preview.className = 'file-preview-content msg-content file-preview-code';
-    body.innerHTML = '';
-    body.appendChild(preview);
-    const language = languageFromName(data.name);
-    applyMarkdown(preview, codeFenceFor(data.content || '', language), { copyCodeButtons: false });
-  }
-
+  currentFileData = data;
+  renderMode = 'render';
+  updateToggleButton(data.name, renderMode);
+  renderContent(data, renderMode);
   return true;
 }
 
@@ -374,7 +381,7 @@ export function resetFilePanel() {
 
 
 export function initFilePanel() {
-  const { toggle, close, refresh, previewRefresh, previewClose, back, copy, download, mdToggle } = els();
+  const { toggle, close, refresh, previewRefresh, previewClose, back, copy, download, toggleRender } = els();
   initPanelResize();
   setPanelOpen(storage.get(STORAGE_KEYS.filePanelOpen, false), { persist: false });
   setEmptyPreview();
@@ -391,12 +398,11 @@ export function initFilePanel() {
   refresh?.addEventListener('click', refreshPanel);
   previewRefresh?.addEventListener('click', refreshPanel);
 
-  mdToggle?.addEventListener('click', () => {
-    if (!_lastMarkdownContent) return;
-    mdViewMode = mdViewMode === 'render' ? 'code' : 'render';
-    _updateMdToggleIcon();
-    const { body } = els();
-    _applyMdView(body, _lastMarkdownContent);
+  toggleRender?.addEventListener('click', () => {
+    if (!currentFileData) return;
+    renderMode = renderMode === 'render' ? 'code' : 'render';
+    updateToggleButton(currentFileData.name, renderMode);
+    renderContent(currentFileData, renderMode);
   });
 
   copy?.addEventListener('click', async () => {
