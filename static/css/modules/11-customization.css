@@ -40,7 +40,7 @@ html.hide-suggestion-chips #suggestions-bar { display: none !important; }
   position: relative;
   width: 40px;
   height: 22px;
-  background: var(--surface3);
+  background: var(--surface);
   border: 1px solid var(--border2);
   border-radius: 999px;
   transition: background var(--fast), border-color var(--fast);

@@ -103,7 +103,7 @@
   border: none;
   background: none;
 }
-#attach-btn:hover { color: var(--text); background: var(--surface3); }
+#attach-btn:hover { color: var(--text); background: var(--surface); }
 #attach-btn svg { width: 15px; height: 15px; }
 
 #mic-btn {
@@ -117,7 +117,7 @@
   background: none;
   transition: color var(--fast), background var(--fast);
 }
-#mic-btn:hover { color: var(--text); background: var(--surface3); }
+#mic-btn:hover { color: var(--text); background: var(--surface); }
 #mic-btn svg { width: 15px; height: 15px; }
 #mic-btn.recording {
   color: var(--accent);
@@ -136,7 +136,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 5px 9px 5px 8px;
+  padding: 8px 8px 8px 8px;
   border: none;
   border-radius: 8px;
   background: none;
@@ -147,10 +147,10 @@
   max-width: 200px;
   transition: color var(--fast), background var(--fast);
 }
-#model-badge:hover { color: var(--text); background: var(--surface3); }
+#model-badge:hover { color: var(--text); background: var(--surface); }
 .model-icon { display: inline-flex; width: 12px; height: 12px; opacity: .6; flex-shrink: 0; }
 #model-badge.open .model-icon { opacity: 1; }
-#model-badge.open { color: var(--accent); background: var(--accent-dim); }
+#model-badge.open { color: var(--text); background: var(--accent-dim); }
 #model-badge-label { overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
 #model-badge-chevron { display: inline-flex; transition: transform .18s; }
 #model-badge-chevron svg { width: 11px; height: 11px; }
@@ -167,7 +167,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--surface);
+  background: var(--surface2);
   border: 1px solid var(--border2);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -199,8 +199,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.mp-chip:hover { background: var(--surface2); color: var(--text); }
-:is(.mp-chip, .model-chip).selected { background: var(--accent-dim); color: var(--accent);}
+.mp-chip:hover { background: var(--surface); color: var(--text); }
+:is(.mp-chip, .model-chip).selected { background: var(--surface); color: var(--text);}
 .mp-empty { display: block; padding: 10px; color: var(--text3); font-size: .7rem; text-align: center; }
 
 /* ─── Send / stop buttons ─────────────────────────────────────────────────── */
@@ -263,8 +263,8 @@
   gap: 6px;
   padding: 7px 14px;
   border: 1px solid var(--border);
-  border-radius: 20px;
-  background: var(--surface3);
+  border-radius: 8px;
+  background: var(--bg);
   color: var(--text2);
   font-family: var(--font-mono);
   font-size: .7rem;
@@ -274,7 +274,7 @@
 }
 .suggestion-chip:hover {
   border-color: var(--border2);
-  background: var(--surface2);
+  background: var(--surface);
   color: var(--text);
 }
 .suggestion-chip svg { width: 12px; height: 12px; opacity: .6; }

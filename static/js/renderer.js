@@ -122,14 +122,14 @@ function prepareAssistantRow() {
   return row;
 }
 
-function createMessageAction(icon, label, onClick) {
-  const btn = createElement('button', { className: 'msg-action-btn', html: `${icon} ${label}` });
+function createMessageAction(icon, onClick) {
+  const btn = createElement('button', { className: 'msg-action-btn', html: `${icon}` });
   btn.addEventListener('click', onClick);
   return btn;
 }
 
 function createCopyAction(getText) {
-  const btn = createMessageAction(ICONS.copy, 'copy', () => {
+  const btn = createMessageAction(ICONS.copy, () => {
     navigator.clipboard.writeText(getText());
     btn.textContent = '✓ copied';
     setTimeout(() => { btn.innerHTML = `${ICONS.copy} copy`; }, 1500);
@@ -147,7 +147,7 @@ function addMessageFooter(row, actions = []) {
 function addUserFooter(row, getText, logIndex, getContent = () => null) {
   addMessageFooter(row, [
     createCopyAction(getText),
-    createMessageAction(ICONS.edit, 'edit', () => {
+    createMessageAction(ICONS.edit, () => {
       if (logIndex < 0) return;
       startInlineEdit(row, logIndex, getText(), getContent());
     }),
@@ -158,7 +158,7 @@ function addAssistantFooter(row, getText, logIndex) {
   const actions = [createCopyAction(getText)];
 
   if (logIndex >= 0) {
-    actions.push(createMessageAction(ICONS.refresh, 'regenerate', () => {
+    actions.push(createMessageAction(ICONS.refresh, () => {
       row.dispatchEvent(new CustomEvent('chat:regenerate', { bubbles: true, detail: { logIndex } }));
     }));
   }
