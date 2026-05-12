@@ -76,7 +76,7 @@ svg { flex-shrink: 0; }
   border: none;
 }
 
-:is(#btn-toggle-sidebar, #btn-toggle-files, .modal-close, .conv-menu-btn, #attach-btn, #mic-btn, .file-panel-actions button, .file-preview-actions button, .msg-action-btn, .tc-allow, .tc-deny, .modal-tab, .model-refresh-btn, .eye-btn) {
+:is(#btn-toggle-sidebar, #btn-toggle-files, .modal-close, .conv-menu-btn, #attach-btn, #mic-btn, #msg-action-btn, .file-panel-actions button, .file-preview-actions button,.tc-allow, .tc-deny, .modal-tab, .model-refresh-btn, .eye-btn) {
   background: none;
 }
 
