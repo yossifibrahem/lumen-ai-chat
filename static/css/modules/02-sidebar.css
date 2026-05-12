@@ -5,7 +5,7 @@
   width: var(--sidebar-w);
   min-width: var(--sidebar-w);
   height: 100dvh;
-  background: var(--surface);
+  background: var(--bg);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -24,7 +24,6 @@
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: var(--surface2);
   border: 1px solid var(--border);
   color: var(--accent);
   display: grid;
@@ -107,11 +106,11 @@
   transition: color var(--fast), background var(--fast), border-color var(--fast);
 }
 .conv-item:hover {
-  background: var(--surface2);
+  background: var(--surface);
   color: var(--text);
 }
 .conv-item.active {
-  background: var(--surface2);
+  background: var(--surface);
   /* border-color: var(--border2); */
   color: var(--text);
 }
@@ -156,7 +155,7 @@
 .conv-menu-btn:focus-visible { opacity: 1; }
 .conv-menu-btn:hover,
 .conv-item.menu-open .conv-menu-btn {
-  background: var(--surface2);
+  background: var(--surface);
   color: var(--text2);
 }
 .conv-menu-btn svg { width: 16px; height: 16px; }
@@ -169,7 +168,7 @@
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: 9px;
-  background: var(--surface);
+  background: var(--surface2);
   box-shadow: 0 8px 24px rgba(0, 0, 0, .16);
   display: none;
 }
@@ -188,7 +187,7 @@
   text-align: left;
 }
 .conv-menu-item:hover {
-  background: var(--surface2);
+  background: var(--surface);
   color: var(--text);
 }
 .conv-menu-item.danger:hover { color: var(--red); }
@@ -214,7 +213,7 @@
   text-align: left;
 }
 .sidebar-action:hover {
-  background: var(--surface2);
+  background: var(--surface);
   color: var(--text);
 }
 .sidebar-action svg {
