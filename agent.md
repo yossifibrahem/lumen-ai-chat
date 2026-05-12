@@ -154,7 +154,7 @@ LUMEN_CONTAINER_MEMORY      default: 512m
 LUMEN_CONTAINER_CPUS        default: 1
 LUMEN_CONTAINER_NETWORK     default: bridge
 LUMEN_CONTAINER_PREFIX      default: lumen-chat-
-LUMEN_CONTAINER_IDLE_TIMEOUT default: 1800 seconds; 0 disables idle reaping
+LUMEN_CONTAINER_IDLE_TIMEOUT default: 600 seconds; 0 disables idle reaping
 LUMEN_MAX_CONTENT_LENGTH    default: 60 MiB Flask request body cap
 LUMEN_CORS_ORIGINS          default: http://localhost:8080,http://127.0.0.1:8080
 LUMEN_MAX_FILE_PREVIEW_BYTES default: 512 KiB

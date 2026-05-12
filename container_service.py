@@ -25,7 +25,7 @@ CONTAINER_PREFIX = os.getenv("LUMEN_CONTAINER_PREFIX", "lumen-chat-")
 DISCOVERY_CONTAINER_ID = "mcp-discovery"
 # Seconds of inactivity before a conversation container is stopped.
 # Set to 0 to disable idle reaping entirely.
-IDLE_TIMEOUT = int(os.getenv("LUMEN_CONTAINER_IDLE_TIMEOUT", "1800"))  # default 30 min
+IDLE_TIMEOUT = int(os.getenv("LUMEN_CONTAINER_IDLE_TIMEOUT", "600"))  # default 10 min
 
 ContainerStatus = Literal["running", "stopped", "missing"]
 

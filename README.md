@@ -191,7 +191,7 @@ http://localhost:1234/v1     # LM Studio
 | `LUMEN_CONTAINER_CPUS` | `1` | CPU quota per sandbox container |
 | `LUMEN_CONTAINER_NETWORK` | `bridge` | Docker network mode |
 | `LUMEN_CONTAINER_PREFIX` | `lumen-chat-` | Prefix for generated container names |
-| `LUMEN_CONTAINER_IDLE_TIMEOUT` | `1800` | Seconds before idle containers are stopped; `0` disables |
+| `LUMEN_CONTAINER_IDLE_TIMEOUT` | `600` | Seconds before idle containers are stopped; `0` disables |
 | `LUMEN_MAX_CONTENT_LENGTH` | `62914560` | Flask request body cap (bytes) |
 | `LUMEN_CORS_ORIGINS` | `http://localhost:8080,...` | Comma-separated allowed origins |
 | `LUMEN_MAX_FILE_PREVIEW_BYTES` | `524288` | Max bytes for in-browser text file preview |
