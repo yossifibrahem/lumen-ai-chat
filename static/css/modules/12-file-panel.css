@@ -128,13 +128,13 @@ body.file-panel-resizing { cursor: col-resize; user-select: none; }
   border-radius: 6px;
   background: var(--surface2);
   color: currentColor;
-  opacity: 0.8;
+  opacity: 0.7;
   border: 1px solid var(--border);
   box-shadow: 0px 1px 0px var(--border2);
   transition: box-shadow 0.1s, transform 0.1s;
 }
 .file-row-icon svg { width: 16px; height: 16px; }
-.file-row:hover .file-row-icon { box-shadow: 0px 2px 0px var(--border2); transform: translateY(-1px); opacity: 1; }
+.file-row:hover .file-row-icon { box-shadow: 0px 2px 0px var(--border2); transform: translateY(-1px); }
 .file-row-main { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .file-row-name {
   overflow: hidden;
