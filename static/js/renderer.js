@@ -527,7 +527,6 @@ function renderAttachmentCard(attachment, { edit = false } = {}) {
   card.innerHTML = `
     <div class="attachment-card-body">
       <div class="attachment-card-name"></div>
-      <div class="attachment-card-subtle">Available in chat workspace</div>
       <div class="attachment-card-footer">
         <span class="attachment-card-badge">${escapeHtml(badge)}</span>
         ${size ? `<span class="attachment-card-size">${size}</span>` : ''}

@@ -44,7 +44,6 @@ function refreshImagePreviewBar() {
         <img class="attachment-card-thumb" src="${entry.previewUrl}" alt="" />
         <div class="attachment-card-overlay">
           <div class="attachment-card-name" title="${escapeHtml(entry.name || 'image')}">${escapeHtml(entry.name || 'image')}</div>
-          <div class="attachment-card-subtle">${formatBytes(entry.size || 0)}</div>
         </div>
         <button class="attachment-card-remove" title="Remove attachment" aria-label="Remove attachment">
           ${ICONS.close}
@@ -58,7 +57,6 @@ function refreshImagePreviewBar() {
       wrap.innerHTML = `
         <div class="attachment-card-body">
           <div class="attachment-card-name" title="${escapeHtml(entry.name || 'file')}">${escapeHtml(entry.name || 'file')}</div>
-          <div class="attachment-card-subtle">${formatBytes(entry.size || 0)}</div>
           <div class="attachment-card-footer">
             <span class="attachment-card-badge">${escapeHtml(fileExtensionLabel(entry.name || 'file'))}</span>
           </div>

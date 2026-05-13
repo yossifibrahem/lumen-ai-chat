@@ -20,7 +20,6 @@
  *   <div class="attachment-card attachment-card--file">
  *     <div class="attachment-card-body">
  *       <span class="attachment-card-name">report.pdf</span>
- *       <span class="attachment-card-subtle">PDF document</span>
  *       <div class="attachment-card-footer">
  *         <span class="attachment-card-badge">PDF</span>
  *         <span class="attachment-card-size">142 KB</span>
@@ -101,12 +100,6 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
-}
-
-.attachment-card-subtle {
-  color: var(--text2);
-  font-size: .67rem;
-  line-height: 1.3;
 }
 
 /* ─── Footer (badges + size) ──────────────────────────────────────────────── */
