@@ -70,6 +70,7 @@ def _run(args: list[str]) -> subprocess.CompletedProcess:
 
 
 from docker_path_utils import parse_volume_source
+import advanced_config as _adv_cfg
 
 # Internal alias kept so the rest of this module can call _volume_source
 # without knowing about docker_path_utils.
@@ -138,22 +139,23 @@ def _ensure_container_locked(conv_id: str, extra_volumes: list[str]) -> Containe
 
 
 def _docker_run_command(name: str, workspace: Path, extra_volumes: list[str]) -> list[str]:
+    cfg = _adv_cfg.load_advanced_config()
     return [
         "docker", "run",
         "--detach",
         "--name", name,
         *_volume_args(workspace, extra_volumes),
         "--workdir", "/workspace",
-        "--memory", CONTAINER_MEMORY,
-        "--cpus", CONTAINER_CPUS,
-        "--network", CONTAINER_NETWORK,
+        "--memory", str(cfg["container_memory"]),
+        "--cpus",   str(cfg["container_cpus"]),
+        "--network", str(cfg["container_network"]),
         "--cap-drop", "ALL",
         "--cap-add", "CHOWN",
         "--cap-add", "DAC_OVERRIDE",
         "--cap-add", "SETUID",
         "--cap-add", "SETGID",
         "--security-opt", "no-new-privileges",
-        SANDBOX_IMAGE,
+        str(cfg["sandbox_image"]),
     ]
 
 
@@ -311,18 +313,19 @@ def _touch(conv_id: str) -> None:
 
 
 def _reap_once() -> None:
-    """Stop every conversation container that has been idle beyond IDLE_TIMEOUT.
+    """Stop every conversation container that has been idle beyond the configured timeout.
 
     The discovery container is intentionally excluded — it is already managed
     by stop_container_process() in the /api/mcp/tools route.
     """
-    if IDLE_TIMEOUT <= 0:
+    idle_timeout = _adv_cfg.load_advanced_config()["container_idle_timeout"]
+    if idle_timeout <= 0:
         return
     now = time.monotonic()
     with _last_used_lock:
         candidates = [
             cid for cid, ts in _last_used.items()
-            if cid != DISCOVERY_CONTAINER_ID and (ts <= 0 or now - ts > IDLE_TIMEOUT)
+            if cid != DISCOVERY_CONTAINER_ID and (ts <= 0 or now - ts > idle_timeout)
         ]
     for conv_id in candidates:
         if get_status(conv_id) == "running":

@@ -26,9 +26,21 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+import advanced_config as _adv_cfg
+
 MAX_PREVIEW_BYTES = _env_int("LUMEN_MAX_FILE_PREVIEW_BYTES", 512 * 1024)
 MAX_LIST_ENTRIES = _env_int("LUMEN_MAX_FILE_LIST_ENTRIES", 500)
 MAX_UPLOAD_BYTES = _env_int("LUMEN_MAX_UPLOAD_BYTES", 50 * 1024 * 1024)
+
+
+def _file_limits() -> tuple[int, int, int]:
+    """Return (max_preview_bytes, max_list_entries, max_upload_bytes) from live config."""
+    cfg = _adv_cfg.load_advanced_config()
+    return (
+        int(cfg["max_file_preview_bytes"]),
+        int(cfg["max_file_list_entries"]),
+        int(cfg["max_upload_bytes"]),
+    )
 
 
 def workspace_root(conv_id: str) -> Path:
@@ -83,6 +95,7 @@ def _file_entry(path: Path, root: Path) -> dict:
     stat = path.stat()
     rel = path.relative_to(root).as_posix()
     is_dir = path.is_dir()
+    max_preview, _, _ = _file_limits()
     return {
         "name": path.name,
         "path": workspace_path(rel),
@@ -90,7 +103,7 @@ def _file_entry(path: Path, root: Path) -> dict:
         "type": "directory" if is_dir else "file",
         "size": None if is_dir else stat.st_size,
         "modified": stat.st_mtime,
-        "previewable": (not is_dir) and _is_text_file(path) and stat.st_size <= MAX_PREVIEW_BYTES,
+        "previewable": (not is_dir) and _is_text_file(path) and stat.st_size <= max_preview,
     }
 
 
@@ -108,15 +121,16 @@ def list_dir(conv_id: str, path_value: str | None) -> tuple[dict, int]:
 
     root = workspace_root(conv_id)
     children = sorted(target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower()))
-    visible_children = children[:MAX_LIST_ENTRIES]
+    _, max_entries, _ = _file_limits()
+    visible_children = children[:max_entries]
 
     return {
         "path": workspace_path(rel),
         "relative_path": rel,
         "parent": _parent_workspace_path(rel),
         "entries": [_file_entry(child, root) for child in visible_children],
-        "limit": MAX_LIST_ENTRIES,
-        "truncated": len(children) > MAX_LIST_ENTRIES,
+        "limit": max_entries,
+        "truncated": len(children) > max_entries,
     }, 200
 
 
@@ -133,7 +147,8 @@ def read_file(conv_id: str, path_value: str | None) -> tuple[dict, int]:
         return {"error": "Path is not a file"}, 400
 
     stat = target.stat()
-    previewable = _is_text_file(target) and stat.st_size <= MAX_PREVIEW_BYTES
+    max_preview, _, _ = _file_limits()
+    previewable = _is_text_file(target) and stat.st_size <= max_preview
     mime, _ = mimetypes.guess_type(target.name)
     data = {
         **_file_entry(target, workspace_root(conv_id)),
@@ -184,16 +199,17 @@ def save_uploads(conv_id: str, files: Iterable) -> tuple[dict, int]:
         filename = safe_upload_name(item.filename)
         target = _unique_path(upload_dir, filename)
         total = 0
+        _, _, max_upload = _file_limits()
 
         with target.open("wb") as fh:
             while chunk := item.stream.read(1024 * 1024):
                 total += len(chunk)
-                if total > MAX_UPLOAD_BYTES:
+                if total > max_upload:
                     fh.close()
                     target.unlink(missing_ok=True)
                     for previous in saved:
                         Path(previous["host_path"]).unlink(missing_ok=True)
-                    return {"error": f"File '{filename}' exceeds the upload limit of {MAX_UPLOAD_BYTES} bytes"}, 413
+                    return {"error": f"File '{filename}' exceeds the upload limit of {max_upload} bytes"}, 413
                 fh.write(chunk)
 
         saved.append({

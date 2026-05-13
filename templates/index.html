@@ -252,6 +252,10 @@
           <span data-icon="tabMcp"></span>
           MCP
         </button>
+        <button class="modal-tab" data-tab="tab-advanced">
+          <span data-icon="tabAdvanced"></span>
+          Advanced
+        </button>
       </nav>
       <button class="modal-close" data-close="settings-modal">
         <span data-icon="close"></span>
@@ -530,7 +534,124 @@
             <div class="no-tools-label">No tools loaded</div>
             </div>
         </div>
-      </div>
+      </div><!-- /#tab-mcp -->
+
+      <!-- ── Advanced tab ── -->
+      <div id="tab-advanced" class="tab-panel">
+
+        <div id="advanced-settings-status" class="status-msg" style="display:none"></div>
+
+        <!-- Sandbox Container ─────────────────────────────────────────── -->
+        <div class="settings-section">
+          <div class="section-title">Sandbox Container</div>
+
+          <div class="field">
+            <label class="adv-label-row">
+              Docker image
+              <span class="adv-env-badge" id="adv-lock-sandbox_image" hidden title="">ENV</span>
+            </label>
+            <input type="text" id="adv-sandbox_image" placeholder="lumen-sandbox" />
+            <div class="field-note">Image used for every new conversation container. Env&thinsp;var: <code>LUMEN_SANDBOX_IMAGE</code></div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label class="adv-label-row">
+                Memory limit
+                <span class="adv-env-badge" id="adv-lock-container_memory" hidden title="">ENV</span>
+              </label>
+              <select id="adv-container_memory">
+                <option value="128m">128 MB</option>
+                <option value="256m">256 MB</option>
+                <option value="512m">512 MB (default)</option>
+                <option value="1g">1 GB</option>
+                <option value="2g">2 GB</option>
+                <option value="4g">4 GB</option>
+              </select>
+              <div class="field-note">Env&thinsp;var: <code>LUMEN_CONTAINER_MEMORY</code></div>
+            </div>
+
+            <div class="field">
+              <label class="adv-label-row">
+                CPU limit
+                <span class="adv-env-badge" id="adv-lock-container_cpus" hidden title="">ENV</span>
+              </label>
+              <input type="number" id="adv-container_cpus" min="0.1" max="16" step="0.5" placeholder="1" />
+              <div class="field-note">Fractional CPUs allowed. Env&thinsp;var: <code>LUMEN_CONTAINER_CPUS</code></div>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label class="adv-label-row">
+                Docker network
+                <span class="adv-env-badge" id="adv-lock-container_network" hidden title="">ENV</span>
+              </label>
+              <input type="text" id="adv-container_network" placeholder="bridge" />
+              <div class="field-note">e.g. <code>bridge</code>, <code>host</code>, <code>none</code>. Env&thinsp;var: <code>LUMEN_CONTAINER_NETWORK</code></div>
+            </div>
+
+            <div class="field">
+              <label class="adv-label-row">
+                Idle timeout (seconds)
+                <span class="adv-env-badge" id="adv-lock-container_idle_timeout" hidden title="">ENV</span>
+              </label>
+              <input type="number" id="adv-container_idle_timeout" min="0" step="60" placeholder="600" />
+              <div class="field-note">Seconds before an unused container is stopped. <code>0</code>&thinsp;=&thinsp;never. Env&thinsp;var: <code>LUMEN_CONTAINER_IDLE_TIMEOUT</code></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-sep"></div>
+
+        <!-- File Handling ─────────────────────────────────────────────── -->
+        <div class="settings-section">
+          <div class="section-title">File Handling</div>
+
+          <div class="field-row">
+            <div class="field">
+              <label class="adv-label-row">
+                Max inline preview size
+                <span class="adv-env-badge" id="adv-lock-max_file_preview_bytes" hidden title="">ENV</span>
+              </label>
+              <select id="adv-max_file_preview_bytes">
+                <option value="65536">64 KB</option>
+                <option value="262144">256 KB</option>
+                <option value="524288">512 KB (default)</option>
+                <option value="1048576">1 MB</option>
+                <option value="4194304">4 MB</option>
+              </select>
+              <div class="field-note">Largest file shown inline in the workspace panel. Env&thinsp;var: <code>LUMEN_MAX_FILE_PREVIEW_BYTES</code></div>
+            </div>
+
+            <div class="field">
+              <label class="adv-label-row">
+                Max directory entries
+                <span class="adv-env-badge" id="adv-lock-max_file_list_entries" hidden title="">ENV</span>
+              </label>
+              <input type="number" id="adv-max_file_list_entries" min="10" max="5000" step="50" placeholder="500" />
+              <div class="field-note">Maximum entries returned per directory listing. Env&thinsp;var: <code>LUMEN_MAX_FILE_LIST_ENTRIES</code></div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="adv-label-row">
+              Max upload size
+              <span class="adv-env-badge" id="adv-lock-max_upload_bytes" hidden title="">ENV</span>
+            </label>
+            <select id="adv-max_upload_bytes">
+              <option value="5242880">5 MB</option>
+              <option value="10485760">10 MB</option>
+              <option value="26214400">25 MB</option>
+              <option value="52428800">50 MB (default)</option>
+              <option value="104857600">100 MB</option>
+              <option value="209715200">200 MB</option>
+            </select>
+            <div class="field-note">Per-file size cap for workspace uploads. Env&thinsp;var: <code>LUMEN_MAX_UPLOAD_BYTES</code></div>
+          </div>
+        </div>
+
+      </div><!-- /#tab-advanced -->
 
     </div><!-- /.modal-body -->
 
@@ -541,6 +662,7 @@
       <button class="btn-primary    tab-footer-btn" data-for-tab="tab-chat"       id="btn-save-chat-settings">Save</button>
       <button class="btn-primary    tab-footer-btn" data-for-tab="tab-appearance" id="btn-save-customization">Save</button>
       <button class="btn-primary    tab-footer-btn" data-for-tab="tab-mcp"        id="btn-save-mcp">Save Config</button>
+      <button class="btn-primary    tab-footer-btn" data-for-tab="tab-advanced"   id="btn-save-advanced">Save</button>
     </div>
   </div>
 </div>

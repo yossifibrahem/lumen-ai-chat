@@ -12,6 +12,7 @@ import uuid
 from flask import Blueprint, jsonify, render_template, request, send_file
 
 import app_config
+import advanced_config
 import chat_turn_service
 import container_service
 import mcp_service
@@ -382,6 +383,21 @@ def get_api_settings():
 def save_api_settings():
     try:
         return jsonify(app_config.save_config(_body()))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+
+# ── Advanced settings (container + file limits) ────────────────────────────────
+
+@blueprint.route("/api/advanced-settings", methods=["GET"])
+def get_advanced_settings():
+    return jsonify(advanced_config.public_advanced_config())
+
+
+@blueprint.route("/api/advanced-settings", methods=["POST"])
+def save_advanced_settings():
+    try:
+        return jsonify(advanced_config.save_advanced_config(_body()))
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
 

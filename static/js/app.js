@@ -17,6 +17,7 @@ import { clearMessages } from './renderer.js';
 import { ICONS, initIcons } from './icons.js';
 import { loadCustomization, saveCustomization, resetCustomization, initSwatchPicker, syncCustomizationUI } from './customization.js';
 import { initFilePanel } from './file_panel.js';
+import { loadAdvancedSettings, saveAdvancedSettings } from './advanced_settings.js';
 
 // ── Event binding ─────────────────────────────────────────────────────────────
 
@@ -120,6 +121,7 @@ function bindSettingsEvents() {
   document.getElementById('btn-reload-tools').addEventListener('click', reloadTools);
   document.getElementById('btn-save-customization').addEventListener('click', saveCustomization);
   document.getElementById('btn-reset-customization').addEventListener('click', resetCustomization);
+  document.getElementById('btn-save-advanced').addEventListener('click', saveAdvancedSettings);
   initSwatchPicker();
   initKeyToggle();
   initParameterSliders();
@@ -213,6 +215,7 @@ function bindEvents() {
   loadSettings();
   loadCustomization();
   loadCachedTools();
+  await loadAdvancedSettings();
   await loadConversationList();
   await loadMcpConfig();
 
