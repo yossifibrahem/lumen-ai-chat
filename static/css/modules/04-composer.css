@@ -19,11 +19,6 @@
   animation: centerFadeIn .35s var(--ease) both;
 }
 
-/* The composer dock holds the rounded input panel and the attached disclaimer. */
-#composer-dock {
-  filter: drop-shadow(0 18px 40px rgba(0,0,0,.16));
-}
-
 #composer-input-panel {
   position: relative;
   z-index: 1;
