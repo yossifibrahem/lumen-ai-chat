@@ -27,10 +27,17 @@ The app is intentionally lightweight: no database, no frontend framework, no bun
 .
 ├── app.py                         # Flask app factory, startup checks, CORS, shutdown cleanup
 ├── app_config.py                  # Server-side API provider config and API key storage
-├── routes.py                      # HTTP API routes and SSE stream endpoint
-├── chat_turn_service.py           # Long-running chat turn orchestration
+├── routes.py                      # Thin blueprint registration shim — registers four route-group blueprints
+├── routes_conversations.py        # Conversation CRUD, workspace path, container status, danger-delete
+├── routes_chat.py                 # Streaming, cancel, approve, settings, advanced settings, model list
+├── routes_mcp.py                  # MCP config, tool discovery, direct tool calls
+├── routes_files.py                # Workspace file listing, upload, preview, download, image storage
+├── chat_turn_service.py           # Long-running chat turn orchestration; re-exports resolve_tool_approval
+├── title_service.py               # Auto-generated title: _SET_TITLE_TOOL, _messages_to_text, _extract_title, generate_title
+├── tool_approval.py               # Approval gate: _pending_approvals dict, lock, request_tool_approval, resolve_tool_approval
 ├── streaming.py                   # Typed OpenAI streaming event generator + SSE helpers
-├── mcp_service.py                 # MCP config, tool discovery, invocation, persistent cross-turn session pool
+├── mcp_service.py                 # MCP config, tool discovery, invocation; re-exports _build_server_params
+├── mcp_session_pool.py            # McpSessionPool: worker coroutine, session lifecycle, retry logic
 ├── mcp_adapters.py                # Host/container MCP launch helpers
 ├── container_service.py           # Docker container lifecycle and command wrapping
 ├── workspace_service.py           # Workspace listing, reading, upload, download path safety
@@ -75,7 +82,12 @@ The app is intentionally lightweight: no database, no frontend framework, no bun
         ├── mcp.js                 # MCP config UI, tool loading, enable/auto-approve toggles
         ├── app_policy.js          # App-level system prompt guidance
         ├── mcp_tool_ui.js         # Generic tool-result rendering helpers
-        ├── renderer.js            # Chat/message/thinking/tool strip rendering
+        ├── renderer.js            # Re-exports all public symbols from renderer sub-modules
+        ├── renderer_core.js       # scrollToBottom, stickToBottom, messagesEl, createMessageRow
+        ├── renderer_groups.js     # Block grouping, tryGroupBlock, updateGroupLabel, attachCollapsible, prepareAssistantRow
+        ├── renderer_thinking.js   # createThinkingBlock, updateThinkingBlock, finalizeThinkingBlock, appendThinkingBlock
+        ├── renderer_attachments.js # normalizeContentAttachments, renderAttachmentCard, getRawText, appendContentParts
+        ├── renderer_tools.js      # Tool strip states, cancelAllToolApprovals, appendToolResultInline
         ├── settings.js            # API/model/chat settings UI
         ├── state.js               # Shared browser state and localStorage keys
         ├── storage.js             # localStorage wrapper
@@ -173,7 +185,7 @@ Browser `localStorage` keys such as `lumen_settings`, `lumen_models`, and `lumen
 - Sets `MAX_CONTENT_LENGTH` from `LUMEN_MAX_CONTENT_LENGTH` to cap request body size globally.
 - Configures CORS from `LUMEN_CORS_ORIGINS`, defaulting to localhost origins.
 - Verifies Docker and the sandbox image at startup.
-- Registers the single blueprint from `routes.py`.
+- Registers all four route-group blueprints (`routes_conversations`, `routes_chat`, `routes_mcp`, `routes_files`) directly instead of a single monolithic blueprint.
 - Calls stale container cleanup at startup.
 - Registers shutdown cleanup through `atexit` and `SIGTERM`, guarded against double execution.
 
@@ -192,39 +204,58 @@ Key behavior:
 
 ### `routes.py`
 
-Route handlers are intentionally thin. They parse request bodies, call service modules, and return JSON/streaming responses.
+`routes.py` is now a thin registration shim (32 lines). It imports the four route-group blueprints and exposes them so `app.py` can register them in one call. All streaming state that was previously module-level here now lives in `routes_chat.py`.
 
-Main route groups:
+### `routes_conversations.py`
 
-- `/` renders `templates/index.html`.
-- `/api/conversations` CRUDs conversation JSON through `store.py`.
-- `/api/conversations/<conv_id>/workspace` returns the host workspace path.
-- `/api/conversations/<conv_id>/container` returns Docker status metadata.
-- `/api/mcp/config` loads/saves `mcp.json`.
-- `/api/mcp/tools` discovers MCP tools from configured servers.
-- `/api/mcp/call` directly invokes one MCP tool.
-- `/api/conversations/<conv_id>/files` lists or uploads workspace files.
-- `/api/conversations/<conv_id>/files/content` previews text files.
-- `/api/conversations/<conv_id>/files/download` downloads workspace files.
-- `/api/images` stores image uploads.
-- `/api/chat/stream` starts or reattaches to a streaming chat turn.
-- `/api/chat/cancel` cancels an active stream.
-- `/api/chat/approve` approves or denies a pending MCP tool call.
-- `/api/settings` reads/writes server-side API provider config.
-- `/api/models` proxies model-list fetching through the server-side OpenAI-compatible config.
+Handles conversation CRUD, workspace path lookup, container status, and the danger-delete endpoint (122 lines).
 
-Conversation update is whitelisted. `PUT /api/conversations/<conv_id>` should only accept allowed user-facing fields such as `title` and `system_prompt`; do not reintroduce `data.update(_body())`.
+Key routes:
+- `GET/POST/PUT/DELETE /api/conversations` and `/api/conversations/<conv_id>`
+- `GET /api/conversations/<conv_id>/workspace`
+- `GET /api/conversations/<conv_id>/container`
 
-Streaming state is stored in module-level dictionaries:
+Conversation update is whitelisted. `PUT /api/conversations/<conv_id>` only accepts allowed user-facing fields such as `title` and `system_prompt`; do not reintroduce `data.update(_body())`.
+
+### `routes_chat.py`
+
+Owns streaming and all chat-adjacent routes (160 lines). Module-level streaming state dictionaries live here:
 
 - `_cancel_events`: `stream_id -> threading.Event`
 - `_active_streams`: `stream_id -> replayable stream state`
 
-Because these are in-memory, active stream reattach works only within the same Python process. Multiple worker processes are unsafe for cancellation/reattach until stream state moves to shared storage or a broker.
+Because these are in-memory, active stream reattach works only within the same Python process.
+
+Key routes:
+- `POST /api/chat/stream` — start or reattach to a streaming chat turn
+- `POST /api/chat/cancel` — cancel an active stream
+- `POST /api/chat/approve` — approve or deny a pending MCP tool call
+- `GET/POST /api/settings` — read/write server-side API provider config
+- `GET/POST /api/advanced_settings` — advanced model settings
+- `GET /api/models` — proxy model-list fetch
+
+### `routes_mcp.py`
+
+Handles MCP configuration and tool operations (83 lines):
+
+- `GET/POST /api/mcp/config` — load/save `mcp.json`
+- `GET /api/mcp/tools` — discover MCP tools from configured servers
+- `POST /api/mcp/call` — directly invoke one MCP tool
+
+### `routes_files.py`
+
+Handles workspace files and image uploads (81 lines):
+
+- `GET /api/conversations/<conv_id>/files` — list workspace entries
+- `POST /api/conversations/<conv_id>/files` — upload a file to the workspace
+- `GET /api/conversations/<conv_id>/files/content` — preview text files
+- `GET /api/conversations/<conv_id>/files/download` — download workspace files
+- `POST /api/images` — store image uploads by SHA-256 hash
+- `GET /api/images/<image_id>` — serve stored images
 
 ### `chat_turn_service.py`
 
-This is the core backend orchestration layer for a chat turn.
+This is the core backend orchestration layer for a chat turn. It re-exports `resolve_tool_approval` from `tool_approval.py` so that `routes_chat.py` needs no additional import.
 
 Key responsibilities:
 
@@ -260,6 +291,27 @@ error
 
 The model-facing messages and UI-facing `displayLog` are related but not identical. Be careful to update both when changing turn logic.
 
+### `title_service.py`
+
+Stateless and independently testable (80 lines). Contains:
+
+- `_SET_TITLE_TOOL` — the tool definition sent to the model to elicit a title.
+- `_messages_to_text(messages)` — converts message history to plain text for title prompting.
+- `_extract_title(response)` — extracts the title string from the model's tool-call response.
+- `generate_title(messages, client, model)` — orchestrates a single title-generation request.
+
+Because this module is stateless, it can be imported and unit-tested without any Flask app context.
+
+### `tool_approval.py`
+
+Bounded approval subsystem (52 lines). Contains:
+
+- `_pending_approvals` dict and its `threading.Lock`.
+- `request_tool_approval(approval_id, tool_name, tool_args)` — registers a pending approval and blocks until resolved.
+- `resolve_tool_approval(approval_id, approved)` — unblocks the waiting turn with the decision.
+
+`chat_turn_service` re-exports `resolve_tool_approval` at module level so `routes_chat.py` only needs to import from one place.
+
 ### `streaming.py`
 
 - Wraps OpenAI streaming chat completions.
@@ -285,14 +337,16 @@ Do not restore the old internal SSE encode/decode round-trip. Keep stream intern
 - `invoke_tool()` remains available for one-off calls.
 - MCP config cache reads/writes are protected by a lock because Flask can run threaded.
 - `run_async()` bridges async MCP calls into Flask sync route/service code.
+- Re-exports `_build_server_params` so `mcp_session_pool.py` can import it without a circular dependency.
 
-#### `McpSessionPool`
+### `mcp_session_pool.py`
 
-`McpSessionPool` reuses MCP stdio sessions across all tool calls for a conversation — the pool is kept alive between turns and only closed when the conversation's container is stopped or removed.
+Contains the entire `McpSessionPool` class (168 lines) extracted from `mcp_service.py`. Responsibilities:
 
-Important implementation detail: AnyIO-backed MCP context managers must be exited from the same asyncio Task that entered them. The pool uses one dedicated worker coroutine for the whole turn so session open, tool invocation, `ClientSession.__aexit__`, and `stdio_client.__aexit__` happen in the same Task. Do not replace this with `run_coroutine_threadsafe()` per call unless you also preserve same-task cleanup semantics.
-
-The pool is used by `chat_turn_service.run_persistent_chat_turn()` and closed in the `finally` block.
+- Owns the dedicated worker coroutine for the whole turn.
+- Manages session lifecycle: open, invoke, `ClientSession.__aexit__`, and `stdio_client.__aexit__` all happen in the same asyncio Task.
+- Handles retry logic for transient session failures.
+- Imports `_build_server_params` from `mcp_service` on demand to avoid a circular import.
 
 ### `mcp_adapters.py`
 
@@ -458,17 +512,29 @@ Existing adapters:
 - `filesystem.js`: `view`, `create_file`, `str_replace`
 - `exa.js`: Exa search/fetch/deep-research tools with custom card rendering
 
-### Renderer: `renderer.js`
+### Renderer: `renderer.js` and sub-modules
 
-Responsible for:
+`renderer.js` (259 lines) is now a re-export facade. It imports every public symbol from the five focused sub-modules and re-exports them unchanged. All existing importers (`chat_send.js`, `app.js`, etc.) continue to work without modification.
 
-- Message rows and avatars
-- Copy/edit/regenerate actions
-- Streaming assistant message rows
-- Thinking blocks
-- Tool strips, approval UI, running UI, and final result UI
-- Grouping sequential tool/thinking blocks when configured
-- Rendering historical `displayLog`
+The five sub-modules:
+
+**`renderer_core.js`** (46 lines) — foundational DOM helpers used by every other renderer module:
+- `scrollToBottom`, `stickToBottom`, `messagesEl`, `createMessageRow`
+
+**`renderer_groups.js`** (144 lines) — sequential block grouping:
+- `tryGroupBlock`, `updateGroupLabel`, `attachCollapsible`, `prepareAssistantRow`
+
+**`renderer_thinking.js`** (95 lines) — thinking/reasoning block lifecycle:
+- `createThinkingBlock`, `updateThinkingBlock`, `finalizeThinkingBlock`, `appendThinkingBlock`
+
+**`renderer_attachments.js`** (90 lines) — content-part and attachment card rendering:
+- `normalizeContentAttachments`, `renderAttachmentCard`, `getRawText`, `appendContentParts`
+
+**`renderer_tools.js`** (232 lines) — tool strip states, approval UI, and inline result rendering:
+- Tool strip state transitions (`tool_start` → approval → running → result)
+- `cancelAllToolApprovals`, `appendToolResultInline`
+
+When adding new renderer functionality, place it in the appropriate sub-module and re-export from `renderer.js`. Do not add new logic directly to `renderer.js`.
 
 ### Workspace panel: `file_panel.js`
 
@@ -552,7 +618,7 @@ Coverage summary:
 | `test_workspace_service.py` | Path traversal rejection, `resolve_workspace_path` boundary check, preview size limit, upload rollback/collision handling |
 | `test_chat_turn_service.py` | Tool approval flow, title extraction, safe tool args, tool message format, `TurnRecorder` throttle/finalize behavior |
 | `test_streaming.py` | Typed event ordering, multi-delta tool name accumulation, parallel tool calls, cancellation closes stream, error+done events |
-| `test_mcp_service.py` | Config cache, malformed-config handling, atomic writes, `run_async`, `McpSessionPool` same-task cleanup behavior |
+| `test_mcp_service.py` | Config cache, malformed-config handling, atomic writes, `run_async`, `McpSessionPool` same-task cleanup behavior (pool now in `mcp_session_pool.py`) |
 | `test_mcp_adapters.py` | Docker exec param mutation, project-root detection, host mount extraction/deduplication |
 | `test_container_service.py` | Safe container names, exec argv/env ordering, name-conflict handling, idle reaper behavior |
 | `test_routes.py` | HTTP routes, route error paths, settings routes, conversation update whitelist |
@@ -613,7 +679,7 @@ Run this checklist manually after changes that touch streaming, MCP, Docker, or 
 
 ### 1. Active stream reattach is process-local
 
-`routes.py` stores active stream state in memory. This is fine for the dev server and a single Gunicorn worker, but it will not work across multiple worker processes without shared state.
+`routes_chat.py` stores active stream state in memory. This is fine for the dev server and a single Gunicorn worker, but it will not work across multiple worker processes without shared state.
 
 Short-term deployment default: one worker with threads, as in `gunicorn.conf.py`.
 

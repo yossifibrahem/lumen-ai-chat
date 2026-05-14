@@ -290,10 +290,17 @@ Click the stop button while a response is streaming. The server marks the stream
 |---|---|
 | `app.py` | Flask app factory; Docker and sandbox image checks at startup; CORS; shutdown cleanup |
 | `app_config.py` | Server-side API key and provider config storage; env var overrides; safe public metadata |
-| `routes.py` | Thin HTTP handlers delegating to service modules; streaming and cancellation state |
+| `routes.py` | Thin blueprint registration shim — registers the four route group blueprints |
+| `routes_conversations.py` | Conversation CRUD, workspace path, container status, danger-delete |
+| `routes_chat.py` | Streaming, cancel, approve, settings, advanced settings, model list |
+| `routes_mcp.py` | MCP config, tool discovery, direct tool calls |
+| `routes_files.py` | Workspace file listing, upload, preview, download, image storage |
 | `chat_turn_service.py` | Full chat turn orchestration: streaming, tool approval, MCP calls, persistence |
+| `title_service.py` | Auto-generated conversation title: `_SET_TITLE_TOOL` definition, text conversion, extraction, and `generate_title` |
+| `tool_approval.py` | Pending tool-approval gate: `_pending_approvals` dict, lock, `request_tool_approval`, `resolve_tool_approval` |
 | `streaming.py` | Typed OpenAI streaming event generator; SSE serialization helpers |
-| `mcp_service.py` | MCP config, tool discovery, tool invocation, `McpSessionPool` for persistent cross-turn session reuse |
+| `mcp_service.py` | MCP config, tool discovery, tool invocation; re-exports `_build_server_params` for use by the pool |
+| `mcp_session_pool.py` | `McpSessionPool` class: worker coroutine, session lifecycle, retry logic for persistent cross-turn reuse |
 | `mcp_adapters.py` | Wraps MCP commands for Docker `exec`; extracts and mounts host volume paths |
 | `container_service.py` | Docker container lifecycle: create, start, stop, idle reaping, workspace management |
 | `store.py` | Filesystem persistence for conversations and images; cached conversation index |
@@ -324,7 +331,12 @@ The frontend is plain browser ES modules — no build step, no framework. `templ
 | `chat_attachments.js` | Pending image and file attachment lifecycle |
 | `chat_edit.js` | Edit, resend, and regenerate helpers |
 | `stream_consumer.js` | SSE response reader |
-| `renderer.js` | Message rows, tool strips, thinking blocks, approval UI |
+| `renderer.js` | Re-exports all public symbols from renderer sub-modules; sole import target for existing callers |
+| `renderer_core.js` | `scrollToBottom`, `stickToBottom`, `messagesEl`, `createMessageRow` |
+| `renderer_groups.js` | Block grouping, `tryGroupBlock`, `updateGroupLabel`, `attachCollapsible`, `prepareAssistantRow` |
+| `renderer_thinking.js` | `createThinkingBlock`, `updateThinkingBlock`, `finalizeThinkingBlock`, `appendThinkingBlock` |
+| `renderer_attachments.js` | `normalizeContentAttachments`, `renderAttachmentCard`, `getRawText`, `appendContentParts` |
+| `renderer_tools.js` | Tool strip states, `cancelAllToolApprovals`, `appendToolResultInline` |
 | `mcp.js` | MCP config UI, tool loading, enable/auto-approve toggles |
 | `file_panel.js` | Workspace browser, preview, and download |
 | `conversations.js` | Conversation CRUD and sidebar |
@@ -411,7 +423,7 @@ When filing a bug, please include the OS, Python version, browser and version, w
 
 ## Known Limitations
 
-**Active stream reattach is process-local.** Cancellation events and stream replay buffers are stored in process memory (`routes.py`). This works fine with the default single-worker Gunicorn config but will not work across multiple worker processes. Long-term fix: move stream state to Redis or a shared broker.
+**Active stream reattach is process-local.** Cancellation events and stream replay buffers are stored in process memory (`routes_chat.py`). This works fine with the default single-worker Gunicorn config but will not work across multiple worker processes. Long-term fix: move stream state to Redis or a shared broker.
 
 **No authentication.** Lumen is local-first and not hardened for public exposure. Do not deploy it publicly without adding authentication, rate limiting, and stricter CORS.
 
