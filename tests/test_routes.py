@@ -382,6 +382,70 @@ class TestIndexRoute:
         # Must contain the top-level script tag that bootstraps the app
         assert b"app.js" in resp.data
 
+    def test_renders_startup_screen_when_requirement_missing(self, client, monkeypatch):
+        import runtime_requirements
+
+        missing = runtime_requirements.RequirementStatus(
+            ok=False,
+            code="docker_not_running",
+            title="Docker is not running",
+            message="Please start Docker, then click Retry.",
+            action="retry",
+            image="lumen-sandbox",
+        )
+        monkeypatch.setattr(runtime_requirements, "check_requirements", lambda: missing)
+
+        resp = client.get("/")
+
+        assert resp.status_code == 200
+        assert b"Docker is not running" in resp.data
+        assert b"Please start Docker, then click Retry." in resp.data
+
+
+# ===========================================================================
+# Startup requirement routes
+# ===========================================================================
+
+class TestStartupRequirementRoutes:
+
+    def test_requirements_returns_503_when_not_ready(self, client, monkeypatch):
+        import runtime_requirements
+
+        missing = runtime_requirements.RequirementStatus(
+            ok=False,
+            code="sandbox_image_missing",
+            title="The Lumen sandbox image has not been built",
+            message="Click Build Sandbox Image.",
+            action="build",
+            image="lumen-sandbox",
+        )
+        monkeypatch.setattr(runtime_requirements, "check_requirements", lambda: missing)
+
+        resp = client.get("/api/startup/requirements")
+
+        assert resp.status_code == 503
+        assert resp.json["code"] == "sandbox_image_missing"
+        assert resp.json["action"] == "build"
+
+    def test_build_sandbox_image_returns_build_status(self, client, monkeypatch):
+        import runtime_requirements
+
+        built = runtime_requirements.RequirementStatus(
+            ok=True,
+            code="ok",
+            title="Lumen is ready",
+            message="Docker is running and the sandbox image is available.",
+            action="continue",
+            image="lumen-sandbox",
+        )
+        monkeypatch.setattr(runtime_requirements, "build_sandbox_image", lambda: built)
+
+        resp = client.post("/api/startup/build-sandbox-image")
+
+        assert resp.status_code == 200
+        assert resp.json["ok"] is True
+        assert resp.json["code"] == "ok"
+
 
 # ===========================================================================
 # MCP tools discovery

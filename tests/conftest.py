@@ -4,13 +4,13 @@ Shared pytest fixtures for Lumen AI Chat tests.
 Key responsibilities:
   - Redirect all filesystem paths (conversations, images, containers) to tmp_path
     so tests never touch ~/.lumen.
-  - Create a Flask test app with Docker startup checks completely bypassed.
+  - Create a Flask test app with runtime requirement checks mocked as ready.
   - Expose a `client` fixture for HTTP integration tests.
 """
 from __future__ import annotations
 
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 
 @pytest.fixture(autouse=True)
@@ -71,25 +71,33 @@ def tmp_lumen(tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
-def app(tmp_lumen):
+def app(tmp_lumen, monkeypatch):
     """
-    Create a Flask test application with all Docker calls mocked out.
+    Create a Flask test application with Docker-backed startup checks mocked out.
 
-    `create_app()` in app.py calls:
-      1. _require_docker()       — subprocess call to `docker info`
-      2. _require_sandbox_image() — subprocess call to `docker image inspect`
-      3. _cleanup_stale_containers() — calls container_service.cleanup_stale
-
-    We patch (1) and (2) at the module level inside app.py (where create_app
-    resolves them via the module's global dict) and stub out (3) entirely.
+    `create_app()` now asks runtime_requirements.check_requirements() for a
+    non-exiting status object, then cleans stale containers only when that
+    status is ok. Patch the new requirement entry point directly so tests do
+    not need Docker or a locally built sandbox image.
     """
     import app as app_module
 
-    with (
-        patch("app._require_docker"),
-        patch("app._require_sandbox_image"),
-        patch("container_service.cleanup_stale", return_value=[]),
-    ):
+    ready_status = app_module.runtime_requirements.RequirementStatus(
+        ok=True,
+        code="ok",
+        title="Lumen is ready",
+        message="Docker is running and the sandbox image is available.",
+        action="continue",
+        image="lumen-sandbox",
+    )
+
+    monkeypatch.setattr(
+        app_module.runtime_requirements,
+        "check_requirements",
+        lambda: ready_status,
+    )
+
+    with patch("container_service.cleanup_stale", return_value=[]):
         flask_app = app_module.create_app()
 
     flask_app.config["TESTING"] = True

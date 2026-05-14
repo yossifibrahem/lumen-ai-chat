@@ -184,7 +184,7 @@ Browser `localStorage` keys such as `lumen_settings`, `lumen_models`, and `lumen
 - Creates the Flask app.
 - Sets `MAX_CONTENT_LENGTH` from `LUMEN_MAX_CONTENT_LENGTH` to cap request body size globally.
 - Configures CORS from `LUMEN_CORS_ORIGINS`, defaulting to localhost origins.
-- Verifies Docker and the sandbox image at startup.
+- Checks Docker and the sandbox image at startup, then lets the browser show friendly setup actions instead of exiting.
 - Registers all four route-group blueprints (`routes_conversations`, `routes_chat`, `routes_mcp`, `routes_files`) directly instead of a single monolithic blueprint.
 - Calls stale container cleanup at startup.
 - Registers shutdown cleanup through `atexit` and `SIGTERM`, guarded against double execution.
@@ -607,7 +607,7 @@ Run `pytest` from the project root. The exact collected test count can change as
 pytest
 ```
 
-Tests are isolated: `conftest.py` redirects filesystem paths to `tmp_path`, patches Docker startup checks in the app factory, and stubs container cleanup where needed. No Docker daemon, real API key, or running server is required for the unit/integration-style tests.
+Tests are isolated: `conftest.py` redirects filesystem paths to `tmp_path`, patches the runtime requirement check in the app factory, and stubs container cleanup where needed. No Docker daemon, real API key, or running server is required for the unit/integration-style tests.
 
 Coverage summary:
 

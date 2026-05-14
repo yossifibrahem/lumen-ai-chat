@@ -101,7 +101,7 @@ python app.py
 
 Open **http://localhost:8080**, then open the settings panel to enter your API key, base URL, and model name.
 
-> The app will refuse to start if Docker is not running or if the `lumen-sandbox` image has not been built.
+> If Docker is not running or the `lumen-sandbox` image has not been built, the app starts and shows a setup screen with Retry / Build Sandbox Image actions.
 
 ---
 
@@ -288,7 +288,7 @@ Click the stop button while a response is streaming. The server marks the stream
 
 | File | Responsibility |
 |---|---|
-| `app.py` | Flask app factory; Docker and sandbox image checks at startup; CORS; shutdown cleanup |
+| `app.py` | Flask app factory; startup requirement status handling; CORS; shutdown cleanup |
 | `app_config.py` | Server-side API key and provider config storage; env var overrides; safe public metadata |
 | `routes.py` | Thin blueprint registration shim — registers the four route group blueprints |
 | `routes_conversations.py` | Conversation CRUD, workspace path, container status, danger-delete |
@@ -362,7 +362,7 @@ Run the full suite:
 pytest
 ```
 
-Tests are fully isolated: `conftest.py` redirects filesystem paths to `tmp_path`, patches Docker startup checks in the app factory, and stubs container operations. No running Docker daemon, API key, or live server is required.
+Tests are fully isolated: `conftest.py` redirects filesystem paths to `tmp_path`, patches the runtime requirement check in the app factory, and stubs container operations. No running Docker daemon, API key, or live server is required.
 
 | Test file | What it covers |
 |---|---|

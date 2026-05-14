@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lumen · Setup Required</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+<script>
+(function () {
+  try {
+    var prefs = JSON.parse(localStorage.getItem('lumen_customization') || '{}');
+    var root = document.documentElement;
+    var hex = prefs.customAccentColor || prefs.accentColor;
+    if (/^#[0-9a-f]{6}$/i.test(hex || '')) {
+      var n = parseInt(hex.slice(1), 16);
+      var rgb = ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
+      root.style.setProperty('--accent', hex);
+      root.style.setProperty('--accent-dim', 'rgba(' + rgb + ',0.12)');
+      root.style.setProperty('--accent-hover', 'rgba(' + rgb + ',0.20)');
+      root.style.setProperty('--accent-border', 'rgba(' + rgb + ',0.4)');
+    }
+    var theme = prefs.theme || 'auto';
+    if (theme === 'auto') theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    root.setAttribute('data-theme', theme === 'light' ? 'light' : 'dark');
+  } catch (e) {}
+})();
+</script>
+<style>
+  html, body { min-height: 100dvh; height: auto; overflow: auto; }
+  body.setup-page {
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: var(--bg);
+  }
+  .setup-wrap { width: min(460px, 100%); animation: fadeUp .2s ease both; }
+  .setup-logo { justify-content: center; margin-bottom: 16px; }
+  .setup-card {
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .setup-main { padding: 22px; }
+  .setup-kicker {
+    margin-bottom: 8px;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: .68rem;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+  }
+  .setup-main h1 {
+    margin: 0 0 12px;
+    color: var(--text);
+    font-size: 1.1rem;
+    font-weight: 500;
+  }
+  .setup-main p {
+    color: var(--text2);
+    font-size: .82rem;
+    line-height: 1.6;
+  }
+  #details {
+    margin-top: 12px;
+    max-height: 180px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--code-bg);
+    color: var(--text2);
+    padding: 10px 12px;
+    font-family: var(--font-mono);
+    font-size: .68rem;
+    line-height: 1.45;
+  }
+  .setup-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 14px 22px;
+    border-top: 1px solid var(--border);
+  }
+  @media (max-width: 520px) {
+    body.setup-page { padding: 16px; }
+    .setup-actions { flex-direction: column; }
+  }
+</style>
+</head>
+<body class="setup-page">
+  <main class="setup-wrap">
+    <div class="logo setup-logo" aria-label="Lumen">
+      <div class="logo-mark">L</div>
+      <span class="logo-name">Lu<em>men</em></span>
+    </div>
+
+    <section class="setup-card" data-action="{{ status.action or '' }}">
+      <div class="setup-main">
+        <div class="setup-kicker">Setup required</div>
+        <h1 id="title">{{ status.title }}</h1>
+        <p id="message">{{ status.message }}</p>
+        <pre id="details"{% if not status.details %} hidden{% endif %}>{{ status.details or '' }}</pre>
+      </div>
+      <div class="setup-actions">
+        <button id="build" class="btn-secondary" type="button">Build Sandbox Image</button>
+        <button id="retry" class="btn-primary" type="button">Retry</button>
+      </div>
+    </section>
+  </main>
+
+<script>
+const card = document.querySelector('.setup-card');
+const title = document.getElementById('title');
+const message = document.getElementById('message');
+const details = document.getElementById('details');
+const retry = document.getElementById('retry');
+const build = document.getElementById('build');
+
+function render(status) {
+  if (status.ok) return location.reload();
+  title.textContent = status.title || 'Setup required';
+  message.textContent = status.message || 'Fix the requirement, then click Retry.';
+  details.textContent = status.details || '';
+  details.hidden = !status.details;
+  build.hidden = status.action !== 'build';
+}
+
+async function check() {
+  const response = await fetch('/api/startup/requirements');
+  render(await response.json());
+}
+
+async function buildImage() {
+  build.disabled = retry.disabled = true;
+  build.textContent = 'Building...';
+  try {
+    const response = await fetch('/api/startup/build-sandbox-image', { method: 'POST' });
+    render(await response.json());
+  } finally {
+    build.disabled = retry.disabled = false;
+    build.textContent = 'Build Sandbox Image';
+  }
+}
+
+retry.addEventListener('click', check);
+build.addEventListener('click', buildImage);
+build.hidden = card.dataset.action !== 'build';
+</script>
+</body>
+</html>

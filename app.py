@@ -1,15 +1,14 @@
 """
 Lumen Chatbot — Flask entry point.
 
-Wires together the app factory, CORS, and the single Blueprint
-that owns all routes.  On startup, Docker availability and the
-sandbox image are validated (both are required), then stale
-containers from previous runs are cleaned up.
+Wires together the app factory, CORS, and route blueprints. Docker
+availability and the sandbox image are checked at startup, but unmet
+requirements are shown in a friendly browser setup screen instead of
+terminating the process.
 """
 import atexit
 import logging
 import signal
-import subprocess
 import os
 import sys
 
@@ -22,6 +21,7 @@ import routes_mcp
 import routes_files
 import container_service
 import mcp_service
+import runtime_requirements
 
 log = logging.getLogger(__name__)
 
@@ -32,8 +32,8 @@ _shutdown_done = False
 
 
 def create_app() -> Flask:
-    _require_docker()
-    _require_sandbox_image()
+    startup_status = runtime_requirements.check_requirements()
+    _log_startup_requirement_status(startup_status)
     app = Flask(__name__)
     app.config["MAX_CONTENT_LENGTH"] = int(os.getenv("LUMEN_MAX_CONTENT_LENGTH", str(60 * 1024 * 1024)))
     allowed_origins = [
@@ -50,7 +50,10 @@ def create_app() -> Flask:
     app.register_blueprint(routes_mcp.blueprint)
     app.register_blueprint(routes_files.blueprint)
     container_service.start_reaper()
-    _cleanup_stale_containers()
+    if startup_status.ok:
+        _cleanup_stale_containers()
+    else:
+        log.info("[startup] stale container cleanup skipped until requirements are ready")
     _register_shutdown_cleanup()
     return app
 
@@ -82,39 +85,12 @@ def _register_shutdown_cleanup() -> None:
     signal.signal(signal.SIGTERM, _sigterm_handler)
 
 
-def _require_docker() -> None:
-    """Abort startup if the Docker daemon is unreachable."""
-    result = subprocess.run(
-        ["docker", "info"],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        log.error(
-            "[startup] Docker is not available. "
-            "Lumen requires Docker to run MCP servers.\n%s",
-            result.stderr.strip(),
-        )
-        sys.exit(1)
-
-
-def _require_sandbox_image() -> None:
-    """Abort startup if the lumen-sandbox image has not been built."""
-    image = container_service.SANDBOX_IMAGE
-    result = subprocess.run(
-        ["docker", "image", "inspect", image],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        log.error(
-            "[startup] Sandbox image '%s' not found. "
-            "Build it first:\n\n    docker build -f Dockerfile.sandbox -t %s .\n",
-            image,
-            image,
-        )
-        sys.exit(1)
-    log.info("[startup] sandbox image '%s' is present", image)
+def _log_startup_requirement_status(status) -> None:
+    """Log runtime requirement state without aborting the web UI startup."""
+    if status.ok:
+        log.info("[startup] %s", status.message)
+    else:
+        log.warning("[startup] %s %s", status.title, status.details)
 
 
 def _cleanup_stale_containers() -> None:
