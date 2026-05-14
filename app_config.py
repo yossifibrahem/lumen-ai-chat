@@ -12,6 +12,8 @@ import time
 import uuid
 from pathlib import Path
 
+from fs_utils import atomic_replace
+
 CONFIG_DIR = Path.home() / ".lumen"
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 CONFIG_FILE = Path(os.getenv("LUMEN_CONFIG_FILE", str(CONFIG_DIR / "config.json")))
@@ -127,6 +129,6 @@ def save_config(update: dict) -> dict:
     current.setdefault("api_base", DEFAULT_API_BASE)
     tmp_path = CONFIG_FILE.with_suffix(f".tmp-{uuid.uuid4().hex}")
     tmp_path.write_text(json.dumps(current, indent=2))
-    tmp_path.replace(CONFIG_FILE)
+    atomic_replace(tmp_path, CONFIG_FILE)
     _invalidate_cache()
     return public_config()

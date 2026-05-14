@@ -17,6 +17,8 @@ import time
 import uuid
 from pathlib import Path
 
+from fs_utils import atomic_replace
+
 CONFIG_DIR = Path.home() / ".lumen"
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -177,6 +179,6 @@ def save_advanced_config(update: dict) -> dict:
 
     tmp = ADVANCED_CONFIG_FILE.with_suffix(f".tmp-{uuid.uuid4().hex}")
     tmp.write_text(json.dumps(current, indent=2))
-    tmp.replace(ADVANCED_CONFIG_FILE)
+    atomic_replace(tmp, ADVANCED_CONFIG_FILE)
     _invalidate_cache()
     return public_advanced_config()

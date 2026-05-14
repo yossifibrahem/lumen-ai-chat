@@ -12,10 +12,12 @@ import hashlib
 import json
 import re
 import threading
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from fs_utils import atomic_replace
 from mcp_adapters import conversation_working_directory
 
 CONVERSATIONS_DIR = Path.home() / ".lumen" / "conversations"
@@ -161,7 +163,7 @@ def save(conv_id: str, data: dict) -> dict:
     path = _path(conv_id)
     tmp_path = path.with_suffix(f".tmp-{uuid.uuid4().hex}")
     tmp_path.write_text(json.dumps(data, indent=2))
-    tmp_path.replace(path)
+    atomic_replace(tmp_path, path)
     _update_index_for(conv_id, data)
     return data
 

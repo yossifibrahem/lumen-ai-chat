@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from mcp_adapters import apply_workspace_process_options, expand_config_env, extract_host_mounts
+from fs_utils import atomic_replace
 from docker_path_utils import parse_volume_source
 
 _MCP_CONFIG_DIR = Path.home() / ".lumen"
@@ -71,7 +72,7 @@ def save_config(config: dict) -> None:
     tmp_path = MCP_CONFIG_FILE.with_suffix(f".tmp-{uuid.uuid4().hex}")
     tmp_path.write_text(json.dumps(config, indent=2))
     with _config_cache_lock:
-        tmp_path.replace(MCP_CONFIG_FILE)
+        atomic_replace(tmp_path, MCP_CONFIG_FILE)
         _config_cache = config
         _config_cache_at = time.monotonic()
         _config_cache_path = MCP_CONFIG_FILE
