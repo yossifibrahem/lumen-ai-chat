@@ -3,6 +3,7 @@
 //
 // Scope: app-level behavior only.
 // - Identity: what app the model is running in and what the environment provides.
+// - Variables: what is the current data for the web searching tools
 // - Rendering: what the UI can display so the model formats output appropriately.
 // - Formatting: how to structure responses in this context.
 // - Files: how uploads arrive, how to present workspace files after tool writes.
@@ -11,6 +12,10 @@
 //
 // Do NOT add tool-specific instructions here — those belong in MCP tool schemas.
 // Do NOT add per-user instructions here — those belong in the user system prompt.
+
+// variables available to the system prompt:
+const now = new Date();
+
 
 export function buildAppSystemPrompt() {
   return [
@@ -74,8 +79,9 @@ export function buildAppSystemPrompt() {
     '',
     'Prefer the most specific tool available over a general bash command. When a call',
     'is denied, acknowledge the denial and ask how to proceed instead of retrying.',
-    'When no tools are available and the task requires them, say so and suggest',
-    'enabling the relevant server via the MCP settings panel.',
+    'When no tools are available and the task requires them, say so and suggest ',
+    'enabling the relevant server via the MCP settings panel. ',
+    'the current date is ' + now.toDateString() + '.',
 
     '## Honesty and limitations',
 

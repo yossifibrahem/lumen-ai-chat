@@ -27,7 +27,7 @@
   border-radius: 20px;
   transition: border-color var(--fast);
   overflow: visible;
-  filter: drop-shadow(0 0 40px var(--border));
+  filter: drop-shadow(0 0 40px var(--surface));
 }
 
 #image-preview-bar {
