@@ -19,15 +19,14 @@ function createThinkingMarkup({ label, chevron, body = '', streaming = false, di
 }
 
 export function createThinkingBlock() {
-  const expanded = state.blocksDefaultExpanded;
   const row = prepareAssistantRow();
   const block = createElement('div', {
-    className: `thinking-block thinking-streaming${expanded ? ' open' : ''}`,
+    className: `thinking-block thinking-streaming open`,
     html: createThinkingMarkup({
       label:     'Thinking…',
-      chevron:   expanded ? ICONS.chevronDown : ICONS.chevronRight,
+      chevron:   ICONS.chevronDown,
       streaming: true,
-      display:   expanded ? 'block' : 'none',
+      display:   'block',
     }),
   });
 
@@ -58,8 +57,10 @@ export function finalizeThinkingBlock(bodyEl, fullText) {
   block.querySelector('.thinking-pulse')?.remove();
   bodyEl.textContent = fullText;
 
-  // Always collapse after streaming unless the user manually toggled it during streaming.
-  if (!block.dataset.manualToggle) {
+  // Collapse after streaming finishes unless:
+  // - the user manually toggled it during streaming, OR
+  // - "Expand blocks by default" is on (meaning: keep thinking open after done)
+  if (!block.dataset.manualToggle && !state.blocksDefaultExpanded) {
     block.classList.remove('open');
     block.querySelector('.thinking-chevron').innerHTML = ICONS.chevronRight;
     setVisible(bodyEl, false);
