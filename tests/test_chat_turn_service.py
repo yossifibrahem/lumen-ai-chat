@@ -342,8 +342,8 @@ class TestBareToolName:
 
     def test_plain_server_name_no_underscores(self):
         """Standard single-word server name still works via the server-prefix path."""
-        meta = {"server": "filesystem"}
-        assert svc._bare_tool_name("filesystem_read_file", meta) == "read_file"
+        meta = {"server": "agent_tools"}
+        assert svc._bare_tool_name("agent_tools_read_file", meta) == "read_file"
 
     def test_no_meta_falls_back_to_split_heuristic(self):
         """When there is no meta at all the old heuristic is still the fallback."""

@@ -143,12 +143,12 @@ class TestFindServer:
 
     def test_returns_full_server_config(self, isolated_mcp_config):
         server_cfg = {
-            "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"],
+            "command": "node",
+            "args": ["/path/to/file-tools-mcp-server/dist/index.js"],
             "env": {"SOME_VAR": "some_val"},
         }
-        isolated_mcp_config.write_text(json.dumps({"mcpServers": {"fs": server_cfg}}))
-        result = mcp_service.find_server("fs")
+        isolated_mcp_config.write_text(json.dumps({"mcpServers": {"agent_tools": server_cfg}}))
+        result = mcp_service.find_server("agent_tools")
         assert result == server_cfg
 
 

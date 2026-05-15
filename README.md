@@ -154,8 +154,7 @@ gunicorn -c gunicorn.conf.py "app:create_app()"
 
 ### Built-in supported tools
 it is reccommended to use these MCP servers for this app
-- [File Managment MCP server for workspace files](https://github.com/yossifibrahem/filesystem-mcp-server)
-- [Bash MCP server for container managment and packages](https://github.com/yossifibrahem/bash-mcp-server)
+- [Agent Tools MCP server — view, create_file, str_replace, bash_tool](https://github.com/yossifibrahem/file-tools-mcp-server)
 - [Exa MCP server for web search](https://github.com/exa-labs/exa-mcp-server)
 
 ---
@@ -228,12 +227,10 @@ All MCP servers run inside the conversation's Docker container with the workspac
 ```json
 {
   "mcpServers": {
-    "filesystem": {
-      "command": "npx",
+    "agent_tools": {
+      "command": "node",
       "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "/workspace"
+        "/path/to/file-tools-mcp-server/dist/index.js"
       ]
     },
     "search": {
@@ -342,7 +339,7 @@ The frontend is plain browser ES modules — no build step, no framework. `templ
 | `conversations.js` | Conversation CRUD and sidebar |
 | `settings.js` | API and chat settings UI |
 | `markdown.js` | Markdown, code highlighting, KaTeX, safe workspace file links |
-| `tool_adapters/` | Per-tool display adapters (`bash.js`, `filesystem.js`, `exa.js`) |
+| `tool_adapters/` | Per-tool display adapters (`agent_tools.js`, `exa.js`) |
 
 The frontend maintains two parallel histories: `state.messages` (model/API-facing) and `state.displayLog` (UI-facing). These have different structures and indices — do not conflate them.
 

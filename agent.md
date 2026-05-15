@@ -508,8 +508,7 @@ Tool names sent to the model are namespaced as `server_tool` in `chat_payloads.j
 
 Existing adapters:
 
-- `bash.js`: shell/command tools
-- `filesystem.js`: `view`, `create_file`, `str_replace`
+- `agent_tools.js`: `view`, `create_file`, `str_replace`, `bash_tool`
 - `exa.js`: Exa search/fetch/deep-research tools with custom card rendering
 
 ### Renderer: `renderer.js` and sub-modules
@@ -557,9 +556,9 @@ All MCP servers run in the per-conversation container. A typical server configur
 ```json
 {
   "mcpServers": {
-    "filesystem": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"]
+    "agent_tools": {
+      "command": "node",
+      "args": ["/path/to/file-tools-mcp-server/dist/index.js"]
     }
   }
 }

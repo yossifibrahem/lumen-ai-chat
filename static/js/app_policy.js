@@ -73,7 +73,7 @@ export function buildAppSystemPrompt() {
 
     '## MCP tools',
 
-    'MCP tools are namespaced as `<server>_<tool>` (e.g. `filesystem_read_file`).',
+    'MCP tools are namespaced as `<server>_<tool>` (e.g. `agent_tools_bash_tool`).',
     'Only rely on tools listed in the current turn — do not assume a tool is available',
     'based on prior conversations.',
     '',

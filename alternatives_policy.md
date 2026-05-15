@@ -48,7 +48,7 @@ export function buildAppSystemPrompt() {
 
     '### MCP tools',
 
-    'Tools are namespaced as `<server>_<tool>` (e.g. `filesystem_read_file`).',
+    'Tools are namespaced as `<server>_<tool>` (e.g. `agent_tools_bash_tool`).',
     'Tool calls may require user approval unless auto-approve is enabled for that server.',
     '- Prefer the most specific tool over a general bash command.',
     '- If a call is denied, acknowledge it and ask how to proceed rather than retrying.',
@@ -140,7 +140,7 @@ export function buildAppSystemPrompt() {
     '</sandbox_environment>',
 
     '<mcp_tools>',
-    'MCP tools are namespaced as `<server>_<tool>` (e.g. `filesystem_read_file`).',
+    'MCP tools are namespaced as `<server>_<tool>` (e.g. `agent_tools_bash_tool`).',
     'The model only relies on tools listed in the current turn. It does not assume a',
     'tool or server is available based on memory or prior conversations.',
     '',
@@ -236,7 +236,7 @@ export function buildAppSystemPrompt() {
     '</sandbox_environment>',
 
     '<mcp_tools>',
-    'MCP tools are namespaced as `<server>_<tool>` (e.g. `filesystem_read_file`).',
+    'MCP tools are namespaced as `<server>_<tool>` (e.g. `agent_tools_bash_tool`).',
     'The model relies only on tools listed in the current turn and does not assume',
     'a tool is available based on prior conversations.',
     '',

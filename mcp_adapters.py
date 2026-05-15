@@ -62,7 +62,6 @@ def _apply_container(
     explicit_env = expand_config_env(server_config.get("env", {}))
     container_env = {
         **{str(k): str(v) for k, v in explicit_env.items()},
-        "WORKING_DIR": CONTAINER_WORKDIR,
         "PWD": CONTAINER_WORKDIR,
     }
 
