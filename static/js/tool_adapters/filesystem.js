@@ -21,7 +21,7 @@ const pathMetaText = {
 
 registerAdapter({
   tools: ['view'],
-  usingLabel: 'Reading file',
+  usingLabel: 'Viewing file',
   ...pathMetaText,
 });
 

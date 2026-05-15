@@ -195,11 +195,7 @@ function renderCards(result, fetchVariant = false) {
 // ── Adapter registrations ─────────────────────────────────────────────────────
 
 registerAdapter({
-  tools: [
-    'web_search_exa',
-    'web_search_advanced_exa',
-    'get_code_context_exa',
-  ],
+  tools: ['web_search_exa'],
 
   usingLabel: 'Searching the web',
   labelArg: 'query',
@@ -234,15 +230,3 @@ registerAdapter({
 function tryParseUrls(str) {
   try { return JSON.parse(str); } catch { return []; }
 }
-
-registerAdapter({
-  tools: ['deep_researcher_start'],
-  usingLabel: 'Starting deep research',
-  getMetaText(args) { return args.query ? String(args.query) : ''; },
-});
-
-registerAdapter({
-  tools: ['deep_researcher_check'],
-  usingLabel: 'Checking research status',
-  getMetaText(args) { return args.jobId ? `job ${args.jobId}` : ''; },
-});
