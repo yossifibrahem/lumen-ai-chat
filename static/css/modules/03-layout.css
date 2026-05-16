@@ -39,7 +39,7 @@
   overflow-y: auto;
   /* Keep the last message comfortably above the floating composer,
      including when the composer has attachment previews. */
-  padding: 0 0 300px;
+  padding: 0 0 280px;
   scroll-behavior: smooth;
 }
 
