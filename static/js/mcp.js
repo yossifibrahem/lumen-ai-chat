@@ -19,13 +19,29 @@ function saveServerSettings() {
 
 function getServerSetting(serverName) {
   if (!state.mcpServerSettings[serverName]) {
-    state.mcpServerSettings[serverName] = { enabled: true, autoApprove: false, icon: 'tabMcp' };
+    state.mcpServerSettings[serverName] = { enabled: true, autoApprove: false, icon: 'tabMcp', tools: {} };
   }
   if (!state.mcpServerSettings[serverName].icon) {
     state.mcpServerSettings[serverName].icon = 'tabMcp';
   }
+  if (!state.mcpServerSettings[serverName].tools) {
+    state.mcpServerSettings[serverName].tools = {};
+  }
   return state.mcpServerSettings[serverName];
 }
+
+function getToolSetting(serverName, toolName) {
+  const srv = getServerSetting(serverName);
+  if (!srv.tools[toolName]) {
+    srv.tools[toolName] = { enabled: true, autoApprove: null, icon: null }; // null = inherit from server
+  }
+  if (!('icon' in srv.tools[toolName])) {
+    srv.tools[toolName].icon = null;
+  }
+  return srv.tools[toolName];
+}
+
+// ── Public API used by chat_payloads.js ───────────────────────────────────────
 
 export function isServerEnabled(serverName) {
   return getServerSetting(serverName).enabled !== false;
@@ -33,6 +49,25 @@ export function isServerEnabled(serverName) {
 
 export function isServerAutoApprove(serverName) {
   return getServerSetting(serverName).autoApprove === true;
+}
+
+/** Returns true if this specific tool is enabled (server AND tool both enabled). */
+export function isToolEnabled(serverName, toolName) {
+  if (!isServerEnabled(serverName)) return false;
+  return getToolSetting(serverName, toolName).enabled !== false;
+}
+
+/**
+ * Returns true if this tool should auto-approve.
+ * Tool-level null = inherit server setting.
+ * Tool-level true/false = explicit override.
+ */
+export function isToolAutoApprove(serverName, toolName) {
+  const toolSetting = getToolSetting(serverName, toolName);
+  if (toolSetting.autoApprove === null || toolSetting.autoApprove === undefined) {
+    return isServerAutoApprove(serverName);
+  }
+  return toolSetting.autoApprove === true;
 }
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -63,7 +98,6 @@ export async function saveMcpConfig() {
 
 
 // ── Tool loading ──────────────────────────────────────────────────────────────
-
 
 function normalizeToolsResponse(payload) {
   if (Array.isArray(payload)) return { tools: payload, skipped: [] };
@@ -149,22 +183,59 @@ function _setMcpStatus(message, type) {
 
 // ── Render helpers ────────────────────────────────────────────────────────────
 
-function buildToggleHtml(server, action, label, isOn) {
-  const onCls = isOn ? 'mcp-toggle-on' : '';
-  return `
-    <label class="mcp-toggle-label" title="${label}">
-      <span class="mcp-toggle-text">${label.split(' ')[0]}</span>
-      <button class="mcp-toggle ${onCls}"
-              data-server="${escapeHtml(server)}" data-action="${action}"
-              aria-pressed="${isOn}" aria-label="Toggle ${action}">
-        <span class="mcp-toggle-thumb"></span>
-      </button>
-    </label>`;
+function openIconDropdown(btn, container) {
+  // Close all open dropdowns first
+  container.querySelectorAll('.icon-picker-dropdown').forEach(d => { d.style.display = 'none'; });
+  const dropdown = btn.closest('[class*="-icon-wrap"]').querySelector('.icon-picker-dropdown');
+  if (!dropdown) return;
+  // Position using fixed coords so overflow:hidden on ancestors doesn't clip it
+  const rect = btn.getBoundingClientRect();
+  dropdown.style.display = 'flex';
+  const ddRect = dropdown.getBoundingClientRect();
+  const spaceBelow = window.innerHeight - rect.bottom;
+  if (spaceBelow < ddRect.height + 8) {
+    dropdown.style.top  = `${rect.top - ddRect.height - 5}px`;
+  } else {
+    dropdown.style.top  = `${rect.bottom + 5}px`;
+  }
+  dropdown.style.left = `${Math.min(rect.left, window.innerWidth - ddRect.width - 8)}px`;
 }
 
-function buildIconPickerHtml(server, currentIconKey) {
+
+function buildMiniToggle(dataAttrs, isOn, title) {
+  const attrStr = Object.entries(dataAttrs)
+    .map(([k, v]) => `data-${k}="${escapeHtml(String(v))}"`)
+    .join(' ');
+  return `<button class="mcp-mini-toggle${isOn ? ' on' : ''}" ${attrStr}
+    title="${escapeHtml(title)}" aria-pressed="${isOn}" aria-label="${escapeHtml(title)}">
+    <span class="mcp-mini-thumb"></span>
+  </button>`;
+}
+
+function buildServerToggleRow(server, settings) {
+  return `
+    <div class="server-toggle-group">
+      <label class="server-toggle-label">
+        ${buildMiniToggle({ server: server, action: 'enabled', level: 'server' }, settings.enabled, 'Enable server')}
+        <span class="toggle-label-text">Enabled</span>
+      </label>
+      <label class="server-toggle-label">
+        ${buildMiniToggle({ server: server, action: 'autoApprove', level: 'server' }, settings.autoApprove, 'Auto-approve all tools')}
+        <span class="toggle-label-text">Auto-approve</span>
+      </label>
+    </div>`;
+}
+
+function buildIconPickerHtml(server, currentIconKey, isDefault) {
+  const resetBtn = `
+    <button class="icon-option icon-option-reset${isDefault ? ' selected' : ''}"
+            data-server="${escapeHtml(server)}" data-icon="__default__"
+            title="Use default icon" aria-label="Use default icon">
+      ${ICONS.tabMcp}
+      <span class="icon-inherit-label">default</span>
+    </button>`;
   const optionsHtml = MCP_ICON_OPTIONS.map(opt => `
-    <button class="icon-option${currentIconKey === opt.key ? ' selected' : ''}"
+    <button class="icon-option${!isDefault && currentIconKey === opt.key ? ' selected' : ''}"
             data-server="${escapeHtml(server)}" data-icon="${opt.key}"
             title="${escapeHtml(opt.label)}" aria-label="${escapeHtml(opt.label)}">
       ${ICONS[opt.key]}
@@ -172,37 +243,132 @@ function buildIconPickerHtml(server, currentIconKey) {
   return `
     <div class="server-icon-wrap" data-server="${escapeHtml(server)}">
       <button class="server-icon-btn" data-server="${escapeHtml(server)}"
-              title="Change server icon" aria-label="Change server icon">
+              title="${isDefault ? 'Default icon' : 'Custom icon set (click to change)'}"
+              aria-label="Change server icon">
         <span class="server-icon-current">${ICONS[currentIconKey] || ICONS.tabMcp}</span>
+        ${isDefault ? '' : '<span class="tool-icon-dot"></span>'}
       </button>
       <div class="icon-picker-dropdown" style="display:none">
+        ${resetBtn}
+        <div class="icon-picker-divider"></div>
         ${optionsHtml}
       </div>
     </div>`;
 }
 
-function buildServerGroupHtml(server, tools, settings) {
-  const disabledCls   = settings.enabled ? '' : ' server-disabled';
-  const currentIcon   = settings.icon || 'tabMcp';
-  const toolsHtml     = tools.map(tool => `
-    <div class="tool-card">
-      <div class="tool-card-header">
-        <span class="tool-card-name">${escapeHtml(tool.name)}</span>
+function buildToolIconPickerHtml(server, toolName, currentIconKey, isInheritingIcon) {
+  const resetBtn = `
+    <button class="icon-option icon-option-reset${isInheritingIcon ? ' selected' : ''}"
+            data-server="${escapeHtml(server)}" data-tool="${escapeHtml(toolName)}" data-icon="__inherit__"
+            title="Follow server icon" aria-label="Follow server icon">
+      ${ICONS.tabMcp}
+      <span class="icon-inherit-label">auto</span>
+    </button>`;
+  const optionsHtml = MCP_ICON_OPTIONS.map(opt => `
+    <button class="icon-option${!isInheritingIcon && currentIconKey === opt.key ? ' selected' : ''}"
+            data-server="${escapeHtml(server)}" data-tool="${escapeHtml(toolName)}" data-icon="${opt.key}"
+            title="${escapeHtml(opt.label)}" aria-label="${escapeHtml(opt.label)}">
+      ${ICONS[opt.key]}
+    </button>`).join('');
+  return `
+    <div class="tool-icon-wrap" data-server="${escapeHtml(server)}" data-tool="${escapeHtml(toolName)}">
+      <button class="tool-icon-btn" data-server="${escapeHtml(server)}" data-tool="${escapeHtml(toolName)}"
+              title="${isInheritingIcon ? 'Icon follows server (click to override)' : 'Custom icon set (click to change)'}"
+              aria-label="Change tool icon">
+        <span class="tool-icon-current">${ICONS[currentIconKey] || ICONS.tabMcp}</span>
+        ${isInheritingIcon ? '' : '<span class="tool-icon-dot"></span>'}
+      </button>
+      <div class="icon-picker-dropdown" style="display:none">
+        ${resetBtn}
+        <div class="icon-picker-divider"></div>
+        ${optionsHtml}
       </div>
-      <div class="tool-card-desc">${escapeHtml(tool.description)}</div>
-    </div>`).join('');
+    </div>`;
+}
+
+/**
+ * Build the per-tool row with icon, enable + auto-approve mini-toggles.
+ * autoApprove null = inherited from server (shown with a dot indicator).
+ */
+function buildToolRowHtml(server, tool, serverSettings) {
+  const toolName    = tool.name;
+  const toolSetting = getToolSetting(server, toolName);
+  const isEnabled   = toolSetting.enabled !== false;
+
+  const autoApproveVal = toolSetting.autoApprove;
+  const isInherited    = autoApproveVal === null || autoApproveVal === undefined;
+  const isAutoApprove  = isInherited ? serverSettings.autoApprove : autoApproveVal;
+
+  const displayName = toolName;
+
+  // Icon: use tool-specific icon if set, otherwise fall back to server icon
+  const isInheritingIcon = !toolSetting.icon;
+  const toolIconKey = toolSetting.icon || serverSettings.icon || 'tabMcp';
+
+  return `
+    <div class="tool-row${!isEnabled ? ' tool-row-disabled' : ''}"
+         data-server="${escapeHtml(server)}" data-tool="${escapeHtml(toolName)}">
+      <div class="tool-row-info">
+        ${buildToolIconPickerHtml(server, toolName, toolIconKey, isInheritingIcon)}
+        <div class="tool-row-text">
+          <span class="tool-row-name" title="${escapeHtml(toolName)}">${escapeHtml(displayName)}</span>
+          <span class="tool-row-desc">${escapeHtml(tool.description || '')}</span>
+        </div>
+      </div>
+      <div class="tool-row-toggles">
+        ${buildMiniToggle(
+          { server: server, tool: toolName, action: 'enabled', level: 'tool' },
+          isEnabled,
+          'Enable this tool'
+        )}
+        <span class="tool-auto-wrap${isInherited ? ' is-inherited' : ''}">
+          ${buildMiniToggle(
+            { server: server, tool: toolName, action: 'autoApprove', level: 'tool' },
+            isAutoApprove,
+            isInherited
+              ? 'Auto-approve inherited from server – click to override'
+              : 'Auto-approve override – click to reset to server default'
+          )}
+          ${isInherited ? '<span class="inherit-badge" title="Inherited from server">↑</span>' : ''}
+        </span>
+      </div>
+    </div>`;
+}
+
+function buildServerGroupHtml(server, tools, settings) {
+  const disabledCls = settings.enabled ? '' : ' server-disabled';
+  const isDefault    = !settings.icon;
+  const currentIcon = settings.icon || 'tabMcp';
+
+  const enabledCount = tools.filter(t => getToolSetting(server, t.name).enabled !== false).length;
+  const totalCount   = tools.length;
+
+  const toolsHtml = tools.map(tool => buildToolRowHtml(server, tool, settings)).join('');
 
   return `
     <div class="server-group${disabledCls}" data-server="${escapeHtml(server)}">
       <div class="server-group-header">
-        ${buildIconPickerHtml(server, currentIcon)}
-        <span class="server-group-name">${escapeHtml(server)}</span>
-        <div class="server-group-controls">
-          ${buildToggleHtml(server, 'enabled',     'Enable / disable all tools from this server', settings.enabled)}
-          ${buildToggleHtml(server, 'autoApprove', 'Auto-approve tool calls from this server without confirmation', settings.autoApprove)}
+        <div class="server-header-left">
+          ${buildIconPickerHtml(server, currentIcon, isDefault)}
+          <div class="server-header-meta">
+            <span class="server-group-name">${escapeHtml(server)}</span>
+            <span class="server-tool-count">${enabledCount} / ${totalCount} tool${totalCount !== 1 ? 's' : ''} enabled</span>
+          </div>
+        </div>
+        <div class="server-header-right">
+          ${buildServerToggleRow(server, settings)}
         </div>
       </div>
-      <div class="server-tools">${toolsHtml}</div>
+      <div class="server-tools">
+        <div class="tool-list-header">
+          <span class="tool-col-name">Tool</span>
+          <div class="tool-col-controls">
+            <span class="tool-col-label">On</span>
+            <span class="tool-col-label">Auto</span>
+          </div>
+        </div>
+        <div class="tool-rows">${toolsHtml}</div>
+      </div>
     </div>`;
 }
 
@@ -228,7 +394,8 @@ function renderToolList() {
     .map(([server, tools]) => buildServerGroupHtml(server, tools, getServerSetting(server)))
     .join('');
 
-  container.querySelectorAll('.mcp-toggle').forEach(btn => {
+  // ── Server-level toggles ──────────────────────────────────────────────────
+  container.querySelectorAll('.mcp-mini-toggle[data-level="server"]').forEach(btn => {
     btn.addEventListener('click', () => {
       const setting = getServerSetting(btn.dataset.server);
       setting[btn.dataset.action] = !setting[btn.dataset.action];
@@ -237,25 +404,71 @@ function renderToolList() {
     });
   });
 
-  // Icon picker: toggle dropdown visibility
-  container.querySelectorAll('.server-icon-btn').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      const wrap    = btn.closest('.server-icon-wrap');
-      const dropdown = wrap.querySelector('.icon-picker-dropdown');
-      const isOpen  = dropdown.style.display !== 'none';
-      // Close all open dropdowns first
-      container.querySelectorAll('.icon-picker-dropdown').forEach(d => { d.style.display = 'none'; });
-      if (!isOpen) dropdown.style.display = 'flex';
+  // ── Tool-level toggles ────────────────────────────────────────────────────
+  container.querySelectorAll('.mcp-mini-toggle[data-level="tool"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const toolSetting = getToolSetting(btn.dataset.server, btn.dataset.tool);
+      const action = btn.dataset.action;
+
+      if (action === 'enabled') {
+        toolSetting.enabled = !toolSetting.enabled;
+      } else if (action === 'autoApprove') {
+        // Cycle: null (inherited) → explicit-opposite → null (inherited)
+        if (toolSetting.autoApprove === null || toolSetting.autoApprove === undefined) {
+          const serverAuto = getServerSetting(btn.dataset.server).autoApprove;
+          toolSetting.autoApprove = !serverAuto;
+        } else {
+          toolSetting.autoApprove = null; // reset to inherit
+        }
+      }
+      saveServerSettings();
+      renderToolList();
     });
   });
 
-  // Icon picker: select an icon option
-  container.querySelectorAll('.icon-option').forEach(btn => {
+  // ── Server icon picker: toggle dropdown ─────────────────────────────────
+  container.querySelectorAll('.server-icon-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const wrap     = btn.closest('.server-icon-wrap');
+      const dropdown = wrap.querySelector('.icon-picker-dropdown');
+      const isOpen   = dropdown.style.display !== 'none';
+      if (isOpen) { dropdown.style.display = 'none'; return; }
+      openIconDropdown(btn, container);
+    });
+  });
+
+  // ── Server icon picker: select icon ──────────────────────────────────────
+  container.querySelectorAll('.server-icon-wrap .icon-option').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
       const setting = getServerSetting(btn.dataset.server);
-      setting.icon = btn.dataset.icon;
+      // __default__ resets to null so the server uses the default icon
+      setting.icon = btn.dataset.icon === '__default__' ? null : btn.dataset.icon;
+      saveServerSettings();
+      renderToolList();
+    });
+  });
+
+  // ── Tool icon picker: toggle dropdown ─────────────────────────────────────
+  container.querySelectorAll('.tool-icon-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const wrap     = btn.closest('.tool-icon-wrap');
+      const dropdown = wrap.querySelector('.icon-picker-dropdown');
+      const isOpen   = dropdown.style.display !== 'none';
+      if (isOpen) { dropdown.style.display = 'none'; return; }
+      openIconDropdown(btn, container);
+    });
+  });
+
+  // ── Tool icon picker: select icon ─────────────────────────────────────────
+  container.querySelectorAll('.tool-icon-wrap .icon-option').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const toolSetting = getToolSetting(btn.dataset.server, btn.dataset.tool);
+      // __inherit__ resets to null so the tool follows the server icon
+      toolSetting.icon = btn.dataset.icon === '__inherit__' ? null : btn.dataset.icon;
       saveServerSettings();
       renderToolList();
     });

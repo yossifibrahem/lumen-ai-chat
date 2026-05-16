@@ -1,56 +1,310 @@
-/* MCP server settings groups, toggles, and icon picker styles. */
+/* MCP server settings — server groups, per-tool rows, toggles, icon picker. */
 
-/* ─── MCP server groups and toggles ───────────────────────────────────────── */
+/* ─── Section container ───────────────────────────────────────────────────── */
 #mcp-status { margin-top: -6px; margin-bottom: 10px; }
-#tool-list { display: flex; flex-direction: column; gap: 6px; }
-#tool-list .server-group:last-child { margin-bottom: 0; }
-.server-group { margin-bottom: 0; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface2); transition: opacity .2s; }
-.server-group.server-disabled { opacity: .5; }
-.server-group.server-disabled .server-tools { display: none; }
-.server-group-header { justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 13px; border-bottom: 1px solid var(--border); background: var(--surface2); display: flex; align-items: center; }
-.server-group-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .8rem; font-family: var(--font-mono); color: var(--accent); font-weight: 500; }
-.server-group-controls { gap: 14px; display: flex; align-items: center; }
-.mcp-toggle-label { gap: 6px; cursor: pointer; user-select: none; display: flex; align-items: center; }
-.mcp-toggle-text { color: var(--text3); font-size: .7rem; white-space: nowrap; font-family: var(--font-mono); }
-.mcp-toggle { position: relative; width: 34px; height: 19px; display: inline-flex; align-items: center; padding: 0; border: none; appearance: none; -webkit-appearance: none; border-radius: 10px; outline: 1px solid var(--border); background: var(--surface); cursor: pointer; transition: background .2s, outline-color .2s; }
-.mcp-toggle:hover { outline-color: var(--accent); }
-.mcp-toggle.mcp-toggle-on { background: var(--accent); outline-color: transparent; }
-.mcp-toggle-thumb { position: absolute; left: 3px; width: 13px; height: 13px; border-radius: 50%; background: var(--text3); pointer-events: none; transition: left .2s, background .2s; }
-.mcp-toggle.mcp-toggle-on .mcp-toggle-thumb { left: 18px; background: var(--bg); }
-.server-tools { padding: 8px 10px 4px; }
-.server-group .tool-card { margin-bottom: 5px; border-color: var(--border); background: var(--surface2); }
-.server-group .tool-card:last-child { margin-bottom: 4px; }
+#tool-list { display: flex; flex-direction: column; gap: 8px; }
+
+/* ─── Server card ─────────────────────────────────────────────────────────── */
+.server-group {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  transition: opacity .2s;
+  position: relative; /* stacking context without overflow clip */
+}
+.server-group.server-disabled { opacity: .45; }
+
+/* ─── Server card header ──────────────────────────────────────────────────── */
+.server-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.server-header-left  { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.server-header-right { display: flex; align-items: center; gap: 0; flex-shrink: 0; }
+.server-header-meta  { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.server-group-name {
+  font-size: .78rem;
+  font-family: var(--font-mono);
+  color: var(--accent);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.server-tool-count {
+  font-size: .67rem;
+  font-family: var(--font-mono);
+  color: var(--text3);
+}
+
+/* ─── Server-level toggle row ─────────────────────────────────────────────── */
+.server-toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.server-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  user-select: none;
+}
+.toggle-label-text {
+  font-size: .67rem;
+  font-family: var(--font-mono);
+  color: var(--text3);
+  white-space: nowrap;
+}
+
+/* ─── Mini toggle (used at both server and tool level) ────────────────────── */
+.mcp-mini-toggle {
+  position: relative;
+  width: 30px;
+  height: 17px;
+  padding: 0;
+  border: none;
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 9px;
+  outline: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: background .15s, outline-color .15s;
+  flex-shrink: 0;
+}
+.mcp-mini-toggle:hover { outline-color: var(--accent); }
+.mcp-mini-toggle.on { background: var(--accent); outline-color: transparent; }
+.mcp-mini-thumb {
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  transform: translateY(-50%);
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--text3);
+  pointer-events: none;
+  transition: left .15s, background .15s;
+}
+.mcp-mini-toggle.on .mcp-mini-thumb { left: 17px; background: var(--bg); }
+
+/* ─── Tool list column headers ────────────────────────────────────────────── */
+.server-tools { padding: 0; }
+.tool-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 12px 4px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+.tool-col-name {
+  font-size: .63rem;
+  font-family: var(--font-mono);
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  flex: 1;
+}
+.tool-col-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.tool-col-label {
+  font-size: .63rem;
+  font-family: var(--font-mono);
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  width: 30px;
+  text-align: center;
+}
+
+/* ─── Tool rows ───────────────────────────────────────────────────────────── */
+.tool-rows { display: flex; flex-direction: column; border-radius: 0 0 var(--radius) var(--radius); overflow: hidden; }
+.tool-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.tool-row:last-child { border-bottom: none; }
+.tool-row.tool-row-disabled .tool-row-info { opacity: .4; }
+
+.tool-row-info {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  flex: 1;
+}
+.tool-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.tool-row-name {
+  font-size: .75rem;
+  font-family: var(--font-mono);
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tool-row-desc {
+  font-size: .68rem;
+  color: var(--text3);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Per-tool toggle controls ────────────────────────────────────────────── */
+.tool-row-toggles {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+.tool-auto-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+/* Dimmed state when inheriting from server */
+.tool-auto-wrap.is-inherited .mcp-mini-toggle {
+  opacity: .55;
+}
+.tool-auto-wrap.is-inherited .mcp-mini-toggle:hover {
+  opacity: 1;
+}
+/* Small "inherited" badge */
+.inherit-badge {
+  position: absolute;
+  top: -4px;
+  right: -5px;
+  font-size: .5rem;
+  color: var(--text3);
+  pointer-events: none;
+  line-height: 1;
+}
+
+/* ─── Per-tool icon picker ────────────────────────────────────────────────── */
+.tool-icon-wrap { position: relative; flex-shrink: 0; }
+.tool-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text3);
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.tool-icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+.tool-icon-btn .tool-icon-current { display: inline-flex; pointer-events: none; }
+.tool-icon-btn svg { width: 11px; height: 11px; }
 
 /* ─── Per-server icon picker ──────────────────────────────────────────────── */
-.server-icon-wrap { position: relative; flex-shrink: 0; order: 0; margin-right: 8px; }
-.server-group-name { order: 1; }
-.server-group-controls { order: 2; margin-left: auto; }
+.server-icon-wrap { position: relative; flex-shrink: 0; }
 .server-icon-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px; padding: 0;
-  border: 1px solid var(--border); border-radius: 6px;
-  background: var(--surface2); color: var(--text2);
-  cursor: pointer; transition: border-color .15s, background .15s, color .15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--text2);
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
 }
 .server-icon-btn:hover { border-color: var(--accent); background: var(--surface); color: var(--accent); }
 .server-icon-btn .server-icon-current { display: inline-flex; pointer-events: none; }
 .server-icon-btn svg { width: 14px; height: 14px; }
 
 .icon-picker-dropdown {
-  position: absolute; top: calc(100% + 5px); left: 0; z-index: 120;
-  display: flex; flex-wrap: wrap; gap: 4px;
-  padding: 6px; width: max-content; max-width: 180px;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.35);
+  position: fixed;
+  z-index: 9999;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px;
+  width: max-content;
+  max-width: 180px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.35);
 }
 .icon-option {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 30px; height: 30px; padding: 0;
-  border: 1px solid transparent; border-radius: 6px;
-  background: transparent; color: var(--text2);
-  cursor: pointer; transition: border-color .12s, background .12s, color .12s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  transition: border-color .12s, background .12s, color .12s;
 }
 .icon-option svg { width: 15px; height: 15px; pointer-events: none; }
 .icon-option:hover { background: var(--surface2); color: var(--text); border-color: var(--border); }
 .icon-option.selected { background: var(--accent-dim); color: var(--accent); border-color: var(--accent-border); }
 
+/* "Follow server" reset option in tool icon picker */
+.icon-option-reset {
+  width: 100%;
+  gap: 5px;
+  justify-content: flex-start;
+  padding: 0 6px;
+  font-size: .63rem;
+  font-family: var(--font-mono);
+  color: var(--text3);
+  border-radius: 5px;
+}
+.icon-option-reset svg { width: 12px; height: 12px; flex-shrink: 0; }
+.icon-inherit-label { pointer-events: none; }
+.icon-picker-divider {
+  width: 100%;
+  height: 1px;
+  background: var(--border);
+  margin: 2px 0;
+}
+/* Small dot on tool icon button when a custom icon is set */
+.tool-icon-dot {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  pointer-events: none;
+}
+.tool-icon-btn { position: relative; }

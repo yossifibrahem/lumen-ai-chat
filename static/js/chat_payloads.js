@@ -2,12 +2,12 @@
 
 import { api } from './api.js';
 import { state } from './state.js';
-import { isServerEnabled, isServerAutoApprove } from './mcp.js';
+import { isServerEnabled, isServerAutoApprove, isToolEnabled, isToolAutoApprove } from './mcp.js';
 import { buildAppSystemPrompt } from './app_policy.js';
 
 export function buildToolsPayload() {
   return state.mcpTools
-    .filter(tool => isServerEnabled(tool.server))
+    .filter(tool => isToolEnabled(tool.server, tool.name))
     .map(tool => ({
       type: 'function',
       function: {
@@ -20,11 +20,11 @@ export function buildToolsPayload() {
 
 export function buildMcpToolMetaPayload() {
   return state.mcpTools
-    .filter(tool => isServerEnabled(tool.server))
+    .filter(tool => isToolEnabled(tool.server, tool.name))
     .map(tool => ({
       name: tool.name,
       server: tool.server,
-      autoApprove: isServerAutoApprove(tool.server),
+      autoApprove: isToolAutoApprove(tool.server, tool.name),
     }));
 }
 

@@ -16,7 +16,9 @@ const activeApprovalCancellers = new Set();
 function getToolIconSvg(toolName) {
   const tool = state.mcpTools.find(t => t.name === toolName);
   if (!tool) return ICONS.tabMcp;
-  const iconKey = state.mcpServerSettings[tool.server]?.icon || 'tabMcp';
+  const serverSettings = state.mcpServerSettings[tool.server] || {};
+  const toolSettings   = serverSettings.tools?.[toolName] || {};
+  const iconKey = toolSettings.icon || serverSettings.icon || 'tabMcp';
   return ICONS[iconKey] || ICONS.tabMcp;
 }
 

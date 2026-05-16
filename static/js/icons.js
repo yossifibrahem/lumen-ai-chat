@@ -78,6 +78,10 @@ export const ICONS = {
   mcpMemory:     icon('<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/>', 'width="13" height="13"'),
   mcpDatabase:   icon('<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>', 'width="13" height="13"'),
   mcpGit:        icon('<line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>', 'width="13" height="13"'),
+  mcpFile:       icon('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>', 'width="13" height="13"'),
+  mcpPencil:     icon('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>', 'width="13" height="13"'),
+  mcpLink:       icon('<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>', 'width="13" height="13"'),
+  mcpEye:        icon('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>', 'width="13" height="13"'),
 };
 
 // ── MCP icon picker options ────────────────────────────────────────────────────
@@ -86,6 +90,10 @@ export const MCP_ICON_OPTIONS = [
   { key: 'mcpWebSearch',  label: 'Web Search' },
   { key: 'mcpBash',       label: 'Terminal'   },
   { key: 'mcpFileSystem', label: 'Files'      },
+  { key: 'mcpFile',       label: 'File'       },
+  { key: 'mcpPencil',     label: 'Pencil'     },
+  { key: 'mcpLink',       label: 'Link'       },
+  { key: 'mcpEye',        label: 'Eye'        },
   { key: 'mcpMemory',     label: 'Memory'     },
   { key: 'mcpDatabase',   label: 'Database'   },
   { key: 'mcpGit',        label: 'Git'        },
