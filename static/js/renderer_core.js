@@ -7,7 +7,6 @@ const BOTTOM_THRESHOLD = 32;
 export let stickToBottom = true;
 
 export const messagesEl = () => $('#messages');
-export const formatTime = () => new Date().toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
 const isNearBottom = el => el.scrollHeight - el.scrollTop - el.clientHeight <= BOTTOM_THRESHOLD;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -38,7 +37,6 @@ export function createMessageRow({ avatarClass, avatarIcon, roleLabel, isUser = 
     <div class="msg-meta">
       <div class="msg-avatar ${avatarClass}">${avatarIcon}</div>
       <span class="msg-role-label">${roleLabel}</span>
-      <span class="msg-time">${formatTime()}</span>
     </div>`;
 
   messagesEl().appendChild(row);

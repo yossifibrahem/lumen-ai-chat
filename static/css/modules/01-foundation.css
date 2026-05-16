@@ -95,7 +95,7 @@ svg { flex-shrink: 0; }
   align-items: center;
 }
 
-:is(.conv-section-label, .msg-role-label, .msg-time, .input-hint, .char-count, .field label, .field-note, .status-msg, .mp-header, .mp-chip, .model-chip, .mp-empty, .btn-primary, .btn-secondary, .tc-item-header, .tr-summary, .thinking-header, .arg-value, .tr-result, .tr-args, .arg-name, .tr-section-label, .tool-card-name, .no-tools-label, #mcp-config-editor, #btn-new-chat, #model-badge, .msg-action-btn, .tc-allow, .tc-deny, .tc-status, .tool-strip-running, .tool-strip-using, .group-header) {
+:is(.conv-section-label, .msg-role-label, .input-hint, .char-count, .field label, .field-note, .status-msg, .mp-header, .mp-chip, .model-chip, .mp-empty, .btn-primary, .btn-secondary, .tc-item-header, .tr-summary, .thinking-header, .arg-value, .tr-result, .tr-args, .arg-name, .tr-section-label, .tool-card-name, .no-tools-label, #mcp-config-editor, #btn-new-chat, #model-badge, .msg-action-btn, .tc-allow, .tc-deny, .tc-status, .tool-strip-running, .tool-strip-using, .group-header) {
   font-family: var(--font-mono);
 }
 

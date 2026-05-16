@@ -29,15 +29,10 @@ export function applyCustomization() {
     : (state.accentColor || CUSTOMIZATION_DEFAULTS.accentColor);
   _applyAccent(accent);
 
-  // Timestamps visibility
-  document.documentElement.classList.toggle('hide-timestamps',      !state.showTimestamps);
-
   // Suggestion chips visibility
   document.documentElement.classList.toggle('hide-suggestion-chips', !state.showSuggestionChips);
 
 
-  // Char count
-  document.documentElement.classList.toggle('hide-char-count', !state.showCharCount);
 }
 
 function _applyTheme(theme) {
@@ -95,10 +90,9 @@ export function saveCustomization() {
   storage.set(STORAGE_KEYS.customization, {
     sidebarDefaultOpen:    state.sidebarDefaultOpen,
     showSuggestionChips:   state.showSuggestionChips,
-    showTimestamps:        state.showTimestamps,
-    blocksDefaultExpanded: state.blocksDefaultExpanded,
+    hideToolBlocks:        state.hideToolBlocks,
     groupSequentialBlocks: state.groupSequentialBlocks,
-    showCharCount:         state.showCharCount,
+    hideThinkingTokens:    state.hideThinkingTokens,
     fontSize:              state.fontSize,
     fontFamily:            state.fontFamily,
     theme:                 state.theme,
@@ -171,10 +165,9 @@ function _deactivateSwatches() {
 export function syncCustomizationUI() {
   _setCheckbox('cust-sidebar-open',    state.sidebarDefaultOpen);
   _setCheckbox('cust-suggestion-chips',state.showSuggestionChips);
-  _setCheckbox('cust-timestamps',      state.showTimestamps);
-  _setCheckbox('cust-blocks-expanded',   state.blocksDefaultExpanded);
+  _setCheckbox('cust-hide-tool-blocks',   state.hideToolBlocks);
+  _setCheckbox('cust-hide-thinking',     state.hideThinkingTokens);
   _setCheckbox('cust-group-seq-blocks',  state.groupSequentialBlocks);
-  _setCheckbox('cust-char-count',        state.showCharCount);
 
   const fs = document.getElementById('cust-font-size');
   if (fs) fs.value = state.fontSize;
@@ -205,10 +198,9 @@ export function syncCustomizationUI() {
 function _readControlsIntoState() {
   state.sidebarDefaultOpen    = document.getElementById('cust-sidebar-open')?.checked     ?? state.sidebarDefaultOpen;
   state.showSuggestionChips   = document.getElementById('cust-suggestion-chips')?.checked  ?? state.showSuggestionChips;
-  state.showTimestamps        = document.getElementById('cust-timestamps')?.checked         ?? state.showTimestamps;
-  state.blocksDefaultExpanded = document.getElementById('cust-blocks-expanded')?.checked   ?? state.blocksDefaultExpanded;
+  state.hideToolBlocks        = document.getElementById('cust-hide-tool-blocks')?.checked   ?? state.hideToolBlocks;
+  state.hideThinkingTokens    = document.getElementById('cust-hide-thinking')?.checked     ?? state.hideThinkingTokens;
   state.groupSequentialBlocks = document.getElementById('cust-group-seq-blocks')?.checked  ?? state.groupSequentialBlocks;
-  state.showCharCount         = document.getElementById('cust-char-count')?.checked        ?? state.showCharCount;
   state.fontSize              = document.getElementById('cust-font-size')?.value           ?? state.fontSize;
   state.fontFamily            = document.getElementById('cust-font-family')?.value         ?? state.fontFamily;
 

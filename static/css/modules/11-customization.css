@@ -20,7 +20,6 @@ html.sidebar-init-closed #main {
 /* Base font size variable (set by JS) */
 
 /* Hide timestamps when toggled off */
-html.hide-timestamps .msg-time { display: none; }
 
 /* Hide suggestion chips when toggled off */
 html.hide-suggestion-chips #suggestions-bar { display: none !important; }

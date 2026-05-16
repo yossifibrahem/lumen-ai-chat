@@ -13,20 +13,20 @@ function createThinkingMarkup({ label, chevron, body = '', streaming = false, di
       <span class="thinking-chevron">${chevron}</span>
       <span class="thinking-icon">${ICONS.bulb}</span>
       <span class="thinking-label">${label}</span>
-      ${streaming ? '<span class="thinking-pulse"></span>' : ''}
     </button>
     <pre class="thinking-body" style="display:${display}">${body}</pre>`;
 }
 
 export function createThinkingBlock() {
   const row = prepareAssistantRow();
+  const startOpen = !state.hideThinkingTokens;
   const block = createElement('div', {
-    className: `thinking-block thinking-streaming open`,
+    className: `thinking-block thinking-streaming${startOpen ? ' open' : ''}`,
     html: createThinkingMarkup({
       label:     'Thinking…',
-      chevron:   ICONS.chevronDown,
+      chevron:   startOpen ? ICONS.chevronDown : ICONS.chevronRight,
       streaming: true,
-      display:   'block',
+      display:   startOpen ? 'block' : 'none',
     }),
   });
 
@@ -54,13 +54,10 @@ export function finalizeThinkingBlock(bodyEl, fullText) {
 
   block.classList.remove('thinking-streaming');
   block.querySelector('.thinking-label').textContent = 'Thought process';
-  block.querySelector('.thinking-pulse')?.remove();
   bodyEl.textContent = fullText;
 
-  // Collapse after streaming finishes unless:
-  // - the user manually toggled it during streaming, OR
-  // - "Expand blocks by default" is on (meaning: keep thinking open after done)
-  if (!block.dataset.manualToggle && !state.blocksDefaultExpanded) {
+  // Collapse when done unless the user manually toggled it open mid-stream.
+  if (!block.dataset.manualToggle) {
     block.classList.remove('open');
     block.querySelector('.thinking-chevron').innerHTML = ICONS.chevronRight;
     setVisible(bodyEl, false);
@@ -72,15 +69,14 @@ export function finalizeThinkingBlock(bodyEl, fullText) {
 export function appendThinkingBlock(reasoningText) {
   if (!reasoningText) return;
 
-  const expanded = state.blocksDefaultExpanded;
   const row = prepareAssistantRow();
   const block = createElement('div', {
-    className: `thinking-block${expanded ? ' open' : ''}`,
+    className: 'thinking-block',
     html: createThinkingMarkup({
       label:   'Thought process',
-      chevron: expanded ? ICONS.chevronDown : ICONS.chevronRight,
+      chevron: ICONS.chevronRight,
       body:    escapeHtml(reasoningText),
-      display: expanded ? 'block' : 'none',
+      display: 'none',
     }),
   });
 

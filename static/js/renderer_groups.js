@@ -70,28 +70,35 @@ function getLastBlockLabel(elements) {
   return getBlockLabel(elements[elements.length - 1]);
 }
 
+function isBlockActive(el) {
+  if (el.classList.contains('thinking-block')) return el.classList.contains('thinking-streaming');
+  if (el.classList.contains('tool-strip')) {
+    return el.classList.contains('tool-strip-using') ||
+           el.classList.contains('tool-strip-running') ||
+           el.classList.contains('tool-strip-approval');
+  }
+  return false;
+}
+
 export function updateGroupLabel(group) {
   const body     = group?.querySelector('.group-body');
   const elements = body ? [...body.children].filter(isGroupableBlock) : [];
   const lbl = group?.querySelector('.group-label');
-  const dsc = group?.querySelector('.group-desc');
   if (lbl) lbl.textContent = getLastBlockLabel(elements);
-  if (dsc) dsc.textContent = makeGroupSummary(elements);
+  const active = elements.some(isBlockActive);
+  group?.classList.toggle('group-active', active);
 }
 
 function createGroupBlock(elements) {
-  const summary = makeGroupSummary(elements);
   const label   = getLastBlockLabel(elements);
-  const expanded = state.blocksDefaultExpanded;
+  const expanded = !state.hideToolBlocks;
 
-  const group = createElement('div', { className: `block-group${expanded ? ' open' : ''}` });
+  const anyActive = elements.some(isBlockActive);
+  const group = createElement('div', { className: `block-group${expanded ? ' open' : ''}${anyActive ? ' group-active' : ''}` });
   group.innerHTML = `
     <button class="group-header">
       <span class="group-chevron">${expanded ? ICONS.chevronDown : ICONS.chevronRight}</span>
-      <span class="group-icon">${ICONS.layers}</span>
       <span class="group-label">${escapeHtml(label)}</span>
-      <span class="group-sep">·</span>
-      <span class="group-desc">${escapeHtml(summary)}</span>
     </button>
     <div class="group-body" style="${expanded ? '' : 'display:none'}"></div>`;
 

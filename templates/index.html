@@ -54,7 +54,6 @@
     }
 
     // Body classes on <html> (body doesn't exist yet)
-    if (prefs.showTimestamps === false)        r.classList.add('hide-timestamps');
     if (prefs.showSuggestionChips === false)   r.classList.add('hide-suggestion-chips');
 
     // Sidebar — collapse immediately when the last saved state is closed.
@@ -79,9 +78,6 @@
     if (prefs.fontFamily && fontMap[prefs.fontFamily]) {
       r.style.setProperty('--font-roman', fontMap[prefs.fontFamily]);
     }
-
-    // Char count
-    if (prefs.showCharCount === false) r.classList.add('hide-char-count');
 
     // Suppress all transitions during initial paint so nothing animates in
     r.classList.add('no-transition');
@@ -468,22 +464,22 @@
 
           <div class="cust-row">
             <div class="cust-row-label">
-              <span class="cust-label">Show message timestamps</span>
-              <span class="cust-hint">Display time next to each message</span>
+              <span class="cust-label">Hide tool blocks</span>
+              <span class="cust-hint">Tool-use blocks start collapsed</span>
             </div>
             <label class="cust-toggle">
-              <input type="checkbox" id="cust-timestamps" />
+              <input type="checkbox" id="cust-hide-tool-blocks" />
               <span class="cust-toggle-track"><span class="cust-toggle-thumb"></span></span>
             </label>
           </div>
 
           <div class="cust-row">
             <div class="cust-row-label">
-              <span class="cust-label">Expand blocks by default</span>
-              <span class="cust-hint">Thinking and tool-use blocks start expanded</span>
+              <span class="cust-label">Hide thinking tokens</span>
+              <span class="cust-hint">Thinking blocks start collapsed while streaming</span>
             </div>
             <label class="cust-toggle">
-              <input type="checkbox" id="cust-blocks-expanded" />
+              <input type="checkbox" id="cust-hide-thinking" />
               <span class="cust-toggle-track"><span class="cust-toggle-thumb"></span></span>
             </label>
           </div>
@@ -499,17 +495,6 @@
             </label>
           </div>
 
-
-          <div class="cust-row">
-            <div class="cust-row-label">
-              <span class="cust-label">Show character count</span>
-              <span class="cust-hint">Display character count in the input toolbar</span>
-            </div>
-            <label class="cust-toggle">
-              <input type="checkbox" id="cust-char-count" />
-              <span class="cust-toggle-track"><span class="cust-toggle-thumb"></span></span>
-            </label>
-          </div>
 
         </div>
       </div>

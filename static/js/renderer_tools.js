@@ -44,7 +44,7 @@ function createToolResultBody(toolName, args, result) {
 }
 
 function applyToolResultStrip(strip, toolName, args, result, displayName = '') {
-  const expanded = state.blocksDefaultExpanded;
+  const expanded = !state.hideToolBlocks;
   const label = getToolDisplayLabel(toolName, args) || displayName;
 
   strip.className = `tool-strip tool-strip-result tool-inline${expanded ? ' open' : ''}`;
@@ -104,8 +104,7 @@ export function createToolStrip(toolName, displayName = '') {
   strip.dataset.displayName = usingLabel;
   strip.innerHTML = `
     <span class="tool-icon">${getToolIconSvg(toolName)}</span>
-    <span class="tui-name">${escapeHtml(usingLabel)}</span>
-    <span class="thinking-pulse"></span>`;
+    <span class="tui-name">${escapeHtml(usingLabel)}</span>`;
   row.appendChild(strip);
   if (state.groupSequentialBlocks) tryGroupBlock(strip);
   scrollToBottom();
@@ -195,7 +194,6 @@ export function toolStripSetRunning(strip, args = {}) {
            </button>`
         : `<span class="tool-icon">${getToolIconSvg(name)}</span>
            <span class="tui-name">${escapeHtml(displayName)}</span>`}
-      <span class="thinking-pulse"></span>
     </div>
     ${hasArgs ? `<div class="tc-item-args" style="display:none">${formatArgsHtml(args)}</div>` : ''}`;
 
