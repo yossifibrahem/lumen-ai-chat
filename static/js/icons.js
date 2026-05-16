@@ -19,7 +19,7 @@ export const ICONS = {
   close:   icon(_xBody, 'stroke-width="2.5"'),
   moreVertical: icon('<circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/>', 'fill="currentColor" stroke="none"'),
   trash:   icon('<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>'),
-  copy:    icon('<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'),
+  copy:    icon('<rect x="9" y="9" width="14" height="14" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'),
   download: icon('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>'),
   edit:    icon(_penBody),
   refresh: icon('<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>'),
@@ -46,8 +46,8 @@ export const ICONS = {
   search: icon('<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>', 'stroke-width="2.2"'),
 
   // ── Decorative / small ─────────────────────────────────────────────────────
-  bulb:   icon('<path d="M10,1 C6,0 2,2 1,8 C0,14 2,18 6,20 C8,21 10,21 10,21"/><path d="M14,1 C18,0 22,2 23,8 C24,14 22,18 18,20 C16,21 14,21 14,21"/><line x1="12" y1="1" x2="12" y2="21"/><path d="M1,8 C5,9 7,12 6,16"/><path d="M6,16 C5,19 7,21 10,21"/><path d="M23,8 C19,9 17,12 18,16"/><path d="M18,16 C19,19 17,21 14,21"/><path d="M10,21 C10,23 14,23 14,21"/>', 'width="16" height="16"'),
-  layers: icon('<polygon points="12 2 22 8.5 12 15 2 8.5"/><polyline points="2 13 12 19.5 22 13"/><polyline points="2 17.5 12 24 22 17.5"/>', 'width="16" height="16"'),
+  bulb:   icon('<path d="M10,1 C6,0 2,2 1,8 C0,14 2,18 6,20 C8,21 10,21 10,21"/><path d="M14,1 C18,0 22,2 23,8 C24,14 22,18 18,20 C16,21 14,21 14,21"/><line x1="12" y1="1" x2="12" y2="21"/><path d="M1,8 C5,9 7,12 6,16"/><path d="M6,16 C5,19 7,21 10,21"/><path d="M23,8 C19,9 17,12 18,16"/><path d="M18,16 C19,19 17,21 14,21"/><path d="M10,21 C10,23 14,23 14,21"/>', 'width="14" height="14"'),
+  layers: icon('<polygon points="12 2 22 8.5 12 15 2 8.5"/><polyline points="2 13 12 19.5 22 13"/><polyline points="2 17.5 12 24 22 17.5"/>', 'width="14" height="14"'),
 
   // ── Suggestion chip icons (sized by CSS) ───────────────────────────────────
   chipCode:    icon('<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>'),
@@ -72,16 +72,16 @@ export const ICONS = {
   syncIcon: `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M14 8A6 6 0 1 1 9.7 2.5"/><path d="M14 2v4h-4"/></svg>`,
 
   // ── MCP server icons (used in tool strips & the per-server icon picker) ────
-  mcpWebSearch:  icon('<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>', 'width="16" height="16"'),
-  mcpBash:       icon('<rect x="1" y="2" width="22" height="20" rx="2"/><polyline points="7 9 11 13 7 17"/><line x1="13" y1="17" x2="19" y2="17"/>', 'width="16" height="16"'),
-  mcpFileSystem: icon('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>', 'width="16" height="16"'),
-  mcpMemory:     icon('<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/>', 'width="16" height="16"'),
-  mcpDatabase:   icon('<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>', 'width="16" height="16"'),
-  mcpGit:        icon('<line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>', 'width="16" height="16"'),
-  mcpFile:       icon('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>', 'width="16" height="16"'),
-  mcpPencil:     icon('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>', 'width="16" height="16"'),
-  mcpLink:       icon('<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>', 'width="16" height="16"'),
-  mcpEye:        icon('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>', 'width="16" height="16"'),
+  mcpWebSearch:  icon('<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>', 'width="14" height="14"'),
+  mcpBash:       icon('<rect x="1" y="2" width="22" height="20" rx="2"/><polyline points="7 9 11 13 7 17"/><line x1="13" y1="17" x2="19" y2="17"/>', 'width="14" height="14"'),
+  mcpFileSystem: icon('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>', 'width="14" height="14"'),
+  mcpMemory:     icon('<rect x="4" y="4" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/>', 'width="14" height="14"'),
+  mcpDatabase:   icon('<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>', 'width="14" height="14"'),
+  mcpGit:        icon('<line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>', 'width="14" height="14"'),
+  mcpFile:       icon('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>', 'width="14" height="14"'),
+  mcpPencil:     icon('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>', 'width="14" height="14"'),
+  mcpLink:       icon('<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>', 'width="14" height="14"'),
+  mcpEye:        icon('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>', 'width="14" height="14"'),
 };
 
 // ── MCP icon picker options ────────────────────────────────────────────────────
