@@ -35,11 +35,6 @@ function decodeFileHref(rawHref) {
     try { return decodeURIComponent(href).replace(/\\/g, '/'); } catch {}
     return href;
   }
-  if (href.toLowerCase().startsWith('file:')) {
-    let path = href.replace(/^file:\/\//i, '/').replace(/^file:/i, '');
-    try { path = decodeURIComponent(path); } catch {}
-    return path.trim().replace(/\\/g, '/');
-  }
   return '';
 }
 

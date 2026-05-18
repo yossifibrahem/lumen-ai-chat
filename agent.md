@@ -512,7 +512,7 @@ Do not assume they have the same indices. Use helper mapping logic when editing/
 
 - That it is running in Lumen AI Chat with per-chat workspace files.
 - How to use uploaded file paths appended to user messages.
-- To use `file:/workspace/...` links only for real workspace files.
+- To use `/workspace/...` links only for real workspace files.
 
 Tool-specific behavior belongs in the MCP tool schemas/Zod definitions, not in `app_policy.js`. Keep this file focused on app-level behavior only.
 
@@ -559,9 +559,9 @@ When adding new renderer functionality, place it in the appropriate sub-module a
 
 ### Markdown and file links
 
-`markdown.js` uses `marked`, `DOMPurify`, KaTeX, and highlight.js. It also enhances safe `file:/workspace/...` links into downloadable conversation-file links.
+`markdown.js` uses `marked`, `DOMPurify`, KaTeX, and highlight.js. It also enhances safe `/workspace/...` links into downloadable conversation-file links.
 
-Only use `file:/workspace/...` links for files that already exist in the active conversation workspace.
+Only use `/workspace/...` links for files that already exist in the active conversation workspace.
 
 ## MCP config shape
 
