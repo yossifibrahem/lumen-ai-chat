@@ -31,13 +31,9 @@ function fileNameFromPath(path) {
 
 function decodeFileHref(rawHref) {
   const href = String(rawHref || '').trim();
-  if (!href.toLowerCase().startsWith('file:')) return '';
-
-  // Markdown syntax is [label](file:/workspace/report.pdf). Browsers may
-  // expose it as file:/workspace/report.pdf or file:///workspace/report.pdf.
-  let path = href.replace(/^file:\/\//i, '/').replace(/^file:/i, '');
-  try { path = decodeURIComponent(path); } catch {}
-  return path.trim().replace(/\\/g, '/');
+  if (!href.toLowerCase().startsWith('/workspace/')) return '';
+  try { return decodeURIComponent(href).replace(/\\/g, '/'); } catch {}
+  return href;
 }
 
 function normalizeDownloadFilePath(path) {
