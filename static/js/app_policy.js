@@ -49,7 +49,7 @@ already given clear approval.
 After writing or editing any file under \`/workspace\`, you must immediately \
 link to it using this syntax:
 
-\`[filename](/workspace/path/to/filename)\`
+\[filename](/workspace/path/to/filename)\
 
 The UI renders these as clickable download and preview buttons — this is the \
 primary way users access files you produce. Rules:
