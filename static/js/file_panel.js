@@ -135,6 +135,25 @@ function updateToggleButton(name, mode) {
   }
 }
 
+/**
+ * Inject `<base target="_blank">` into an HTML string so that any links
+ * inside the previewed document open in a new tab rather than navigating
+ * the iframe (or, worse, the parent page).  If a <base> tag already exists
+ * we leave it untouched so the author's intent is preserved.
+ */
+function injectBaseTarget(html) {
+  if (/<base[\s>]/i.test(html)) return html;
+  const tag = '<base target="_blank" rel="noopener noreferrer">';
+  // Prefer inserting right after <head> or <html>; fall back to prepending.
+  if (/<head[\s>]/i.test(html)) {
+    return html.replace(/(<head[^>]*>)/i, `$1${tag}`);
+  }
+  if (/<html[\s>]/i.test(html)) {
+    return html.replace(/(<html[^>]*>)/i, `$1${tag}`);
+  }
+  return tag + html;
+}
+
 function renderContent(data, mode) {
   const { body } = els();
   body.innerHTML = '';
@@ -143,8 +162,19 @@ function renderContent(data, mode) {
     if (mode === 'render') {
       const iframe = document.createElement('iframe');
       iframe.className = 'file-preview-iframe';
-      iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
-      iframe.srcdoc = data.content || '';
+      // allow-scripts: needed for JS in previewed HTML.
+      // allow-popups: required for target="_blank" links to actually open a new tab;
+      //   without it the browser silently blocks window.open and <a target="_blank">.
+      // allow-same-origin is intentionally omitted: when present, clicking a
+      // link to localhost (or any same-origin URL) navigates the iframe to the
+      // full app, rendering a duplicate of the UI inside the file panel.
+      // Without allow-same-origin the iframe runs in a unique opaque origin so
+      // same-origin navigation is blocked by the browser's sandbox policy.
+      iframe.setAttribute('sandbox', 'allow-scripts allow-popups');
+      // Inject a <base target="_blank"> so all links open in a new tab
+      // rather than navigating the iframe.
+      const safeContent = injectBaseTarget(data.content || '');
+      iframe.srcdoc = safeContent;
       body.appendChild(iframe);
     } else {
       const preview = document.createElement('div');
