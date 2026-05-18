@@ -13,7 +13,7 @@ Lumen is a self-hosted Flask chat UI for OpenAI-compatible chat-completions APIs
 - Per-conversation workspace directories mounted as `/workspace`
 - Docker sandbox containers per conversation
 - MCP server configuration through `mcp.json` and the UI
-- MCP tool discovery, namespaced model-facing tool names, tool-call execution, approval/deny UI, and tool-result rendering
+- MCP tool discovery, model-facing tool payloads, tool-call execution, approval/deny UI, and tool-result rendering
 - Persistent cross-turn MCP stdio session reuse through `McpSessionPool`
 - Image uploads stored by content hash
 - Regular file uploads stored in the conversation workspace
@@ -518,7 +518,7 @@ Tool-specific behavior belongs in the MCP tool schemas/Zod definitions, not in `
 
 `mcp_tool_ui.js` and `tool_adapters/` control how tool calls/results are displayed. To add rich rendering for a new MCP tool, prefer adding a tool adapter rather than special-casing in `renderer.js`.
 
-Tool names sent to the model are namespaced as `server_tool` in `chat_payloads.js` to prevent collisions when multiple enabled MCP servers expose the same bare tool name. Keep tool descriptions clean and semantic (`tool.description || tool.name`); do not prepend `[server]` labels to model-facing descriptions because the namespace is already encoded in the function name. For UI and MCP dispatch, `chat_turn_service._bare_tool_name()` strips the namespace or uses `originalName` from metadata. If display and dispatch behavior ever need to diverge, split the helper at that point with a clear comment explaining why.
+Tool names sent to the model come directly from `tool.name` in `chat_payloads.js`. Server identity is sent separately through `mcp_tool_meta` as `{ name, server, autoApprove }`, and `chat_turn_service.py` uses that metadata to dispatch the MCP call. Keep tool descriptions clean and semantic (`tool.description || tool.name`); do not prepend `[server]` labels to model-facing descriptions or display names. If collision handling is reintroduced later for multiple servers exposing the same tool name, document the new naming and dispatch contract here and keep the UI display name separate from the dispatch identifier.
 
 Existing adapters:
 

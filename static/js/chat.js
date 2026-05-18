@@ -3,7 +3,7 @@
 import { api }   from './api.js';
 import { state } from './state.js';
 import {
-  createStreamingMessage, appendMessage,
+  createStreamingMessage,
   cancelAllToolApprovals, finalizeStreamingMessage, setStreamingMessageLogIndex,
   scrollToBottom, renderAllMessages,
   createThinkingBlock, updateThinkingBlock, finalizeThinkingBlock,
@@ -73,7 +73,6 @@ function createStreamContext(turn) {
     toolRunningIndex:   0,
     toolResultIndex:    0,
     assistantDone:      false,
-    hadToolUse:         false,
     isVisible:          () => isTurnVisible(turn),
     getContentEl:       () => {
       if (!ctx.contentEl && isTurnVisible(turn)) ctx.contentEl = createStreamingMessage();
@@ -100,12 +99,29 @@ function reattachRuntime(runtime) {
 
   ctx.contentEl = null;
   ctx.reasoningBodyEl = null;
-  ctx.toolStrips = [];
+
+  // assistant_done can arrive before the backend finishes title generation and
+  // clears the active stream. In that window, turn.displayLog already contains
+  // the final assistant answer, while ctx.accText still contains the same text
+  // from the live stream. Do not rebuild ctx.accText, or reopening the active
+  // conversation will show the last assistant turn twice.
+  if (ctx.assistantDone) {
+    scrollToBottom(true);
+    return true;
+  }
+
+  // Rebuild only the live, not-yet-finalized UI. Finalized thinking/message/tool
+  // blocks are already in turn.displayLog and were just replayed by renderAllMessages().
+  // Recreating every historical tool_start here is what caused old tool stripes to
+  // move to the end of the current assistant row when a streaming chat was reopened.
+  const finalizedToolCount = ctx.toolResultIndex || 0;
+  const pendingToolNames = ctx.toolStartNames.slice(finalizedToolCount);
+  ctx.toolStrips = Array(finalizedToolCount).fill(null);
 
   if (ctx.accReasoning) {
     ctx.reasoningBodyEl = createThinkingBlock();
     updateThinkingBlock(ctx.reasoningBodyEl, ctx.accReasoning);
-    if (ctx.reasoningFinalized || ctx.accText || ctx.toolStartNames.length) {
+    if (ctx.reasoningFinalized || ctx.accText || pendingToolNames.length) {
       finalizeThinkingBlock(ctx.reasoningBodyEl, ctx.accReasoning);
       ctx.reasoningBodyEl = null;
     }
@@ -116,7 +132,7 @@ function reattachRuntime(runtime) {
     applyMarkdown(ctx.contentEl, ctx.accText);
   }
 
-  ctx.toolStartNames.forEach(name => {
+  pendingToolNames.forEach(name => {
     ctx.toolStrips.push(createToolStrip(name));
   });
 
@@ -173,7 +189,10 @@ async function attachServerStream(convId, streamId, data = {}) {
     const success = await readSSEStream(resp, raw => processSSEEvent(raw, ctx));
     if (!success || turnCancelled) return false;
 
-    if (!ctx.assistantDone) finalizeAssistantAnswer(ctx);
+    if (!ctx.assistantDone) {
+      commitRuntimeAssistantPartial(ctx);
+      finalizeAssistantAnswer(ctx);
+    }
     if (isCurrentStreamContext(turn, ctx)) syncFinalAssistantFooter(turn, ctx);
     return true;
   } catch (err) {
@@ -254,6 +273,27 @@ function lastAssistantMessageIndex(displayLog = []) {
     if (entry?.type === 'message' && entry.role === 'assistant' && String(entry.content ?? '').trim()) return i;
   }
   return -1;
+}
+
+function appendRuntimeEntry(ctx, entry) {
+  if (!ctx?.turn || !entry) return;
+  ctx.turn.displayLog.push(entry);
+  syncVisibleTurn(ctx.turn);
+}
+
+function commitRuntimeAssistantPartial(ctx) {
+  if (!ctx?.turn) return false;
+
+  let changed = false;
+  if (ctx.accReasoning) {
+    appendRuntimeEntry(ctx, { type: 'thinking', content: ctx.accReasoning });
+    changed = true;
+  }
+  if (ctx.accText && ctx.accText.trim()) {
+    appendRuntimeEntry(ctx, { type: 'message', role: 'assistant', content: ctx.accText });
+    changed = true;
+  }
+  return changed;
 }
 
 function syncFinalAssistantFooter(turn, ctx) {
@@ -422,6 +462,15 @@ async function processSSEEvent(raw, ctx) {
     if (strip) toolStripFinalize(strip, evt.name, evt.args || {}, evt.result || '');
     // Note: stripForToolEvent already increments ctx.toolResultIndex internally.
 
+    commitRuntimeAssistantPartial(ctx);
+    appendRuntimeEntry(ctx, {
+      type: 'tool_result',
+      name: evt.name,
+      args: evt.args || {},
+      result: evt.result || '',
+      ...(evt.displayName ? { displayName: evt.displayName } : {}),
+    });
+
     ctx.accText = '';
     ctx.accReasoning = '';
     ctx.reasoningFinalized = false;
@@ -477,7 +526,10 @@ async function runChatLoop(turn) {
     const success = await readSSEStream(resp, raw => processSSEEvent(raw, ctx));
     if (!success || turnCancelled) return;
 
-    if (!ctx.assistantDone) finalizeAssistantAnswer(ctx);
+    if (!ctx.assistantDone) {
+      commitRuntimeAssistantPartial(ctx);
+      finalizeAssistantAnswer(ctx);
+    }
   } catch (err) {
     if (turnCancelled || err.name === 'AbortError') return ctx;
 

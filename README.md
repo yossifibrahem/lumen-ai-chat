@@ -20,7 +20,7 @@ Lumen is built for developers who want a capable local AI chat application witho
 
 **MCP (Model Context Protocol)**
 - Add MCP servers through the UI or `mcp.json`
-- Tools are namespaced as `server_tool` to prevent name collisions across servers
+- Tool metadata keeps the MCP server name separate from the model-facing tool name
 - Persistent MCP stdio session pooling — sessions are opened once per conversation and reused across all turns until the container stops
 - Approve or deny individual tool calls; enable auto-approval per server
 - Tool activity renders inline: arguments, running state, and results
@@ -246,7 +246,7 @@ All MCP servers run inside the conversation's Docker container with the workspac
 
 Per-server UI settings (enabled, auto-approve, icon) are stored in browser `localStorage` under `lumen_mcp_server_settings` — not in `mcp.json`.
 
-Model-facing tool names are namespaced as `server_tool` so that two servers can expose identically-named tools without conflict. Tool descriptions stay clean and semantic; the namespace is encoded in the function name only.
+Model-facing tool names use the MCP tool name directly. The matching MCP server is sent separately in `mcp_tool_meta`, which lets the backend dispatch the call without adding server prefixes to the visible tool name. Tool descriptions should stay clean and semantic (`tool.description || tool.name`).
 
 ---
 

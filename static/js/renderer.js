@@ -216,6 +216,7 @@ export function finalizeStreamingMessage(contentEl, text) {
     return;
   }
 
+  contentEl.dataset.rawText = text;
   applyMarkdown(contentEl, text);
 
   const row = contentEl.parentElement;
@@ -229,10 +230,7 @@ export function setStreamingMessageLogIndex(contentEl, logIndex) {
   row.dataset.logIndex = logIndex;
   const footerEl = row.querySelector('.msg-footer');
   if (!footerEl) return;
-  const getText = () => {
-    const el = row.querySelector('.msg-content');
-    return el ? el.textContent : '';
-  };
+  const getText = () => contentEl?.dataset?.rawText || contentEl?.textContent || '';
   footerEl.remove();
   addAssistantFooter(row, getText, logIndex);
 }
