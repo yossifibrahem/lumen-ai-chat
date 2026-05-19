@@ -206,6 +206,22 @@ class TestVolumeArgs:
         # Should be exactly ["--volume", "<workspace>:/workspace"]
         assert len(result) == 2
 
+    def test_windows_workspace_source_uses_forward_slashes(self, monkeypatch):
+        import docker_path_utils
+        from pathlib import PureWindowsPath
+
+        monkeypatch.setattr(docker_path_utils.sys, "platform", "win32")
+
+        result = container_service._volume_args(
+            PureWindowsPath(r"C:\Users\User\.lumen\containers\abc"),
+            [],
+        )
+
+        assert result == [
+            "--volume",
+            "C:/Users/User/.lumen/containers/abc:/workspace",
+        ]
+
 
 # ---------------------------------------------------------------------------
 # Idle reaper

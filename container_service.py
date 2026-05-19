@@ -69,7 +69,7 @@ def _run(args: list[str]) -> subprocess.CompletedProcess:
     return subprocess.run(args, capture_output=True, text=True)
 
 
-from docker_path_utils import parse_volume_source
+from docker_path_utils import host_path_to_docker_src, parse_volume_source
 import advanced_config as _adv_cfg
 
 # mcp_service is imported lazily to avoid the circular import:
@@ -103,7 +103,8 @@ def _get_mounted_sources(name: str) -> set[str]:
 
 
 def _volume_args(workspace: Path, extra_volumes: list[str]) -> list[str]:
-    specs = [f"{workspace}:/workspace", *extra_volumes]
+    workspace_source = host_path_to_docker_src(str(workspace))
+    specs = [f"{workspace_source}:/workspace", *extra_volumes]
     return [item for spec in specs for item in ("--volume", spec)]
 
 
