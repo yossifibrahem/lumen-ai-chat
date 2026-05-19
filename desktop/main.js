@@ -303,7 +303,13 @@ function createWindow(url) {
 
   const customTitleBar = useCustomTitleBar();
 
-  mainWindow = new BrowserWindow({
+  // Use a local reference so all callbacks below close over the specific
+  // BrowserWindow instance that was just created, not the mutable `mainWindow`
+  // global.  This prevents a blank screen on macOS when the user closes the
+  // window and then re-opens it from the Dock: previously the `ready-to-show`
+  // callback referenced the global, which could already point at a new (or
+  // destroyed) window by the time the event fired.
+  const win = new BrowserWindow({
     width: 1320,
     height: 900,
     minWidth: 960,
@@ -321,22 +327,33 @@ function createWindow(url) {
     },
   });
 
-  mainWindow.once('ready-to-show', () => mainWindow.show());
-  mainWindow.webContents.setWindowOpenHandler(({ url: targetUrl }) => {
+  mainWindow = win;
+
+  win.once('ready-to-show', () => win.show());
+
+  // Clear the global reference when this window is actually closed so the
+  // `activate` handler knows a new window needs to be created.
+  win.on('closed', () => {
+    if (mainWindow === win) {
+      mainWindow = null;
+    }
+  });
+
+  win.webContents.setWindowOpenHandler(({ url: targetUrl }) => {
     shell.openExternal(targetUrl);
     return { action: 'deny' };
   });
 
-  mainWindow.webContents.on('did-finish-load', async () => {
+  win.webContents.on('did-finish-load', async () => {
     await installDesktopChrome();
     sendWindowState();
   });
-  mainWindow.on('maximize', sendWindowState);
-  mainWindow.on('unmaximize', sendWindowState);
-  mainWindow.on('enter-full-screen', sendWindowState);
-  mainWindow.on('leave-full-screen', sendWindowState);
+  win.on('maximize', sendWindowState);
+  win.on('unmaximize', sendWindowState);
+  win.on('enter-full-screen', sendWindowState);
+  win.on('leave-full-screen', sendWindowState);
 
-  mainWindow.loadURL(url);
+  win.loadURL(url);
 }
 
 async function boot() {
@@ -391,8 +408,12 @@ ipcMain.handle('lumen-window-close', () => {
 app.whenReady().then(boot);
 
 app.on('window-all-closed', () => {
-  stopFlaskServer();
+  // On macOS it is conventional for apps to remain running after all windows
+  // are closed (the user re-opens from the Dock).  Keep the Flask server alive
+  // so it is ready to serve the next window.  On other platforms we quit, which
+  // triggers `before-quit` → `stopFlaskServer`.
   if (process.platform !== 'darwin') {
+    stopFlaskServer();
     app.quit();
   }
 });
