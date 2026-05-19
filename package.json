@@ -25,6 +25,7 @@
       "templates/**",
       "*.py",
       "Dockerfile.sandbox",
+      ".dockerignore",
       "requirements.txt",
       "README.md",
       "agent.md",
