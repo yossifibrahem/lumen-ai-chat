@@ -7,6 +7,7 @@
   "scripts": {
     "desktop": "electron .",
     "start": "electron .",
+    "build-venv": "bash scripts/build-venv.sh",
     "package": "electron-builder --dir",
     "dist": "electron-builder"
   },
@@ -28,7 +29,8 @@
       "requirements.txt",
       "README.md",
       "agent.md",
-      "package.json"
+      "package.json",
+      ".venv/**"
     ],
     "directories": {
       "output": "dist"

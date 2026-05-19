@@ -108,11 +108,20 @@ async function desktopPort() {
   );
 }
 
-function waitForHealth(port, timeoutMs = 30000) {
+function waitForHealth(port, timeoutMs = 30000, getExitInfo = null) {
   const startedAt = Date.now();
 
   return new Promise((resolve, reject) => {
     const check = () => {
+      // If the server process already exited, fail immediately with its output.
+      if (getExitInfo) {
+        const exitInfo = getExitInfo();
+        if (exitInfo) {
+          reject(exitInfo);
+          return;
+        }
+      }
+
       const req = http.get({ host: '127.0.0.1', port, path: '/health', timeout: 1000 }, (res) => {
         res.resume();
         if (res.statusCode === 200) {
@@ -131,7 +140,7 @@ function waitForHealth(port, timeoutMs = 30000) {
 
     const retry = () => {
       if (Date.now() - startedAt > timeoutMs) {
-        reject(new Error('The local Lumen server did not become ready.'));
+        reject(new Error('The local Lumen server did not become ready within 30 seconds.'));
         return;
       }
       setTimeout(check, 250);
@@ -151,6 +160,12 @@ async function startFlaskServer() {
   ].join('; ');
 
   serverPort = port;
+
+  // Collect stderr lines so we can surface them in the error dialog if Flask
+  // crashes before /health becomes reachable.
+  const stderrLines = [];
+  let earlyExitError = null;
+
   serverProcess = spawn(python, ['-c', code], {
     cwd: root,
     env: {
@@ -163,16 +178,77 @@ async function startFlaskServer() {
   });
 
   serverProcess.stdout.on('data', (data) => process.stdout.write(`[flask] ${data}`));
-  serverProcess.stderr.on('data', (data) => process.stderr.write(`[flask] ${data}`));
-  serverProcess.on('exit', (code, signal) => {
+  serverProcess.stderr.on('data', (data) => {
+    process.stderr.write(`[flask] ${data}`);
+    stderrLines.push(String(data));
+  });
+
+  serverProcess.on('exit', (exitCode, signal) => {
+    // Capture early exit so waitForHealth can detect it immediately.
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      const stderr = stderrLines.join('').trim();
+      earlyExitError = buildExitError(python, root, exitCode, signal, stderr);
+    }
     serverProcess = null;
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('lumen-server-exit', { code, signal });
+      mainWindow.webContents.send('lumen-server-exit', { code: exitCode, signal });
     }
   });
 
-  await waitForHealth(port);
+  // Let waitForHealth detect process exits during startup polling.
+  const getExitInfo = () => earlyExitError;
+
+  try {
+    await waitForHealth(port, 30000, getExitInfo);
+  } catch (err) {
+    // If we caught a structured Error with extra detail, rethrow it.
+    // Otherwise, build a helpful error from whatever stderr we collected.
+    if (err && err._lumenDetail) {
+      throw err;
+    }
+    const stderr = stderrLines.join('').trim();
+    throw buildExitError(python, root, null, null, stderr, err.message);
+  }
+
   return `http://127.0.0.1:${port}`;
+}
+
+/**
+ * Build a human-readable Error for a Flask startup failure.
+ * Includes Python path, working directory, and captured stderr output.
+ */
+function buildExitError(python, root, exitCode, signal, stderr, timeoutMsg = null) {
+  const lines = [];
+
+  if (timeoutMsg) {
+    lines.push(timeoutMsg);
+  } else if (signal) {
+    lines.push(`The Flask server was terminated by signal ${signal}.`);
+  } else {
+    lines.push(`The Flask server exited unexpectedly (exit code ${exitCode}).`);
+  }
+
+  lines.push('');
+  lines.push(`Python: ${python}`);
+  lines.push(`Working directory: ${root}`);
+
+  if (stderr) {
+    lines.push('');
+    lines.push('Server output:');
+    // Show last 30 lines so the dialog is readable.
+    const outputLines = stderr.split('\n').filter(Boolean);
+    const tail = outputLines.slice(-30).join('\n');
+    lines.push(tail);
+  } else {
+    lines.push('');
+    lines.push('No server output was captured.');
+    lines.push('Make sure Python is installed and dependencies are available:');
+    lines.push('  pip install -r requirements.txt');
+  }
+
+  const err = new Error(lines.join('\n'));
+  err._lumenDetail = true;
+  return err;
 }
 
 function createWindow(url) {
@@ -223,9 +299,9 @@ async function boot() {
   } catch (error) {
     await dialog.showMessageBox({
       type: 'error',
-      title: 'Lumen AI Chat failed to start',
+      title: 'Lumen AI Chat — startup failed',
       message: 'The desktop app could not start the local Flask server.',
-      detail: `${error.message}\n\nMake sure Python is installed and run: pip install -r requirements.txt`,
+      detail: error.message,
     });
     app.quit();
   }
