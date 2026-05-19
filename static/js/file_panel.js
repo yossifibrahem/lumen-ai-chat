@@ -18,25 +18,10 @@ let selectedPath = null;
 let isOpen = false;
 let renderMode = 'render';   // 'render' | 'code'
 let currentFileData = null;  // last loaded file payload, for re-rendering without re-fetch
+let panelWidth = DEFAULT_PANEL_WIDTH;
 
-const els = () => ({
-  panel:    document.getElementById('file-panel'),
-  resizer:  document.getElementById('file-panel-resizer'),
-  toggle:   document.getElementById('btn-toggle-files'),
-  close:    document.getElementById('btn-close-files'),
-  refresh:  document.getElementById('btn-refresh-files'),
-  previewRefresh: document.getElementById('btn-refresh-files-preview'),
-  previewClose: document.getElementById('btn-close-files-preview'),
-  back:     document.getElementById('btn-back-files'),
-  path:     document.getElementById('file-panel-path'),
-  list:     document.getElementById('file-panel-list'),
-  title:    document.getElementById('file-preview-title'),
-  meta:     document.getElementById('file-preview-meta'),
-  body:     document.getElementById('file-preview-body'),
-  copy:     document.getElementById('btn-copy-file'),
-  download: document.getElementById('btn-download-file'),
-  toggleRender: document.getElementById('btn-toggle-render'),
-});
+// Resolved once in initFilePanel — these elements are stable for the page lifetime.
+let els = {};
 
 function maxPanelWidth() {
   return Math.max(MIN_PANEL_WIDTH, Math.min(Math.round(window.innerWidth * 0.72), 920));
@@ -47,21 +32,18 @@ function clampPanelWidth(width) {
 }
 
 function applyPanelWidth(width) {
-  const { panel } = els();
-  if (!panel) return;
-  const nextWidth = clampPanelWidth(Number(width) || DEFAULT_PANEL_WIDTH);
-  panel.style.setProperty('--file-panel-w', `${nextWidth}px`);
+  if (!els.panel) return;
+  panelWidth = clampPanelWidth(Number(width) || DEFAULT_PANEL_WIDTH);
+  els.panel.style.setProperty('--file-panel-w', `${panelWidth}px`);
 }
 
 function loadSavedPanelWidth() {
-  const saved = Number(localStorage.getItem(PANEL_WIDTH_KEY));
-  applyPanelWidth(saved || DEFAULT_PANEL_WIDTH);
+  applyPanelWidth(Number(storage.get(PANEL_WIDTH_KEY)) || DEFAULT_PANEL_WIDTH);
 }
 
 function savePanelWidth(width) {
-  const nextWidth = clampPanelWidth(width);
-  localStorage.setItem(PANEL_WIDTH_KEY, String(nextWidth));
-  applyPanelWidth(nextWidth);
+  applyPanelWidth(width);
+  storage.set(PANEL_WIDTH_KEY, panelWidth);
 }
 
 function formatDate(seconds) {
@@ -98,9 +80,8 @@ function isMissingWorkspacePath(error = '') {
 function setPanelOpen(open, { persist = true } = {}) {
   isOpen = open;
   if (persist) storage.set(STORAGE_KEYS.filePanelOpen, open);
-  const { panel, toggle } = els();
-  panel?.classList.toggle('open', open);
-  toggle?.classList.toggle('active', open);
+  els.panel?.classList.toggle('open', open);
+  els.toggle?.classList.toggle('active', open);
 
   if (open) {
     refreshFilePanel({ keepPreview: Boolean(selectedPath) }).catch(() => {});
@@ -108,30 +89,28 @@ function setPanelOpen(open, { persist = true } = {}) {
 }
 
 function setPreviewOpen(open) {
-  const { panel } = els();
-  panel?.classList.toggle('preview-open', open);
+  els.panel?.classList.toggle('preview-open', open);
 }
 
 function updateToggleButton(name, mode) {
-  const { toggleRender } = els();
-  if (!toggleRender) return;
+  if (!els.toggleRender) return;
 
   if (!isRenderable(name)) {
-    toggleRender.hidden = true;
+    els.toggleRender.hidden = true;
     return;
   }
 
-  toggleRender.hidden = false;
+  els.toggleRender.hidden = false;
   if (mode === 'render') {
-    toggleRender.innerHTML = ICONS.eyeShow;
-    toggleRender.title = 'View source';
-    toggleRender.setAttribute('aria-label', 'View source');
-    toggleRender.classList.add('active');
+    els.toggleRender.innerHTML = ICONS.eyeShow;
+    els.toggleRender.title = 'View source';
+    els.toggleRender.setAttribute('aria-label', 'View source');
+    els.toggleRender.classList.add('active');
   } else {
-    toggleRender.innerHTML = ICONS.eyeHide;
-    toggleRender.title = 'Preview';
-    toggleRender.setAttribute('aria-label', 'Preview');
-    toggleRender.classList.remove('active');
+    els.toggleRender.innerHTML = ICONS.eyeHide;
+    els.toggleRender.title = 'Preview';
+    els.toggleRender.setAttribute('aria-label', 'Preview');
+    els.toggleRender.classList.remove('active');
   }
 }
 
@@ -140,23 +119,48 @@ function updateToggleButton(name, mode) {
  * inside the previewed document open in a new tab rather than navigating
  * the iframe (or, worse, the parent page).  If a <base> tag already exists
  * we leave it untouched so the author's intent is preserved.
+ *
+ * Also injects a small script that intercepts same-page hash-anchor clicks
+ * (e.g. <a href="#section">) and handles them via scrollIntoView instead,
+ * so they scroll within the preview rather than opening a new tab (which
+ * is what `<base target="_blank">` would otherwise cause).
+ *
+ * Uses DOMParser so the browser's own HTML parser handles insertion correctly
+ * regardless of document structure, casing, or encoding.
  */
 function injectBaseTarget(html) {
-  if (/<base[\s>]/i.test(html)) return html;
-  const tag = '<base target="_blank" rel="noopener noreferrer">';
-  // Prefer inserting right after <head> or <html>; fall back to prepending.
-  if (/<head[\s>]/i.test(html)) {
-    return html.replace(/(<head[^>]*>)/i, `$1${tag}`);
-  }
-  if (/<html[\s>]/i.test(html)) {
-    return html.replace(/(<html[^>]*>)/i, `$1${tag}`);
-  }
-  return tag + html;
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+
+  // Leave the document untouched if it already controls its own base target.
+  if (doc.querySelector('base')) return html;
+
+  const base = doc.createElement('base');
+  base.target = '_blank';
+  base.rel = 'noopener noreferrer';
+  doc.head.prepend(base);
+
+  // Intercept hash-only links so they scroll within the iframe instead of
+  // opening a new tab (the default behaviour imposed by <base target="_blank">).
+  const script = doc.createElement('script');
+  script.textContent = `
+document.addEventListener('click', function(e) {
+  var a = e.target.closest('a[href]');
+  if (!a) return;
+  var href = a.getAttribute('href');
+  if (!href || href[0] !== '#') return;
+  e.preventDefault();
+  var id = href.slice(1);
+  var target = id ? document.getElementById(id) || document.querySelector('[name="' + id + '"]') : document.documentElement;
+  if (!target) return;
+  target.scrollIntoView({ behavior: 'smooth' });
+}, true);`;
+  doc.head.prepend(script);
+
+  return doc.documentElement.outerHTML;
 }
 
 function renderContent(data, mode) {
-  const { body } = els();
-  body.innerHTML = '';
+  els.body.innerHTML = '';
 
   if (isHtml(data.name)) {
     if (mode === 'render') {
@@ -165,58 +169,55 @@ function renderContent(data, mode) {
       // allow-scripts: needed for JS in previewed HTML.
       // allow-popups: required for target="_blank" links to actually open a new tab;
       //   without it the browser silently blocks window.open and <a target="_blank">.
+      // allow-popups-to-escape-sandbox: lets popup tabs behave as normal browser tabs
+      //   rather than inheriting the iframe's sandbox restrictions.
       // allow-same-origin is intentionally omitted: when present, clicking a
       // link to localhost (or any same-origin URL) navigates the iframe to the
       // full app, rendering a duplicate of the UI inside the file panel.
       // Without allow-same-origin the iframe runs in a unique opaque origin so
       // same-origin navigation is blocked by the browser's sandbox policy.
-      iframe.setAttribute('sandbox', 'allow-scripts allow-popups');
+      iframe.setAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox');
       // Inject a <base target="_blank"> so all links open in a new tab
       // rather than navigating the iframe.
       const safeContent = injectBaseTarget(data.content || '');
       iframe.srcdoc = safeContent;
-      body.appendChild(iframe);
+      els.body.appendChild(iframe);
     } else {
       const preview = document.createElement('div');
       preview.className = 'file-preview-content msg-content file-preview-code';
-      body.appendChild(preview);
+      els.body.appendChild(preview);
       applyMarkdown(preview, codeFenceFor(data.content || '', 'html'), { copyCodeButtons: false });
     }
   } else if (isMarkdown(data.name)) {
-    if (mode === 'render') {
-      const preview = document.createElement('div');
-      preview.className = 'file-preview-content msg-content';
-      body.appendChild(preview);
-      applyMarkdown(preview, data.content || '', { copyCodeButtons: false });
-    } else {
-      const preview = document.createElement('div');
-      preview.className = 'file-preview-content msg-content file-preview-code';
-      body.appendChild(preview);
-      applyMarkdown(preview, codeFenceFor(data.content || '', 'markdown'), { copyCodeButtons: false });
-    }
+    const preview = document.createElement('div');
+    preview.className = `file-preview-content msg-content${mode === 'render' ? '' : ' file-preview-code'}`;
+    els.body.appendChild(preview);
+    const content = mode === 'render'
+      ? (data.content || '')
+      : codeFenceFor(data.content || '', 'markdown');
+    applyMarkdown(preview, content, { copyCodeButtons: false });
   } else {
     const language = languageFromName(data.name);
     const preview = document.createElement('div');
     preview.className = 'file-preview-content msg-content file-preview-code';
-    body.appendChild(preview);
+    els.body.appendChild(preview);
     applyMarkdown(preview, codeFenceFor(data.content || '', language), { copyCodeButtons: false });
   }
 }
 
 
 function resetPreview() {
-  const { title, meta, body, copy, download, toggleRender } = els();
   selectedPath = null;
   currentFileData = null;
   renderMode = 'render';
-  title.textContent = 'Preview';
-  meta.textContent = '';
-  body.innerHTML = '';
-  copy.disabled = true;
-  copy.removeAttribute('data-content');
-  download.disabled = true;
-  download.removeAttribute('data-path');
-  if (toggleRender) toggleRender.hidden = true;
+  els.title.textContent = 'Preview';
+  els.meta.textContent = '';
+  els.body.innerHTML = '';
+  els.copy.disabled = true;
+  els.copy.removeAttribute('data-content');
+  els.download.disabled = true;
+  els.download.removeAttribute('data-path');
+  if (els.toggleRender) els.toggleRender.hidden = true;
 }
 
 function closePreview() {
@@ -225,37 +226,29 @@ function closePreview() {
 }
 
 function setEmptyPreview(message = 'Select a file to preview it here.') {
-  const { title, meta, body, copy, download } = els();
-  selectedPath = null;
-  title.textContent = 'Preview';
-  meta.textContent = '';
-  body.innerHTML = `<div class="file-panel-empty">${escapeHtml(message)}</div>`;
-  copy.disabled = true;
-  copy.removeAttribute('data-content');
-  download.disabled = true;
-  download.removeAttribute('data-path');
+  resetPreview();
+  els.body.innerHTML = `<div class="file-panel-empty">${escapeHtml(message)}</div>`;
 }
 
 function renderList(payload) {
-  const { list, path } = els();
-  path.textContent = payload.path || currentPath;
-  list.innerHTML = '';
+  els.path.textContent = payload.path || currentPath;
+  els.list.innerHTML = '';
 
   if (payload.parent) {
-    list.appendChild(fileRow({ name: '..', path: payload.parent, type: 'directory', size: null }, true));
+    els.list.appendChild(fileRow({ name: '..', path: payload.parent, type: 'directory', size: null }, true));
   }
 
   if (!payload.entries?.length && !payload.parent) {
-    list.innerHTML = '<div class="file-panel-empty">No files yet. Tool output and uploads will appear here.</div>';
+    els.list.innerHTML = '<div class="file-panel-empty">No files yet. Tool output and uploads will appear here.</div>';
     return;
   }
 
-  payload.entries.forEach(entry => list.appendChild(fileRow(entry)));
+  payload.entries.forEach(entry => els.list.appendChild(fileRow(entry)));
   if (payload.truncated) {
     const note = document.createElement('div');
     note.className = 'file-panel-note';
     note.textContent = payload.limit ? `Showing the first ${payload.limit} entries.` : 'Showing a partial list.';
-    list.appendChild(note);
+    els.list.appendChild(note);
   }
 }
 
@@ -277,18 +270,17 @@ function fileRow(entry, isParent = false) {
 }
 
 async function loadFileList(path = currentPath, { fallbackToRoot = true } = {}) {
-  const { list } = els();
   if (!state.convId) {
     currentPath = '/workspace';
-    list.innerHTML = '<div class="file-panel-empty">Start or open a chat to browse its workspace.</div>';
+    els.list.innerHTML = '<div class="file-panel-empty">Start or open a chat to browse its workspace.</div>';
     setEmptyPreview('Workspace files will appear after a chat exists.');
     setPreviewOpen(false);
     return;
   }
 
   currentPath = path || '/workspace';
-  if (!list.children.length) {
-    list.innerHTML = '<div class="file-panel-empty">Loading files…</div>';
+  if (!els.list.children.length) {
+    els.list.innerHTML = '<div class="file-panel-empty">Loading files…</div>';
   }
   const payload = await api.get(`/api/conversations/${encodeURIComponent(state.convId)}/files?path=${encodeURIComponent(currentPath)}`);
   if (payload.error) {
@@ -296,7 +288,7 @@ async function loadFileList(path = currentPath, { fallbackToRoot = true } = {}) 
       currentPath = '/workspace';
       return loadFileList('/workspace', { fallbackToRoot: false });
     }
-    list.innerHTML = `<div class="file-panel-empty">${escapeHtml(payload.error)}</div>`;
+    els.list.innerHTML = `<div class="file-panel-empty">${escapeHtml(payload.error)}</div>`;
     return false;
   }
   currentPath = payload.path || currentPath;
@@ -309,14 +301,13 @@ async function loadFilePreview(path) {
   selectedPath = path;
   setPreviewOpen(true);
 
-  const { body, title, meta, copy, download } = els();
-  if (!body.children.length) {
-    body.innerHTML = '<div class="file-panel-empty">Loading preview…</div>';
+  if (!els.body.children.length) {
+    els.body.innerHTML = '<div class="file-panel-empty">Loading preview…</div>';
   }
-  copy.disabled = true;
-  copy.removeAttribute('data-content');
-  download.disabled = true;
-  download.removeAttribute('data-path');
+  els.copy.disabled = true;
+  els.copy.removeAttribute('data-content');
+  els.download.disabled = true;
+  els.download.removeAttribute('data-path');
 
   const data = await api.get(`/api/conversations/${encodeURIComponent(state.convId)}/files/content?path=${encodeURIComponent(path)}`);
   if (data.error) {
@@ -331,13 +322,13 @@ async function loadFilePreview(path) {
     return false;
   }
 
-  title.textContent = data.name || 'File';
-  meta.textContent = [formatBytes(data.size), formatDate(data.modified)].filter(Boolean).join(' · ');
-  download.disabled = false;
-  download.dataset.path = data.path;
+  els.title.textContent = data.name || 'File';
+  els.meta.textContent = [formatBytes(data.size), formatDate(data.modified)].filter(Boolean).join(' · ');
+  els.download.disabled = false;
+  els.download.dataset.path = data.path;
 
   if (!data.previewable) {
-    body.innerHTML = `
+    els.body.innerHTML = `
       <div class="file-panel-empty">
         This file cannot be previewed as text.<br />
         <span>Use Download to save it.</span>
@@ -345,8 +336,8 @@ async function loadFilePreview(path) {
     return true;
   }
 
-  copy.disabled = false;
-  copy.dataset.content = data.content || '';
+  els.copy.disabled = false;
+  els.copy.dataset.content = data.content || '';
 
   currentFileData = data;
   renderMode = 'render';
@@ -356,32 +347,28 @@ async function loadFilePreview(path) {
 }
 
 function initPanelResize() {
-  const { panel, resizer } = els();
-  if (!panel || !resizer) return;
+  if (!els.panel || !els.resizer) return;
 
   loadSavedPanelWidth();
-  window.addEventListener('resize', () => applyPanelWidth(localStorage.getItem(PANEL_WIDTH_KEY) || DEFAULT_PANEL_WIDTH));
+  window.addEventListener('resize', () => applyPanelWidth(panelWidth));
 
-  resizer.addEventListener('pointerdown', event => {
+  els.resizer.addEventListener('pointerdown', event => {
     if (window.innerWidth <= 1024) return;
     event.preventDefault();
-    resizer.setPointerCapture?.(event.pointerId);
-    panel.classList.add('resizing');
+    els.resizer.setPointerCapture?.(event.pointerId);
+    els.panel.classList.add('resizing');
     document.body.classList.add('file-panel-resizing');
 
     const onMove = moveEvent => {
-      const width = window.innerWidth - moveEvent.clientX;
-      applyPanelWidth(width);
+      applyPanelWidth(window.innerWidth - moveEvent.clientX);
     };
 
     const onUp = upEvent => {
-      resizer.releasePointerCapture?.(upEvent.pointerId);
-      panel.classList.remove('resizing');
+      els.resizer.releasePointerCapture?.(upEvent.pointerId);
+      els.panel.classList.remove('resizing');
       document.body.classList.remove('file-panel-resizing');
-      const raw = getComputedStyle(panel).getPropertyValue('--file-panel-w');
-      savePanelWidth(parseInt(raw, 10));
+      savePanelWidth(panelWidth);
       window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
     };
 
     window.addEventListener('pointermove', onMove);
@@ -390,12 +377,11 @@ function initPanelResize() {
 }
 
 export async function refreshFilePanel({ keepPreview = true } = {}) {
-  const panel = document.getElementById('file-panel');
-  if (!panel || !isOpen) return;
+  if (!els.panel || !isOpen) return;
 
   try {
     await loadFileList(currentPath);
-    if (keepPreview && selectedPath && panel.classList.contains('preview-open')) {
+    if (keepPreview && selectedPath && els.panel.classList.contains('preview-open')) {
       await loadFilePreview(selectedPath);
     }
   } catch (err) {
@@ -411,49 +397,63 @@ export function resetFilePanel() {
 
 
 export function initFilePanel() {
-  const { toggle, close, refresh, previewRefresh, previewClose, back, copy, download, toggleRender } = els();
+  els = {
+    panel:         document.getElementById('file-panel'),
+    resizer:       document.getElementById('file-panel-resizer'),
+    toggle:        document.getElementById('btn-toggle-files'),
+    close:         document.getElementById('btn-close-files'),
+    refresh:       document.getElementById('btn-refresh-files'),
+    previewRefresh: document.getElementById('btn-refresh-files-preview'),
+    previewClose:  document.getElementById('btn-close-files-preview'),
+    back:          document.getElementById('btn-back-files'),
+    path:          document.getElementById('file-panel-path'),
+    list:          document.getElementById('file-panel-list'),
+    title:         document.getElementById('file-preview-title'),
+    meta:          document.getElementById('file-preview-meta'),
+    body:          document.getElementById('file-preview-body'),
+    copy:          document.getElementById('btn-copy-file'),
+    download:      document.getElementById('btn-download-file'),
+    toggleRender:  document.getElementById('btn-toggle-render'),
+  };
+
   initPanelResize();
   setPanelOpen(storage.get(STORAGE_KEYS.filePanelOpen, false), { persist: false });
   setEmptyPreview();
   setPreviewOpen(false);
 
-  toggle?.addEventListener('click', () => setPanelOpen(!isOpen));
+  els.toggle?.addEventListener('click', () => setPanelOpen(!isOpen));
   const closePanel = () => setPanelOpen(false);
   const refreshPanel = () => refreshFilePanel({ keepPreview: Boolean(selectedPath) })
     .catch(err => showToast(err.message || 'Could not refresh files'));
 
-  close?.addEventListener('click', closePanel);
-  previewClose?.addEventListener('click', closePanel);
-  back?.addEventListener('click', closePreview);
-  refresh?.addEventListener('click', refreshPanel);
-  previewRefresh?.addEventListener('click', refreshPanel);
+  els.close?.addEventListener('click', closePanel);
+  els.previewClose?.addEventListener('click', closePanel);
+  els.back?.addEventListener('click', closePreview);
+  els.refresh?.addEventListener('click', refreshPanel);
+  els.previewRefresh?.addEventListener('click', refreshPanel);
 
-  toggleRender?.addEventListener('click', () => {
+  els.toggleRender?.addEventListener('click', () => {
     if (!currentFileData) return;
     renderMode = renderMode === 'render' ? 'code' : 'render';
     updateToggleButton(currentFileData.name, renderMode);
     renderContent(currentFileData, renderMode);
   });
 
-  copy?.addEventListener('click', async () => {
+  els.copy?.addEventListener('click', async () => {
     try {
-      await navigator.clipboard.writeText(copy.dataset.content || '');
+      await navigator.clipboard.writeText(els.copy.dataset.content || '');
       showToast('Copied file content');
     } catch {
       showToast('Copy failed');
     }
   });
 
-  download?.addEventListener('click', () => {
-    if (!state.convId || !download.dataset.path) return;
-
+  els.download?.addEventListener('click', () => {
+    if (!state.convId || !els.download.dataset.path) return;
     const link = document.createElement('a');
-    link.href = `/api/conversations/${encodeURIComponent(state.convId)}/files/download?path=${encodeURIComponent(download.dataset.path)}`;
+    link.href = `/api/conversations/${encodeURIComponent(state.convId)}/files/download?path=${encodeURIComponent(els.download.dataset.path)}`;
     link.download = '';
-    link.style.display = 'none';
-    document.body.appendChild(link);
     link.click();
-    link.remove();
   });
 
   document.addEventListener('lumen:open-workspace-file', e => {
