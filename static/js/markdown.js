@@ -10,6 +10,18 @@ import { ICONS } from './icons.js';
 
 marked.setOptions({ breaks: true, gfm: true });
 
+// Override the link renderer so external links open in a new tab.
+// Workspace file links (/workspace/...) are handled separately by
+// enhanceWorkspaceFileLinks and get their own click handler instead.
+const _renderer = new marked.Renderer();
+_renderer.link = function ({ href, title, text }) {
+  const isExternal = href && /^https?:\/\//i.test(href);
+  const titleAttr = title ? ` title="${title}"` : '';
+  const targetAttr = isExternal ? ' target="_blank" rel="noopener noreferrer"' : '';
+  return `<a href="${href}"${titleAttr}${targetAttr}>${text}</a>`;
+};
+marked.use({ renderer: _renderer });
+
 const PURIFY_CONFIG = {
   ADD_TAGS: [
     'math','semantics','mrow','mi','mo','mn','mfrac','msup','msub',
@@ -157,10 +169,23 @@ function addCodeCopyButton(block) {
   block.parentElement.appendChild(btn);
 }
 
+function openExternalLinksInNewTab(root) {
+  if (!root) return;
+  root.querySelectorAll('a[href]').forEach(anchor => {
+    if (anchor.closest(FILE_LINK_SKIP_SELECTOR)) return;
+    const href = anchor.getAttribute('href') || '';
+    if (/^https?:\/\//i.test(href)) {
+      anchor.setAttribute('target', '_blank');
+      anchor.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+}
+
 export function applyMarkdown(el, text, options = {}) {
   const { copyCodeButtons = true } = options;
   el.innerHTML = renderMarkdown(text);
   enhanceWorkspaceFileLinks(el);
+  openExternalLinksInNewTab(el);
 
   el.querySelectorAll('pre code').forEach(block => {
     hljs.highlightElement(block);
