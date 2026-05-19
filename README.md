@@ -4,7 +4,7 @@ A self-hosted Flask chatbot with real-time streaming, per-conversation Docker sa
 
 Lumen is built for developers who want a capable local AI chat application without heavy infrastructure. The backend is plain Flask, the frontend is native browser ES modules served directly — no bundler, no framework, no deployment ritual.
 
-<img width="1445" height="1089" alt="ChatGPT Image May 19, 2026, 07_53_37 PM-Photoroom" src="https://github.com/user-attachments/assets/df88cbf5-cdd4-4c6e-ac30-7cb7b84e28a9" />
+<img width="2890" height="2178" alt="ChatGPT Image May 19, 2026, 07_53_37 PM-Photoroom (2)" src="https://github.com/user-attachments/assets/4d21b2aa-5925-48eb-a7f6-f71bc78d10f7" />
 
 
 ---
