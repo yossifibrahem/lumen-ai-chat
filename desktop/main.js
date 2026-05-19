@@ -150,6 +150,49 @@ function waitForHealth(port, timeoutMs = 30000, getExitInfo = null) {
   });
 }
 
+/**
+ * Build a PATH string that includes common Docker installation locations.
+ *
+ * On macOS, GUI apps launched from the Dock or Finder inherit a minimal
+ * environment that omits directories like /usr/local/bin and
+ * /opt/homebrew/bin where Docker Desktop installs its CLI shim.  We
+ * augment the inherited PATH so that `docker` is always findable even
+ * when the app is not started from a terminal.
+ */
+function buildEnvPath() {
+  const inherited = process.env.PATH || '';
+
+  if (process.platform !== 'darwin') {
+    return inherited;
+  }
+
+  // Common locations for Docker CLI on macOS:
+  //   - /usr/local/bin  — Docker Desktop (Intel) and many Homebrew packages
+  //   - /opt/homebrew/bin — Homebrew on Apple Silicon
+  //   - /Applications/Docker.app/Contents/Resources/bin — Docker Desktop bundle
+  //   - ~/.docker/bin — Docker Desktop credential helpers / scan plugin
+  const macosCandidates = [
+    '/usr/local/bin',
+    '/opt/homebrew/bin',
+    '/opt/homebrew/sbin',
+    '/usr/bin',
+    '/bin',
+    '/usr/sbin',
+    '/sbin',
+    `${process.env.HOME || '/Users/Shared'}/.docker/bin`,
+    '/Applications/Docker.app/Contents/Resources/bin',
+  ];
+
+  const existing = new Set(inherited.split(':').filter(Boolean));
+  const extra = macosCandidates.filter((p) => !existing.has(p));
+
+  if (extra.length === 0) {
+    return inherited;
+  }
+
+  return inherited ? `${inherited}:${extra.join(':')}` : extra.join(':');
+}
+
 async function startFlaskServer() {
   const root = appRoot();
   const port = await desktopPort();
@@ -172,6 +215,10 @@ async function startFlaskServer() {
       ...process.env,
       LUMEN_DESKTOP: '1',
       PYTHONUNBUFFERED: '1',
+      // Override PATH so the Flask subprocess (and any child processes it
+      // spawns, e.g. `docker`) can find binaries that the GUI-session
+      // environment omits on macOS.
+      PATH: buildEnvPath(),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
