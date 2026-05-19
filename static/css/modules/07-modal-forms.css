@@ -50,7 +50,11 @@
 .model-refresh-btn svg { width: 14px; height: 14px; }
 .model-refresh-btn.loading svg { animation: refresh-spin .8s linear infinite; }
 @keyframes refresh-spin { to { transform: rotate(360deg); } }
-.model-box .status-msg { margin: 6px 6px 0; }
+.model-box-header .status-msg { margin: 0 0 0 auto; padding: 0; border: 0; background: transparent; max-width: 220px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: .62rem; text-transform: none; letter-spacing: 0; }
+.model-box-header .status-msg strong { display: inline; font-weight: 500; }
+.model-box-header .status-msg span { display: none; }
+.model-box-header .status-msg.ok { border: 0; background: transparent; color: var(--green); }
+.model-box-header .status-msg.err { border: 0; background: transparent; color: var(--red); }
 .model-list { flex-direction: column; gap: 2px; max-height: 220px; margin: 0; padding: 6px; border: 0; border-radius: 0; background: transparent; display: flex; overflow-y: auto; }
 .model-empty { padding: 12px 8px; color: var(--text3); font-size: .7rem; font-family: var(--font-mono); text-align: center; }
 .model-row { width: 100%; min-width: 0; padding: 7px 8px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--text2); font-size: .72rem; font-family: var(--font-mono); text-align: left; cursor: pointer; }
@@ -105,10 +109,3 @@
 .danger-status.warn { color: var(--red); opacity: .85; }
 .danger-status.ok   { color: var(--green); }
 .danger-status.err  { color: var(--red); }
-.btn-section-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 30px;
-  padding: 6px 12px;
-}
