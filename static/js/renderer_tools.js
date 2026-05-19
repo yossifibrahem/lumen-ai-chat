@@ -217,3 +217,21 @@ export function cancelAllToolApprovals() {
   activeApprovalCancellers.forEach(cancel => cancel());
   activeApprovalCancellers.clear();
 }
+
+/** Creates and appends a "Processing…" indicator strip to the current assistant row. */
+export function createProcessingStrip() {
+  const row = prepareAssistantRow();
+  const strip = createElement('div', { className: 'tool-strip tool-strip-using' });
+  strip.dataset.toolName = '';
+  strip.dataset.displayName = 'Processing…';
+  strip.innerHTML = `<span class="tool-icon">${ICONS.processing}</span><span class="tui-name">Processing…</span>`;
+  row.appendChild(strip);
+  if (state.groupSequentialBlocks) tryGroupBlock(strip);
+  scrollToBottom();
+  return strip;
+}
+
+/** Removes a processing strip from the DOM. */
+export function removeProcessingStrip(strip) {
+  if (strip?.parentNode) strip.remove();
+}
