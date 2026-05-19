@@ -46,7 +46,7 @@ export const ICONS = {
   search: icon('<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>', 'stroke-width="2.2"'),
 
   // ── Decorative / small ─────────────────────────────────────────────────────
-  bulb:   icon('<path d="M10,1 C6,0 2,2 1,8 C0,14 2,18 6,20 C8,21 10,21 10,21"/><path d="M14,1 C18,0 22,2 23,8 C24,14 22,18 18,20 C16,21 14,21 14,21"/><line x1="12" y1="1" x2="12" y2="21"/><path d="M1,8 C5,9 7,12 6,16"/><path d="M6,16 C5,19 7,21 10,21"/><path d="M23,8 C19,9 17,12 18,16"/><path d="M18,16 C19,19 17,21 14,21"/><path d="M10,21 C10,23 14,23 14,21"/>', 'width="14" height="14"'),
+  bulb:   icon('<path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 7 7c0 2.5-1.3 4.7-3 6l-1 2H9l-1-2C6.3 13.7 5 11.5 5 9a7 7 0 0 1 7-7z"/>', 'width="14" height="14"'),
   layers: icon('<polygon points="12 2 22 8.5 12 15 2 8.5"/><polyline points="2 13 12 19.5 22 13"/><polyline points="2 17.5 12 24 22 17.5"/>', 'width="14" height="14"'),
 
   // ── Suggestion chip icons (sized by CSS) ───────────────────────────────────
