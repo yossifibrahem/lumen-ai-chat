@@ -54,33 +54,6 @@ Lumen is built for developers who want a capable local AI chat application witho
 
 ---
 
-## Screenshots
-
-<table>
-  <tr>
-    <td align="center" width="50%"><img src="https://github.com/user-attachments/assets/8c8040eb-56f1-4f37-a331-9eddaa560294" alt="new chat" /><br/><sub>New chat screen</sub></td>
-    <td align="center" width="50%"><img src="https://github.com/user-attachments/assets/e474ab80-6009-422d-ab5c-d83dd923e53e" alt="latex" /><br/><sub>LaTeX math rendering</sub></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="https://github.com/user-attachments/assets/71b706e1-3ec6-4f2e-bdbd-145e9dcff9fb" alt="image upload" /><br/><sub>Image upload</sub></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/c910ca2d-bf5d-471c-930d-d46b23e2790a" alt="file upload" /><br/><sub>File upload to the tools container</sub></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="https://github.com/user-attachments/assets/d46dcc44-7366-449b-8986-376b1f37a210" alt="workspace container" /><br/><sub>Per-conversation container and workspace browser</sub></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/4a5f7412-80ac-4f8b-8eb6-302bcc096282" alt="tool approve" /><br/><sub>Tool approval flow</sub></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="https://github.com/user-attachments/assets/c941a553-c3ab-4ff2-991c-e3a6e89a2dbe" alt="api settings" /><br/><sub>API settings</sub></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/15a74efb-9fe7-40c8-affe-c1764a72016f" alt="chat settings" /><br/><sub>Chat settings</sub></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="https://github.com/user-attachments/assets/d1cee8ef-9934-4ee3-88b5-47eb3abf28fb" alt="appearance settings" /><br/><sub>Appearance settings</sub></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/027d0196-b1b4-4b4f-9020-824ac73346c5" alt="mcp settings" /><br/><sub>MCP server settings</sub></td>
-  </tr>
-</table>
-
----
-
 ## Quick Start
 
 ```bash
