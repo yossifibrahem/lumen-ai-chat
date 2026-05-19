@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, dialog, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, MenuItem, dialog, shell, ipcMain, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -352,6 +352,88 @@ function createWindow(url) {
   win.on('unmaximize', sendWindowState);
   win.on('enter-full-screen', sendWindowState);
   win.on('leave-full-screen', sendWindowState);
+
+  // Right-click context menu
+  win.webContents.on('context-menu', (_event, params) => {
+    const menuItems = [];
+
+    // Text input fields: editing actions
+    if (params.isEditable) {
+      menuItems.push(
+        new MenuItem({
+          label: 'Cut',
+          role: 'cut',
+          enabled: params.selectionText.length > 0,
+        }),
+        new MenuItem({
+          label: 'Copy',
+          role: 'copy',
+          enabled: params.selectionText.length > 0,
+        }),
+        new MenuItem({
+          label: 'Paste',
+          role: 'paste',
+        }),
+        new MenuItem({ type: 'separator' }),
+        new MenuItem({
+          label: 'Select All',
+          role: 'selectAll',
+        }),
+      );
+    } else if (params.selectionText.trim().length > 0) {
+      // Text is selected but not in an editable field — offer Copy
+      menuItems.push(
+        new MenuItem({
+          label: 'Copy',
+          role: 'copy',
+        }),
+      );
+    }
+
+    // Link actions
+    if (params.linkURL) {
+      if (menuItems.length > 0) {
+        menuItems.push(new MenuItem({ type: 'separator' }));
+      }
+      menuItems.push(
+        new MenuItem({
+          label: 'Open Link in Browser',
+          click: () => shell.openExternal(params.linkURL),
+        }),
+        new MenuItem({
+          label: 'Copy Link Address',
+          click: () => clipboard.writeText(params.linkURL),
+        }),
+      );
+    }
+
+    // Image actions
+    if (params.mediaType === 'image' && params.srcURL) {
+      if (menuItems.length > 0) {
+        menuItems.push(new MenuItem({ type: 'separator' }));
+      }
+      menuItems.push(
+        new MenuItem({
+          label: 'Copy Image Address',
+          click: () => clipboard.writeText(params.srcURL),
+        }),
+      );
+    }
+
+    // Always-present page-level actions
+    if (menuItems.length > 0) {
+      menuItems.push(new MenuItem({ type: 'separator' }));
+    }
+    menuItems.push(
+      new MenuItem({
+        label: 'Reload',
+        click: () => win.webContents.reload(),
+      }),
+    );
+
+    const contextMenu = Menu.buildFromTemplate(menuItems);
+    contextMenu.popup({ window: win });
+  });
 
   win.loadURL(url);
 }
