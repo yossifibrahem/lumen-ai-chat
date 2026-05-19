@@ -138,13 +138,15 @@ def save_api_settings():
         return jsonify({"error": str(exc)}), 400
 
 
-@blueprint.route("/api/advanced-settings", methods=["GET"])
-def get_advanced_settings():
+@blueprint.route("/api/container-settings", methods=["GET"])
+@blueprint.route("/api/advanced-settings", methods=["GET"])  # Backward-compatible alias.
+def get_container_settings():
     return jsonify(advanced_config.public_advanced_config())
 
 
-@blueprint.route("/api/advanced-settings", methods=["POST"])
-def save_advanced_settings():
+@blueprint.route("/api/container-settings", methods=["POST"])
+@blueprint.route("/api/advanced-settings", methods=["POST"])  # Backward-compatible alias.
+def save_container_settings():
     try:
         return jsonify(advanced_config.save_advanced_config(_body()))
     except ValueError as exc:

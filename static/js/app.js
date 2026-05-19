@@ -6,18 +6,18 @@
 import { STORAGE_KEYS, state } from './state.js';
 import { storage }  from './storage.js';
 
-import { openModal, closeModal, toggleSidebar, autoResize, updateCharCount, initMobileKeyboardHandling } from './ui.js';
-import { loadSettings, saveSettings, saveChatSettings, fetchModels, initKeyToggle, initParameterSliders } from './settings.js';
+import { openModal, closeModal, toggleSidebar, autoResize, updateCharCount, initMobileKeyboardHandling, showToast } from './ui.js';
+import { loadSettings, saveSettings, saveChatSettings, syncSettingsUI, fetchModels, initKeyToggle, initParameterSliders } from './settings.js';
 import { loadConversationList, openConversation, renameConversationTitle, startNewChat } from './conversations.js';
-import { loadMcpConfig, saveMcpConfig, reloadTools, loadCachedTools } from './mcp.js';
+import { loadMcpConfig, saveMcpConfig, applyMcpToolSettings, resetMcpDraftSettings, reloadTools, loadCachedTools } from './mcp.js';
 import { sendMessage, stopAssistantTurn, editAndResend, regenerateFrom } from './chat.js';
 import { initImageAttachments, hasPendingAttachments } from './chat_attachments.js';
 import { initVoiceInput } from './voice.js';
 import { clearMessages } from './renderer.js';
 import { ICONS, initIcons } from './icons.js';
-import { loadCustomization, saveCustomization, resetCustomization, initSwatchPicker, syncCustomizationUI } from './customization.js';
+import { loadCustomization, saveCustomization, initSwatchPicker, syncCustomizationUI } from './customization.js';
 import { initFilePanel } from './file_panel.js';
-import { loadAdvancedSettings, saveAdvancedSettings, deleteAllData } from './advanced_settings.js';
+import { loadContainerSettings, saveContainerSettings, deleteAllData } from './container_settings.js';
 
 // ── Event binding ─────────────────────────────────────────────────────────────
 
@@ -86,14 +86,22 @@ function bindModalEvents() {
   document.querySelectorAll('[data-close]').forEach(btn =>
     btn.addEventListener('click', () => {
       closeModal(btn.dataset.close);
-      if (btn.dataset.close === 'settings-modal') syncCustomizationUI();
+      if (btn.dataset.close === 'settings-modal') {
+        syncSettingsUI();
+        syncCustomizationUI();
+        resetMcpDraftSettings();
+      }
     })
   );
   document.querySelectorAll('.modal-overlay').forEach(overlay =>
     overlay.addEventListener('click', e => {
       if (e.target === overlay) {
         closeModal(overlay.id);
-        if (overlay.id === 'settings-modal') syncCustomizationUI();
+        if (overlay.id === 'settings-modal') {
+          syncSettingsUI();
+          syncCustomizationUI();
+          resetMcpDraftSettings();
+        }
       }
     })
   );
@@ -104,24 +112,37 @@ function bindModalEvents() {
       const targetId = tab.dataset.tab;
       document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.tab-footer-btn').forEach(b => b.classList.remove('active'));
       tab.classList.add('active');
       document.getElementById(targetId).classList.add('active');
-      document.querySelectorAll(`.tab-footer-btn[data-for-tab="${targetId}"]`).forEach(b => b.classList.add('active'));
     });
   });
-  document.querySelectorAll('.tab-footer-btn[data-for-tab="tab-api"]').forEach(b => b.classList.add('active'));
+}
+
+async function applyAllSettings() {
+  const btn = document.getElementById('btn-apply-settings');
+  if (btn) btn.disabled = true;
+
+  try {
+    await saveSettings();
+    saveChatSettings();
+    saveCustomization();
+    await saveMcpConfig();
+    applyMcpToolSettings();
+    await saveContainerSettings();
+
+    showToast('Settings applied');
+  } catch (err) {
+    console.error('Failed to apply settings:', err);
+    showToast('Failed to apply settings');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 function bindSettingsEvents() {
-  document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
-  document.getElementById('btn-save-chat-settings').addEventListener('click', saveChatSettings);
+  document.getElementById('btn-apply-settings').addEventListener('click', applyAllSettings);
   document.getElementById('btn-fetch-models').addEventListener('click', fetchModels);
-  document.getElementById('btn-save-mcp').addEventListener('click', saveMcpConfig);
   document.getElementById('btn-reload-tools').addEventListener('click', reloadTools);
-  document.getElementById('btn-save-customization').addEventListener('click', saveCustomization);
-  document.getElementById('btn-reset-customization').addEventListener('click', resetCustomization);
-  document.getElementById('btn-save-advanced').addEventListener('click', saveAdvancedSettings);
 
   document.getElementById('btn-danger-delete-all').addEventListener('click', async () => {
     const btn      = document.getElementById('btn-danger-delete-all');
@@ -261,7 +282,7 @@ function bindEvents() {
   loadSettings();
   loadCustomization();
   loadCachedTools();
-  await loadAdvancedSettings();
+  await loadContainerSettings();
   await loadConversationList();
   await loadMcpConfig();
 

@@ -9,29 +9,46 @@ import { escapeHtml } from './format.js';
 
 // ── Server settings helpers ───────────────────────────────────────────────────
 
+let _draftMcpServerSettings = null;
+
+function cloneServerSettings(settings) {
+  return JSON.parse(JSON.stringify(settings || {}));
+}
+
 function loadServerSettings() {
   state.mcpServerSettings = storage.get(STORAGE_KEYS.mcpServerSettings, {});
+  _draftMcpServerSettings = cloneServerSettings(state.mcpServerSettings);
 }
 
 function saveServerSettings() {
+  state.mcpServerSettings = cloneServerSettings(_draftMcpServerSettings);
   storage.set(STORAGE_KEYS.mcpServerSettings, state.mcpServerSettings);
 }
 
-function getServerSetting(serverName) {
-  if (!state.mcpServerSettings[serverName]) {
-    state.mcpServerSettings[serverName] = { enabled: true, autoApprove: false, icon: 'toolDefault', tools: {} };
+function settingsRoot(useDraft = false) {
+  if (useDraft) {
+    if (!_draftMcpServerSettings) _draftMcpServerSettings = cloneServerSettings(state.mcpServerSettings);
+    return _draftMcpServerSettings;
   }
-  if (!state.mcpServerSettings[serverName].icon) {
-    state.mcpServerSettings[serverName].icon = 'toolDefault';
-  }
-  if (!state.mcpServerSettings[serverName].tools) {
-    state.mcpServerSettings[serverName].tools = {};
-  }
-  return state.mcpServerSettings[serverName];
+  return state.mcpServerSettings;
 }
 
-function getToolSetting(serverName, toolName) {
-  const srv = getServerSetting(serverName);
+function getServerSetting(serverName, useDraft = false) {
+  const root = settingsRoot(useDraft);
+  if (!root[serverName]) {
+    root[serverName] = { enabled: true, autoApprove: false, icon: 'toolDefault', tools: {} };
+  }
+  if (!('icon' in root[serverName])) {
+    root[serverName].icon = 'toolDefault';
+  }
+  if (!root[serverName].tools) {
+    root[serverName].tools = {};
+  }
+  return root[serverName];
+}
+
+function getToolSetting(serverName, toolName, useDraft = false) {
+  const srv = getServerSetting(serverName, useDraft);
   if (!srv.tools[toolName]) {
     srv.tools[toolName] = { enabled: true, autoApprove: null, icon: null }; // null = inherit from server
   }
@@ -44,17 +61,17 @@ function getToolSetting(serverName, toolName) {
 // ── Public API used by chat_payloads.js ───────────────────────────────────────
 
 export function isServerEnabled(serverName) {
-  return getServerSetting(serverName).enabled !== false;
+  return getServerSetting(serverName, false).enabled !== false;
 }
 
 export function isServerAutoApprove(serverName) {
-  return getServerSetting(serverName).autoApprove === true;
+  return getServerSetting(serverName, false).autoApprove === true;
 }
 
 /** Returns true if this specific tool is enabled (server AND tool both enabled). */
 export function isToolEnabled(serverName, toolName) {
   if (!isServerEnabled(serverName)) return false;
-  return getToolSetting(serverName, toolName).enabled !== false;
+  return getToolSetting(serverName, toolName, false).enabled !== false;
 }
 
 /**
@@ -63,7 +80,7 @@ export function isToolEnabled(serverName, toolName) {
  * Tool-level true/false = explicit override.
  */
 export function isToolAutoApprove(serverName, toolName) {
-  const toolSetting = getToolSetting(serverName, toolName);
+  const toolSetting = getToolSetting(serverName, toolName, false);
   if (toolSetting.autoApprove === null || toolSetting.autoApprove === undefined) {
     return isServerAutoApprove(serverName);
   }
@@ -92,8 +109,16 @@ export async function saveMcpConfig() {
     _setMcpStatus(`Could not save config: ${result.error}`, 'err');
     return;
   }
-  _setMcpStatus('Config saved ✓', 'ok');
-  showToast('MCP config saved');
+}
+
+export function applyMcpToolSettings() {
+  saveServerSettings();
+  renderToolList();
+}
+
+export function resetMcpDraftSettings() {
+  _draftMcpServerSettings = cloneServerSettings(state.mcpServerSettings);
+  renderToolList();
 }
 
 
@@ -292,7 +317,7 @@ function buildToolIconPickerHtml(server, toolName, currentIconKey, isInheritingI
  */
 function buildToolRowHtml(server, tool, serverSettings) {
   const toolName    = tool.name;
-  const toolSetting = getToolSetting(server, toolName);
+  const toolSetting = getToolSetting(server, toolName, true);
   const isEnabled   = toolSetting.enabled !== false;
 
   const autoApproveVal = toolSetting.autoApprove;
@@ -340,7 +365,7 @@ function buildServerGroupHtml(server, tools, settings) {
   const isDefault    = !settings.icon;
   const currentIcon = settings.icon || 'toolDefault';
 
-  const enabledCount = tools.filter(t => getToolSetting(server, t.name).enabled !== false).length;
+  const enabledCount = tools.filter(t => getToolSetting(server, t.name, true).enabled !== false).length;
   const totalCount   = tools.length;
 
   const toolsHtml = tools.map(tool => buildToolRowHtml(server, tool, settings)).join('');
@@ -381,7 +406,6 @@ function groupToolsByServer(tools) {
 }
 
 function renderToolList() {
-  loadServerSettings();
   const container = document.getElementById('tool-list');
 
   if (!state.mcpTools.length) {
@@ -391,15 +415,14 @@ function renderToolList() {
 
   const byServer = groupToolsByServer(state.mcpTools);
   container.innerHTML = Object.entries(byServer)
-    .map(([server, tools]) => buildServerGroupHtml(server, tools, getServerSetting(server)))
+    .map(([server, tools]) => buildServerGroupHtml(server, tools, getServerSetting(server, true)))
     .join('');
 
   // ── Server-level toggles ──────────────────────────────────────────────────
   container.querySelectorAll('.mcp-mini-toggle[data-level="server"]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const setting = getServerSetting(btn.dataset.server);
+      const setting = getServerSetting(btn.dataset.server, true);
       setting[btn.dataset.action] = !setting[btn.dataset.action];
-      saveServerSettings();
       renderToolList();
     });
   });
@@ -407,7 +430,7 @@ function renderToolList() {
   // ── Tool-level toggles ────────────────────────────────────────────────────
   container.querySelectorAll('.mcp-mini-toggle[data-level="tool"]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const toolSetting = getToolSetting(btn.dataset.server, btn.dataset.tool);
+      const toolSetting = getToolSetting(btn.dataset.server, btn.dataset.tool, true);
       const action = btn.dataset.action;
 
       if (action === 'enabled') {
@@ -415,13 +438,12 @@ function renderToolList() {
       } else if (action === 'autoApprove') {
         // Cycle: null (inherited) → explicit-opposite → null (inherited)
         if (toolSetting.autoApprove === null || toolSetting.autoApprove === undefined) {
-          const serverAuto = getServerSetting(btn.dataset.server).autoApprove;
+          const serverAuto = getServerSetting(btn.dataset.server, true).autoApprove;
           toolSetting.autoApprove = !serverAuto;
         } else {
           toolSetting.autoApprove = null; // reset to inherit
         }
       }
-      saveServerSettings();
       renderToolList();
     });
   });
@@ -442,10 +464,9 @@ function renderToolList() {
   container.querySelectorAll('.server-icon-wrap .icon-option').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
-      const setting = getServerSetting(btn.dataset.server);
+      const setting = getServerSetting(btn.dataset.server, true);
       // __default__ resets to null so the server uses the default icon
       setting.icon = btn.dataset.icon === '__default__' ? null : btn.dataset.icon;
-      saveServerSettings();
       renderToolList();
     });
   });
@@ -466,10 +487,9 @@ function renderToolList() {
   container.querySelectorAll('.tool-icon-wrap .icon-option').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
-      const toolSetting = getToolSetting(btn.dataset.server, btn.dataset.tool);
+      const toolSetting = getToolSetting(btn.dataset.server, btn.dataset.tool, true);
       // __inherit__ resets to null so the tool follows the server icon
       toolSetting.icon = btn.dataset.icon === '__inherit__' ? null : btn.dataset.icon;
-      saveServerSettings();
       renderToolList();
     });
   });

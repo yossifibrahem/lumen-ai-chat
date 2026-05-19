@@ -1,4 +1,4 @@
-// Advanced settings — environment-variable-backed configuration exposed via the UI.
+// Container settings — environment-variable-backed container and file handling configuration exposed via the UI.
 //
 // Each setting maps to a backend env var.  When the server reports that a key
 // is "env_locked" (i.e. the operator set the env var), the corresponding field
@@ -6,7 +6,7 @@
 // it through the UI.
 
 import { api }            from './api.js';
-import { showToast }      from './ui.js';
+import { refreshFilePanel } from './file_panel.js';
 
 // ── Internal state ────────────────────────────────────────────────────────────
 
@@ -14,9 +14,9 @@ let _envLocked = {};   // key → true when the env var was set at server start
 
 // ── Load ──────────────────────────────────────────────────────────────────────
 
-export async function loadAdvancedSettings() {
+export async function loadContainerSettings() {
   try {
-    const data = await api.get('/api/advanced-settings');
+    const data = await api.get('/api/container-settings');
     if (!data || data.error) return;
     _envLocked = {};
     for (const key of _KEYS) {
@@ -28,19 +28,17 @@ export async function loadAdvancedSettings() {
 
 // ── Save ──────────────────────────────────────────────────────────────────────
 
-export async function saveAdvancedSettings() {
+export async function saveContainerSettings() {
   const payload = _readControls();
   try {
-    const data = await api.post('/api/advanced-settings', payload);
+    const data = await api.post('/api/container-settings', payload);
     if (data?.error) {
-      _setStatus(`Save failed: ${data.error}`, 'err');
-      return;
+      throw new Error(data.error);
     }
     _syncUI(data);
-    _setStatus('Advanced settings saved ✓', 'ok');
-    showToast('Advanced settings saved');
+    refreshFilePanel({ keepPreview: true }).catch(() => {});
   } catch (err) {
-    _setStatus(`Save failed: ${err.message}`, 'err');
+    throw new Error(err.message || err);
   }
 }
 
@@ -104,16 +102,6 @@ function _readControls() {
     payload[key] = el.value.trim();
   }
   return payload;
-}
-
-// ── Status line ───────────────────────────────────────────────────────────────
-
-function _setStatus(msg, type) {
-  const el = _el('advanced-settings-status');
-  if (!el) return;
-  el.className  = `status-msg ${type}`;
-  el.textContent = msg;
-  el.style.display = 'block';
 }
 
 // ── Danger zone ───────────────────────────────────────────────────────────────

@@ -2,7 +2,6 @@
 
 import { state, CUSTOMIZATION_DEFAULTS, STORAGE_KEYS } from './state.js';
 import { storage } from './storage.js';
-import { showToast } from './ui.js';
 
 // ── Apply ─────────────────────────────────────────────────────────────────────
 // Reads from `state` and pushes every setting into the live DOM.
@@ -100,17 +99,6 @@ export function saveCustomization() {
     customAccentColor:     state.customAccentColor,
   });
   applyCustomization();
-  showToast('Appearance saved');
-}
-
-// ── Reset ─────────────────────────────────────────────────────────────────────
-
-export function resetCustomization() {
-  Object.assign(state, CUSTOMIZATION_DEFAULTS);
-  storage.remove(STORAGE_KEYS.customization);
-  applyCustomization();
-  syncCustomizationUI();
-  showToast('Appearance reset to defaults');
 }
 
 // ── Init listeners ────────────────────────────────────────────────────────────
@@ -150,8 +138,7 @@ export function initSwatchPicker() {
   // Theme radio cards
   document.querySelectorAll('input[name="cust-theme"]').forEach(radio => {
     radio.addEventListener('change', () => {
-      // live preview
-      _applyTheme(radio.value);
+      // Selection is previewed by the card itself; the app theme changes on Apply.
     });
   });
 }

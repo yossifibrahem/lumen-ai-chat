@@ -3,11 +3,11 @@
 import { state, SETTINGS_DEFAULTS, STORAGE_KEYS } from './state.js';
 import { storage } from './storage.js';
 import { api }     from './api.js';
-import { showStatus, showToast } from './ui.js';
 
 // ── Read / write ──────────────────────────────────────────────────────────────
 
 const SETTINGS_KEYS = Object.keys(SETTINGS_DEFAULTS);
+let _draftModel = SETTINGS_DEFAULTS.model;
 
 export function loadSettings() {
   Object.assign(state, SETTINGS_DEFAULTS, _savedSettings());
@@ -15,6 +15,7 @@ export function loadSettings() {
   const cachedModels = storage.get(STORAGE_KEYS.models);
   renderModelList(cachedModels || []);
 
+  _draftModel = state.model;
   _syncAPIUI();
   _loadServerApiSettings();
   _syncChatUI();
@@ -24,22 +25,26 @@ export function loadSettings() {
 
 export async function saveSettings() {
   _readAPIControls();
+  state.model = _draftModel;
   _persistSettings();
   const saved = await _saveServerApiSettings();
   updateModelBadge();
   if (saved?.error) {
-    showStatus('settings-status', `Settings saved locally, but API config failed: ${saved.error}`, 'err');
-    return;
+    throw new Error(`API config failed: ${saved.error}`);
   }
-  showStatus('settings-status', 'Settings saved ✓', 'ok');
-  showToast('Settings saved');
 }
 
 export function saveChatSettings() {
   _readChatControls();
   _persistSettings();
   updateInputHint();
-  showToast('Chat settings saved');
+}
+
+export function syncSettingsUI() {
+  _draftModel = state.model;
+  _syncAPIUI();
+  _syncChatUI();
+  renderModelList(storage.get(STORAGE_KEYS.models) || []);
 }
 
 export function updateInputHint() {
@@ -103,13 +108,6 @@ export async function fetchModels() {
   _setModelStatus('Loading models…', 'Checking the API connection.', 'ok');
 
   try {
-    _readAPIControls();
-    _persistSettings();
-    const saved = await _saveServerApiSettings();
-    if (saved?.error) {
-      _setModelStatus('Could not save API settings', saved.error, 'err');
-      return;
-    }
     const data = await api.post('/api/models', {});
     if (fetchId !== _modelFetchId) return;
 
@@ -147,7 +145,7 @@ function _renderModelRows(container, models) {
   }
 
   container.innerHTML = models.map(m =>
-    `<button class="model-row${m === state.model ? ' selected' : ''}" data-model="${_escape(m)}" title="${_escape(m)}"><span>${_escape(m)}</span></button>`
+    `<button class="model-row${m === _draftModel ? ' selected' : ''}" data-model="${_escape(m)}" title="${_escape(m)}"><span>${_escape(m)}</span></button>`
   ).join('');
 
   container.querySelectorAll('.model-row').forEach(row => {
@@ -162,19 +160,22 @@ function _renderChips(container, chipClass, models) {
     return;
   }
   container.innerHTML = models.map(m =>
-    `<div class="${chipClass}${m === state.model ? ' selected' : ''}" data-model="${_escape(m)}" title="${_escape(m)}">${_escape(m)}</div>`
+    `<div class="${chipClass}${m === _draftModel ? ' selected' : ''}" data-model="${_escape(m)}" title="${_escape(m)}">${_escape(m)}</div>`
   ).join('');
 
   container.querySelectorAll(`.${chipClass}`).forEach(chip => {
-    chip.addEventListener('click', () => _chooseModel(chip.dataset.model, models));
+    chip.addEventListener('click', () => _chooseModel(chip.dataset.model, models, true));
   });
 }
 
-function _chooseModel(model, models) {
-  state.model = model;
+function _chooseModel(model, models, commit = false) {
+  _draftModel = model;
+  if (commit) {
+    state.model = model;
+    _persistSettings();
+    updateModelBadge();
+  }
   renderModelList(models);
-  updateModelBadge();
-  saveSettings();
 }
 
 function _setModelStatus(title, detail, type) {

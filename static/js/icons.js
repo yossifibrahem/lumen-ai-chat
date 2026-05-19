@@ -64,7 +64,7 @@ export const ICONS = {
   tabMcp: `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><path d="M11.5 9v3M9 11.5h3"/></svg>`,
   toolDefault: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 6l4 2 2 4 4-10z"/></svg>`,
   processing: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8a6 6 0 1 1-1.5-3.9"/><polyline points="14 2 14 6 10 6"/></svg>`,
-  tabAdvanced: `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L1 4.5v7L8 15l7-3.5v-7L8 1z"/><path d="M1 4.5l7 3.5 7-3.5"/><path d="M8 8v7"/></svg>`,
+  tabContainers: `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L1 4.5v7L8 15l7-3.5v-7L8 1z"/><path d="M1 4.5l7 3.5 7-3.5"/><path d="M8 8v7"/></svg>`,
 
   // ── API key visibility toggle ──────────────────────────────────────────────
   eyeShow: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 8s3-5.5 7-5.5S15 8 15 8s-3 5.5-7 5.5S1 8 1 8z"/><circle cx="8" cy="8" r="2"/></svg>`,

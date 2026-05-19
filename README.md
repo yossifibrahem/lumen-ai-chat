@@ -310,7 +310,7 @@ Click the stop button while a response is streaming. The server marks the stream
 | `routes.py` | Thin blueprint registration shim — registers the five route group blueprints |
 | `routes_startup.py` | Setup screen, health probe, Docker/image requirement checks, streaming sandbox image build |
 | `routes_conversations.py` | Conversation CRUD, workspace path, container status, danger-delete |
-| `routes_chat.py` | Streaming, cancel, approve, settings, advanced settings, model list |
+| `routes_chat.py` | Streaming, cancel, approve, settings, container settings, model list |
 | `routes_mcp.py` | MCP config, tool discovery, direct tool calls |
 | `routes_files.py` | Workspace file listing, upload, preview, download, image storage |
 | `chat_turn_service.py` | Full chat turn orchestration: streaming, tool approval, MCP calls, persistence |

@@ -30,7 +30,7 @@ The app is intentionally lightweight: no database, no frontend framework, no bun
 ├── routes.py                      # Thin blueprint registration shim — registers five route-group blueprints
 ├── routes_startup.py              # Setup screen, health, Docker/image checks, streaming sandbox build
 ├── routes_conversations.py        # Conversation CRUD, workspace path, container status, danger-delete
-├── routes_chat.py                 # Streaming, cancel, approve, settings, advanced settings, model list
+├── routes_chat.py                 # Streaming, cancel, approve, settings, container settings, model list
 ├── routes_mcp.py                  # MCP config, tool discovery, direct tool calls
 ├── routes_files.py                # Workspace file listing, upload, preview, download, image storage
 ├── chat_turn_service.py           # Long-running chat turn orchestration; re-exports resolve_tool_approval
@@ -257,7 +257,7 @@ Key routes:
 - `POST /api/chat/cancel` — cancel an active stream
 - `POST /api/chat/approve` — approve or deny a pending MCP tool call
 - `GET/POST /api/settings` — read/write server-side API provider config
-- `GET/POST /api/advanced_settings` — advanced model settings
+- `GET/POST /api/container-settings` — advanced model settings
 - `GET /api/models` — proxy model-list fetch
 
 ### `routes_mcp.py`

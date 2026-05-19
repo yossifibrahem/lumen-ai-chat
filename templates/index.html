@@ -250,8 +250,8 @@
           <span data-icon="tabMcp"></span>
           MCP
         </button>
-        <button class="modal-tab" data-tab="tab-advanced">
-          <span data-icon="tabAdvanced"></span>
+        <button class="modal-tab" data-tab="tab-containers">
+          <span data-icon="tabContainers"></span>
           Containers
         </button>
       </nav>
@@ -523,10 +523,8 @@
         </div>
       </div><!-- /#tab-mcp -->
 
-      <!-- ── Advanced tab ── -->
-      <div id="tab-advanced" class="tab-panel">
-
-        <div id="advanced-settings-status" class="status-msg" style="display:none"></div>
+      <!-- ── Containers tab ── -->
+      <div id="tab-containers" class="tab-panel">
 
         <!-- Sandbox Container ─────────────────────────────────────────── -->
         <div class="settings-section">
@@ -650,18 +648,13 @@
           <div id="danger-delete-status" class="danger-status"></div>
         </div>
 
-      </div><!-- /#tab-advanced -->
+      </div><!-- /#tab-containers -->
 
     </div><!-- /.modal-body -->
 
     <div class="modal-footer">
       <button class="btn-secondary" data-close="settings-modal">Close</button>
-      <button class="btn-secondary  tab-footer-btn" data-for-tab="tab-appearance" id="btn-reset-customization">Reset</button>
-      <button class="btn-primary    tab-footer-btn" data-for-tab="tab-api"        id="btn-save-settings">Save</button>
-      <button class="btn-primary    tab-footer-btn" data-for-tab="tab-chat"       id="btn-save-chat-settings">Save</button>
-      <button class="btn-primary    tab-footer-btn" data-for-tab="tab-appearance" id="btn-save-customization">Save</button>
-      <button class="btn-primary    tab-footer-btn" data-for-tab="tab-mcp"        id="btn-save-mcp">Save Config</button>
-      <button class="btn-primary    tab-footer-btn" data-for-tab="tab-advanced"   id="btn-save-advanced">Save</button>
+      <button class="btn-primary btn-apply-settings" id="btn-apply-settings">Apply</button>
     </div>
   </div>
 </div>

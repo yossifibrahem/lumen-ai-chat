@@ -11,14 +11,13 @@
 .modal-tab { position: relative; padding: 6px 14px; border: none; border-radius: 7px; color: var(--text3); font-size: 0.9rem; font-weight: 500; letter-spacing: .3px; background: none; white-space: nowrap; flex-shrink: 0; }
 .modal-tab:hover, .modal-tab.active { color: var(--text); background: var(--surface2); }
 
-.tab-panel, .tab-footer-btn { display: none; }
+.tab-panel { display: none; }
 .tab-panel.active { display: block; }
-.tab-footer-btn.active { display: inline-flex; }
 .modal-close { color: var(--text3); }
 .modal-close:hover { background: var(--surface); color: var(--text); }
 .modal-close svg { width: 16px; height: 16px; }
 .modal-body { flex: 1; overflow-y: auto; padding: 22px; }
-.modal-footer { justify-content: flex-end; gap: 8px; padding: 14px 22px; border-top: 1px solid var(--border); }
+.modal-footer { justify-content: flex-end; align-items: center; gap: 8px; padding: 14px 22px; border-top: 1px solid var(--border); }
 
 .field { margin-bottom: 18px; }
 .field:last-child { margin-bottom: 0; }
@@ -72,7 +71,7 @@
 #toast { position: fixed; bottom: 80px; left: 50%; z-index: 500; padding: 8px 16px; border: 1px solid var(--border2); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow); color: var(--text); font-family: var(--font-mono); font-size: .72rem; white-space: nowrap; opacity: 0; pointer-events: none; transform: translateX(-50%) translateY(10px); transition: all .2s; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/* ─── Advanced tab — label row + ENV lock badge ──────────────────────────── */
+/* ─── Containers tab — label row + ENV lock badge ────────────────────────── */
 .adv-label-row { display: flex; align-items: center; gap: 6px; }
 .adv-env-badge { flex-shrink: 0; padding: 1px 5px; border-radius: 3px; background: var(--surface); border: 1px solid var(--border2); color: var(--text3); font-size: .58rem; letter-spacing: .4px; text-transform: uppercase; font-family: var(--font-mono); cursor: help; }
 .field input:disabled, .field select:disabled { opacity: .5; cursor: not-allowed; }
@@ -106,3 +105,10 @@
 .danger-status.warn { color: var(--red); opacity: .85; }
 .danger-status.ok   { color: var(--green); }
 .danger-status.err  { color: var(--red); }
+.btn-section-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  padding: 6px 12px;
+}
