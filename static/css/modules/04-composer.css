@@ -3,7 +3,7 @@
 /* ─── Floating Composer ────────────────────────────────────────────────────── */
 #composer-area {
   position: absolute;
-  bottom: 0px;
+  bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
   width: min(var(--dock-w), calc(100% - 40px));
@@ -214,19 +214,6 @@
   color: var(--text3);
   font-family: var(--font-mono);
   font-size: .62rem;
-}
-.input-disclaimer {
-  margin: -1px 10px 0;
-  padding: 6px 10px;
-  text-align: center;
-  color: var(--text3);
-  font-size: .65rem;
-  font-family: var(--font-mono);
-  letter-spacing: .2px;
-  background: var(--bg);
-  /* border: 1px solid var(--border); */
-  border-top: none;
-  border-radius: 0 0 8px 8px;
 }
 
 /* ─── Suggestions bar ─────────────────────────────────────────────────────── */
