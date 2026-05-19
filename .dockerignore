@@ -1,0 +1,10 @@
+.venv
+venv
+node_modules
+dist
+.git
+__pycache__
+.pytest_cache
+*.pyc
+.DS_Store
+package-lock.json
