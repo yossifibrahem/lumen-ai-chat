@@ -8,7 +8,7 @@ import {
   scrollToBottom, renderAllMessages,
   createThinkingBlock, updateThinkingBlock, finalizeThinkingBlock,
   createToolStrip, toolStripFinalize, toolStripSetApproval, toolStripSetRunning,
-  createProcessingStrip, removeProcessingStrip,
+  createProcessingStrip,
 } from './renderer.js';
 import { applyMarkdown } from './markdown.js';
 import { persistConversationFor, createNewConversation } from './conversations.js';
@@ -394,10 +394,9 @@ function stripForToolEvent(ctx, evt, cursorKey) {
   return strip;
 }
 
-/** Removes the processing strip from ctx if present. */
 function clearProcessingStrip(ctx) {
   if (ctx.processingStrip) {
-    removeProcessingStrip(ctx.processingStrip);
+    ctx.processingStrip.remove();
     ctx.processingStrip = null;
   }
 }

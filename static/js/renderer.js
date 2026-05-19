@@ -21,7 +21,7 @@ import { appendThinkingBlock } from './renderer_thinking.js';
 import { appendToolResultInline } from './renderer_tools.js';
 
 export { createThinkingBlock, updateThinkingBlock, finalizeThinkingBlock } from './renderer_thinking.js';
-export { createToolStrip, toolStripSetApproval, toolStripSetRunning, toolStripFinalize, cancelAllToolApprovals, createProcessingStrip, removeProcessingStrip } from './renderer_tools.js';
+export { createToolStrip, toolStripSetApproval, toolStripSetRunning, toolStripFinalize, cancelAllToolApprovals, createProcessingStrip } from './renderer_tools.js';
 
 // Wrap scrollToBottom with the same signature expected by callers
 export function scrollToBottom(force = false) { _scrollToBottom(force); }
