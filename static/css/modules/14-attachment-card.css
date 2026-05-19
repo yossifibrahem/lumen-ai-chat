@@ -144,17 +144,12 @@
   padding: 0;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(255,255,255,.12);
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background: rgba(0,0,0,.42);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  color: rgba(255,255,255,.7);
+  background: var(--surface2);
   opacity: 0;
   pointer-events: none;
-  transform: translateY(-3px) scale(.92);
-  transition: opacity var(--fast), transform var(--fast),
-              background var(--fast), color var(--fast);
+  color: var(--text2);
 }
 
 .attachment-card:hover .attachment-card-remove,
@@ -162,13 +157,11 @@
 .attachment-card-remove:focus-visible {
   opacity: 1;
   pointer-events: auto;
-  transform: translateY(0) scale(1);
 }
 
 .attachment-card-remove:hover {
-  background: rgba(224,112,112,.72);
-  border-color: rgba(224,112,112,.4);
-  color: #fff;
+  color: var(--text);
+  border-color: var(--border2);
 }
 
 .attachment-card-remove svg {
