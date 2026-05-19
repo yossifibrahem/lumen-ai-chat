@@ -19,10 +19,10 @@ function saveServerSettings() {
 
 function getServerSetting(serverName) {
   if (!state.mcpServerSettings[serverName]) {
-    state.mcpServerSettings[serverName] = { enabled: true, autoApprove: false, icon: 'tabMcp', tools: {} };
+    state.mcpServerSettings[serverName] = { enabled: true, autoApprove: false, icon: 'toolDefault', tools: {} };
   }
   if (!state.mcpServerSettings[serverName].icon) {
-    state.mcpServerSettings[serverName].icon = 'tabMcp';
+    state.mcpServerSettings[serverName].icon = 'toolDefault';
   }
   if (!state.mcpServerSettings[serverName].tools) {
     state.mcpServerSettings[serverName].tools = {};
@@ -245,7 +245,7 @@ function buildIconPickerHtml(server, currentIconKey, isDefault) {
       <button class="server-icon-btn" data-server="${escapeHtml(server)}"
               title="${isDefault ? 'Default icon' : 'Custom icon set (click to change)'}"
               aria-label="Change server icon">
-        <span class="server-icon-current">${ICONS[currentIconKey] || ICONS.tabMcp}</span>
+        <span class="server-icon-current">${ICONS[currentIconKey] || ICONS.toolDefault}</span>
         ${isDefault ? '' : '<span class="tool-icon-dot"></span>'}
       </button>
       <div class="icon-picker-dropdown" style="display:none">
@@ -275,7 +275,7 @@ function buildToolIconPickerHtml(server, toolName, currentIconKey, isInheritingI
       <button class="tool-icon-btn" data-server="${escapeHtml(server)}" data-tool="${escapeHtml(toolName)}"
               title="${isInheritingIcon ? 'Icon follows server (click to override)' : 'Custom icon set (click to change)'}"
               aria-label="Change tool icon">
-        <span class="tool-icon-current">${ICONS[currentIconKey] || ICONS.tabMcp}</span>
+        <span class="tool-icon-current">${ICONS[currentIconKey] || ICONS.toolDefault}</span>
         ${isInheritingIcon ? '' : '<span class="tool-icon-dot"></span>'}
       </button>
       <div class="icon-picker-dropdown" style="display:none">
@@ -303,7 +303,7 @@ function buildToolRowHtml(server, tool, serverSettings) {
 
   // Icon: use tool-specific icon if set, otherwise fall back to server icon
   const isInheritingIcon = !toolSetting.icon;
-  const toolIconKey = toolSetting.icon || serverSettings.icon || 'tabMcp';
+  const toolIconKey = toolSetting.icon || serverSettings.icon || 'toolDefault';
 
   return `
     <div class="tool-row${!isEnabled ? ' tool-row-disabled' : ''}"
@@ -338,7 +338,7 @@ function buildToolRowHtml(server, tool, serverSettings) {
 function buildServerGroupHtml(server, tools, settings) {
   const disabledCls = settings.enabled ? '' : ' server-disabled';
   const isDefault    = !settings.icon;
-  const currentIcon = settings.icon || 'tabMcp';
+  const currentIcon = settings.icon || 'toolDefault';
 
   const enabledCount = tools.filter(t => getToolSetting(server, t.name).enabled !== false).length;
   const totalCount   = tools.length;
