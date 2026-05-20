@@ -105,11 +105,9 @@ Root-level duplicate test files should not exist. In particular, keep `test_mcp_
 
 The desktop app is intentionally a thin Electron shell. `desktop/main.js` imports the Flask `create_app()` factory through `python -c`, runs it on a stable localhost port (`38492` by default, overridable with `LUMEN_DESKTOP_PORT`), waits for `/health`, then loads the Flask UI in a `BrowserWindow`. This keeps desktop-specific host/port/reloader behavior out of `app.py`. The stable port is important because browser `localStorage` is origin-scoped; changing the port makes saved UI settings look reset. The Flask backend remains the source of truth for routing, persistence, MCP behavior, Docker checks, and startup setup screens.
 
-Keep desktop-specific code in `desktop/`. Avoid duplicating UI logic in Electron unless the behavior must be native-only. Electron sets a stable `userData` directory named `Lumen AI Chat` for browser storage across dev and packaged launches. The packaged app is intended to include a platform-specific `.venv` created before packaging, so end users do not need Python or pip installed. At runtime Electron uses `LUMEN_PYTHON`, the bundled/local `.venv`, or finally the system `python`/`python3`.
+Keep desktop-specific code in `desktop/`. Avoid duplicating UI logic in Electron unless the behavior must be native-only. Electron sets a stable `userData` directory named `Lumen AI Chat` for browser storage across dev and packaged launches. The packaged app does not bundle Python; it uses `LUMEN_PYTHON`, a local `.venv`, or the system `python`/`python3`.
 
 Windows and Linux use a frameless Electron window plus an injected desktop-only title bar (`desktop/titlebar.css` and `desktop/titlebar.js`). The title bar provides a small app icon on the left, a centered app name, and window controls on the right. The injected chrome talks to Electron through the small preload bridge. Only the title bar background uses the Flask UI's existing `--accent-dim` token; the icon, centered title, divider, and hover states keep the normal app theme colors. This keeps desktop chrome visually aligned with the web app without changing Flask/main app files. macOS intentionally keeps the native window frame.
-
-Desktop release builds should create and populate `.venv` before running `npm run dist`. The virtual environment is platform-specific, so Windows, macOS, and Linux releases must be built separately on their target OS.
 
 Desktop icon assets are kept in `desktop/assets/`. `desktop/main.js` sets the runtime window icon from those files, and `package.json` points electron-builder at the same assets for packaged builds. If the brand icon changes, update the source SVG plus regenerated PNG/ICO files there; keep the web favicon in `static/favicon.svg` unless the browser tab icon should change too.
 
@@ -714,7 +712,7 @@ Long-term fix: move cancellation and stream event delivery to Redis/pub-sub or a
 
 ### 2. No authentication/user accounts
 
-The app is local-first and intended for personal computers or trusted single-user workspaces. Do not expose it publicly without adding authentication, stricter CORS, rate limiting, stronger secret handling, and a real multi-user security model.
+The app is local-first and self-hosted. Do not expose it publicly without adding authentication, stricter CORS, rate limiting, and stronger secret handling.
 
 ### 3. No database or migration layer
 
@@ -790,7 +788,7 @@ find . -maxdepth 1 -name 'test_*.py' -print
 - No database layer
 - No formal migration system
 - No frontend package/build system
-- No authentication/user accounts; intended local/single-user use only
+- No authentication/user accounts
 - No shared backend state for multi-worker active stream reattach
 - No server-side encryption for stored conversations, images, config, or workspaces
 

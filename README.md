@@ -1,6 +1,6 @@
 # Lumen AI Chat
 
-A local-first Flask/Electron chatbot with real-time streaming, per-conversation Docker sandboxes, MCP server support, and a zero-build-step frontend.
+A self-hosted Flask chatbot with real-time streaming, per-conversation Docker sandboxes, MCP server support, and a zero-build-step frontend.
 
 Lumen is built for developers who want a capable local AI chat application without heavy infrastructure. The backend is plain Flask, the frontend is native browser ES modules served directly — no bundler, no framework, no deployment ritual.
 
@@ -83,11 +83,9 @@ Open **http://localhost:8080**, then open the settings panel to enter your API k
 
 The desktop version is an Electron shell around the existing Flask app. It starts the Flask application object directly from `desktop/main.js` on a stable local port, opens a native window, and keeps the same `~/.lumen/` data folder, Docker sandbox image, MCP config, conversations, and workspaces. The stable port keeps browser `localStorage` on the same origin so saved UI settings survive app restarts. No Flask app source files need desktop-only changes.
 
-For development from source, install the Python dependencies first:
+Install the Python dependencies first:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
@@ -106,11 +104,10 @@ npm run desktop
 Build a packaged desktop app:
 
 ```bash
-npm run build-venv
 npm run dist
 ```
 
-`npm run build-venv` creates or updates the local `.venv` that electron-builder includes in the packaged app. Build each operating-system release on that operating system because the bundled virtual environment is platform-specific. A packaged build that includes `.venv` does not require end users to install Python or pip. Docker Desktop is still required for MCP/container tools. To force a specific Python executable during development or troubleshooting, set `LUMEN_PYTHON` before launching the desktop app.
+The packaged app still expects Python and the Python dependencies to be available on the machine. To force a specific Python executable, set `LUMEN_PYTHON` before launching the desktop app.
 
 Desktop mode uses port `38492` by default so local UI preferences stay attached to the same `127.0.0.1` origin. If that port is already used, close the other Lumen instance or set `LUMEN_DESKTOP_PORT` to another stable free port. The Electron wrapper controls the desktop host/port itself; `app.py` remains unchanged for normal web/server use.
 
@@ -165,9 +162,9 @@ docker build -f Dockerfile.sandbox -t lumen-sandbox .
 
 The image name is configurable via `LUMEN_SANDBOX_IMAGE` (default: `lumen-sandbox`).
 
-### Local server mode
+### Production Deployment
 
-Lumen is intended for local or single-user workspaces, not public hosting. If you prefer running the Flask app directly instead of Electron, use Gunicorn for a single-process local server:
+For a single-process production-style deployment, use Gunicorn:
 
 ```bash
 gunicorn -c gunicorn.conf.py "app:create_app()"
@@ -446,7 +443,7 @@ When filing a bug, please include the OS, Python version, browser and version, w
 
 **Active stream reattach is process-local.** Cancellation events and stream replay buffers are stored in process memory (`routes_chat.py`). This works fine with the default single-worker Gunicorn config but will not work across multiple worker processes. Long-term fix: move stream state to Redis or a shared broker.
 
-**No authentication.** Lumen is local-first and designed for personal computers or trusted single-user workspaces. Do not expose it publicly without adding authentication, rate limiting, stricter CORS, and a real multi-user security model.
+**No authentication.** Lumen is local-first and not hardened for public exposure. Do not deploy it publicly without adding authentication, rate limiting, and stricter CORS.
 
 **No database or migrations.** Conversation JSON shapes must remain backward-compatible, or migration code must be added deliberately.
 
