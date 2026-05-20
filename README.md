@@ -83,17 +83,7 @@ Open **http://localhost:8080**, then open the settings panel to enter your API k
 
 The desktop version is an Electron shell around the existing Flask app. It starts the Flask application object directly from `desktop/main.js` on a stable local port, opens a native window, and keeps the same `~/.lumen/` data folder, Docker sandbox image, MCP config, conversations, and workspaces. The stable port keeps browser `localStorage` on the same origin so saved UI settings survive app restarts. No Flask app source files need desktop-only changes.
 
-### Installing a published desktop release
-
-Published Electron releases are intended for local, single-user use on personal computers or personal workspaces. Download the installer/executable for your operating system from the GitHub Releases page and run it normally.
-
-End users of the prebuilt desktop release do **not** need to install Python, pip, Node.js, npm, or clone this repository. The packaged app is expected to include the platform-specific Python virtual environment that the Flask backend runs from.
-
-Docker Desktop is still required because MCP tools run inside per-conversation Docker sandbox containers. If Docker is not running, or if the `lumen-sandbox` image has not been built yet, the app opens a setup screen with Retry / Build Sandbox Image actions instead of exiting immediately.
-
-### Running the desktop app from source
-
-Install the Python dependencies first:
+For development from source, install the Python dependencies first:
 
 ```bash
 python -m venv .venv
@@ -113,20 +103,14 @@ Run the desktop app in development:
 npm run desktop
 ```
 
-### Building a packaged desktop app
-
-Before packaging, create a `.venv` and install the Python dependencies into it. electron-builder includes `.venv/**` in the packaged app, so the final release can run without requiring users to install Python or pip.
+Build a packaged desktop app:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install --upgrade pip
-pip install -r requirements.txt
-npm install
+npm run build-venv
 npm run dist
 ```
 
-Build each operating-system release on that operating system because the bundled virtual environment is platform-specific. Docker Desktop is still required at runtime for MCP/container tools. To force a specific Python executable during development or troubleshooting, set `LUMEN_PYTHON` before launching the desktop app.
+`npm run build-venv` creates or updates the local `.venv` that electron-builder includes in the packaged app. Build each operating-system release on that operating system because the bundled virtual environment is platform-specific. A packaged build that includes `.venv` does not require end users to install Python or pip. Docker Desktop is still required for MCP/container tools. To force a specific Python executable during development or troubleshooting, set `LUMEN_PYTHON` before launching the desktop app.
 
 Desktop mode uses port `38492` by default so local UI preferences stay attached to the same `127.0.0.1` origin. If that port is already used, close the other Lumen instance or set `LUMEN_DESKTOP_PORT` to another stable free port. The Electron wrapper controls the desktop host/port itself; `app.py` remains unchanged for normal web/server use.
 
@@ -148,14 +132,12 @@ After replacing the icon files, rerun `npm run dist` to create a new installer/e
 
 ### Prerequisites
 
-For the prebuilt Electron release, Docker Desktop and an OpenAI-compatible API are the only normal runtime prerequisites. Python, pip, Node.js, and npm are only needed when running or building from source.
-
-| Requirement | Needed for prebuilt desktop release? | Needed for source/development? | Notes |
-|---|---:|---:|---|
-| Docker | Yes | Yes | Required for MCP sandbox containers |
-| OpenAI-compatible API | Yes | Yes | OpenAI, Ollama, LM Studio, or a compatible proxy |
-| Python 3.10+ | No | Yes | Flask backend when running/building from source |
-| Node.js / npm | No | Yes | Electron development/building, and optional for MCP servers launched via `npx` |
+| Requirement | Version | Notes |
+|---|---|---|
+| Python | 3.10+ | Flask backend |
+| Docker | 20.10+ | Required for MCP sandbox containers |
+| Node.js / npm | Current LTS | Optional — needed for MCP servers launched via `npx` |
+| OpenAI-compatible API | — | OpenAI, Ollama, LM Studio, or a compatible proxy |
 
 ### Python Dependencies
 
