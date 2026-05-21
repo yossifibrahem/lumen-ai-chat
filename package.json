@@ -28,7 +28,6 @@
       ".dockerignore",
       "requirements.txt",
       "README.md",
-      "agent.md",
       "package.json",
       ".venv/**"
     ],

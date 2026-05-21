@@ -79,7 +79,7 @@ Open **http://localhost:8080**, then open the settings panel to enter your API k
 
 > If Docker is not running or the `lumen-sandbox` image has not been built, the app starts and shows a setup screen with Retry / Build Sandbox Image actions.
 
-## Desktop app
+## Desktop app *(Experimental)*
 
 The desktop version is an Electron shell around the existing Flask app. It starts the Flask application object directly from `desktop/main.js` on a stable local port, opens a native window, and keeps the same `~/.lumen/` data folder, Docker sandbox image, MCP config, conversations, and workspaces. The stable port keeps browser `localStorage` on the same origin so saved UI settings survive app restarts. No Flask app source files need desktop-only changes.
 
