@@ -5,8 +5,6 @@ import json
 import threading
 import time
 from collections.abc import Callable
-from pathlib import Path
-
 from openai import OpenAI
 
 import app_config
@@ -16,24 +14,12 @@ import mcp_service
 import store
 import streaming as stream_module
 import title_service
+import memory_service
 import tool_approval
-
-MEMORY_FILE = Path.home() / ".lumen" / "memory.md"
-
-
-def _read_memory() -> str:
-    """Return the contents of memory.md, or an empty string if it doesn't exist."""
-    try:
-        if MEMORY_FILE.exists():
-            return MEMORY_FILE.read_text().strip()
-    except OSError:
-        pass
-    return ""
-
 
 def _inject_memory(api_messages: list) -> list:
     """Prepend or extend the system message with memory contents if any exist."""
-    memory = _read_memory()
+    memory = memory_service.read()
     if not memory:
         return api_messages
 

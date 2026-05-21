@@ -71,6 +71,7 @@ def _run(args: list[str]) -> subprocess.CompletedProcess:
 
 from docker_path_utils import host_path_to_docker_src, parse_volume_source
 import advanced_config as _adv_cfg
+import memory_service
 
 # mcp_service is imported lazily to avoid the circular import:
 # mcp_service → mcp_adapters → container_service → mcp_service.
@@ -103,12 +104,10 @@ def _get_mounted_sources(name: str) -> set[str]:
 
 
 def _memory_volume_spec() -> str | None:
-    """Return a Docker volume spec for the persistent memory.md file, creating it if needed."""
-    memory_file = Path.home() / ".lumen" / "memory.md"
+    """Return a Docker volume spec for memory.md, creating it from template if needed."""
     try:
-        if not memory_file.exists():
-            memory_file.touch()
-        return f"{host_path_to_docker_src(str(memory_file))}:/memory.md:rw"
+        memory_file = memory_service.ensure_file()
+        return f"{host_path_to_docker_src(str(memory_file))}:{memory_service.CONTAINER_PATH}:rw"
     except OSError:
         return None
 
