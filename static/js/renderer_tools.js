@@ -230,3 +230,8 @@ export function createProcessingStrip() {
   scrollToBottom();
   return strip;
 }
+
+/** Removes a processing strip from the DOM. */
+export function removeProcessingStrip(strip) {
+  if (strip?.parentNode) strip.remove();
+}
