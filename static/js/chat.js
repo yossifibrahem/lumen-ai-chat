@@ -8,7 +8,6 @@ import {
   scrollToBottom, renderAllMessages,
   createThinkingBlock, updateThinkingBlock, finalizeThinkingBlock,
   createToolStrip, toolStripFinalize, toolStripSetApproval, toolStripSetRunning,
-  createProcessingStrip, removeProcessingStrip,
 } from './renderer.js';
 import { applyMarkdown } from './markdown.js';
 import { persistConversationFor, createNewConversation } from './conversations.js';
@@ -74,7 +73,6 @@ function createStreamContext(turn) {
     toolRunningIndex:   0,
     toolResultIndex:    0,
     assistantDone:      false,
-    processingStrip:    null,
     isVisible:          () => isTurnVisible(turn),
     getContentEl:       () => {
       if (!ctx.contentEl && isTurnVisible(turn)) ctx.contentEl = createStreamingMessage();
@@ -394,26 +392,16 @@ function stripForToolEvent(ctx, evt, cursorKey) {
   return strip;
 }
 
-/** Removes the processing strip from ctx if present. */
-function clearProcessingStrip(ctx) {
-  if (ctx.processingStrip) {
-    removeProcessingStrip(ctx.processingStrip);
-    ctx.processingStrip = null;
-  }
-}
-
 /** Parses a single SSE event and mutates the streaming context. Returns false on terminal error. */
 async function processSSEEvent(raw, ctx) {
   const evt = JSON.parse(raw);
 
   if (evt.type === 'reasoning') {
-    clearProcessingStrip(ctx);
     ctx.accReasoning += evt.content;
     if (!ctx.reasoningBodyEl && ctx.isVisible()) ctx.reasoningBodyEl = createThinkingBlock();
     if (ctx.reasoningBodyEl) updateThinkingBlock(ctx.reasoningBodyEl, ctx.accReasoning);
 
   } else if (evt.type === 'text') {
-    clearProcessingStrip(ctx);
     if (ctx.reasoningBodyEl) {
       finalizeThinkingBlock(ctx.reasoningBodyEl, ctx.accReasoning);
       ctx.reasoningBodyEl = null;
@@ -427,7 +415,6 @@ async function processSSEEvent(raw, ctx) {
     }
 
   } else if (evt.type === 'tool_start') {
-    clearProcessingStrip(ctx);
     // Keep indices aligned even when the user is viewing another chat.
     ctx.toolStartNames.push(evt.name);
     ctx.toolStrips.push(ctx.isVisible() ? createToolStrip(evt.name) : null);
@@ -489,18 +476,13 @@ async function processSSEEvent(raw, ctx) {
     ctx.reasoningFinalized = false;
     if (ctx.isVisible()) refreshFilePanel({ keepPreview: true }).catch(() => {});
 
-    // Model is now processing the tool result — show indicator until next output.
-    if (ctx.isVisible()) ctx.processingStrip = createProcessingStrip();
-
   } else if (evt.type === 'assistant_done') {
-    clearProcessingStrip(ctx);
     finalizeAssistantAnswer(ctx, evt.messages, evt.displayLog);
 
   } else if (evt.type === 'title') {
     if (ctx.turn) applyTurnTitle(ctx.turn, evt.title || ctx.turn.title);
 
   } else if (evt.type === 'error') {
-    clearProcessingStrip(ctx);
     const el = ctx.getContentEl();
     if (el) el.innerHTML = `<span class="inline-error">Error: ${escapeHtml(evt.message)}</span>`;
     return false; // signal abort
@@ -518,9 +500,7 @@ async function runChatLoop(turn) {
   activeTurns.set(turn.convId, { turn, ctx, streamId });
   state.streamId = streamId;
 
-  // Show a processing indicator immediately — there is a gap between the user
-  // sending and the model emitting its first token.
-  if (isTurnVisible(turn)) ctx.processingStrip = createProcessingStrip();
+  // A newly-started turn already has the user's message appended in-place.
   // Reattaching here would fully re-render the chat and cause the first flash
   // right after send. Reattach is only for switching/reloading into a running turn.
 
@@ -546,13 +526,11 @@ async function runChatLoop(turn) {
     const success = await readSSEStream(resp, raw => processSSEEvent(raw, ctx));
     if (!success || turnCancelled) return;
 
-    clearProcessingStrip(ctx);
     if (!ctx.assistantDone) {
       commitRuntimeAssistantPartial(ctx);
       finalizeAssistantAnswer(ctx);
     }
   } catch (err) {
-    clearProcessingStrip(ctx);
     if (turnCancelled || err.name === 'AbortError') return ctx;
 
     const el = ctx.getContentEl();
