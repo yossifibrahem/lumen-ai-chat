@@ -28,6 +28,11 @@ Lumen is built for developers who want a capable local AI chat application witho
 - Approve or deny individual tool calls; enable auto-approval per server
 - Tool activity renders inline: arguments, running state, and results
 
+**Persistent memory**
+- The model remembers facts across all conversations via `~/.lumen/memory.md`
+- Mounted read-write into every container at `/memory.md` so the model can update it using its file tools
+- Memory contents are injected into the system prompt at the start of every turn
+
 **Per-conversation Docker sandboxes**
 - Every conversation gets its own Docker container and workspace directory
 - The workspace is mounted at `/workspace` inside the container
@@ -250,6 +255,7 @@ All runtime data is stored outside the repo under `~/.lumen/`:
 ├── config.json            # Server-side API provider config
 ├── advanced_config.json   # Container and file-handling settings (written by the UI)
 ├── mcp.json               # MCP server configuration
+├── memory.md              # Persistent cross-chat memory; mounted at /memory.md in every container
 ├── conversations/         # One JSON file per conversation
 ├── containers/            # One workspace directory per conversation
 └── images/                # Uploaded images keyed by SHA-256 hash
@@ -352,11 +358,12 @@ Click the stop button while a response is streaming. The server marks the stream
 A single chat turn in `chat_turn_service.py`:
 
 1. Build an OpenAI client from server-side config.
-2. Pre-mount MCP server volumes and ensure the conversation container is running.
-3. Stream model output via `streaming.py`; accumulate text and tool calls.
-4. For each tool call: request approval (unless auto-approved), invoke via the persistent `McpSessionPool` (shared across turns for the conversation), append the tool result to message history.
-5. Loop until the model finishes without further tool calls.
-6. Emit `assistant_done` and optionally a generated `title` event.
+2. Read `~/.lumen/memory.md` and inject its contents into the system message.
+3. Pre-mount MCP server volumes and ensure the conversation container is running.
+4. Stream model output via `streaming.py`; accumulate text and tool calls.
+5. For each tool call: request approval (unless auto-approved), invoke via the persistent `McpSessionPool` (shared across turns for the conversation), append the tool result to message history.
+6. Loop until the model finishes without further tool calls.
+7. Emit `assistant_done` and optionally a generated `title` event.
 
 Partial output is saved during streaming by `TurnRecorder` so that cancelled or interrupted turns are not lost.
 

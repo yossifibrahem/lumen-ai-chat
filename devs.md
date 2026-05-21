@@ -166,6 +166,7 @@ The backend stores user data outside the repo by default:
 ├── config.json            # server-side API provider config, unless LUMEN_CONFIG_FILE overrides it
 ├── advanced_config.json   # container/file settings written by the UI; env vars take precedence
 ├── mcp.json               # MCP server config, unless LUMEN_MCP_CONFIG_FILE overrides it
+├── memory.md              # persistent cross-chat memory; mounted read-write into every container at /memory.md
 ├── conversations/         # one JSON file per conversation
 ├── containers/            # one workspace directory per conversation
 └── images/                # uploaded images keyed by SHA-256 hash
@@ -341,6 +342,7 @@ This is the core backend orchestration layer for a chat turn. It re-exports `res
 
 Key responsibilities:
 
+- Read `~/.lumen/memory.md` and inject its contents into the system message via `_inject_memory()` before the streaming loop.
 - Create an OpenAI client from `app_config.load_config()`.
 - Stream model chunks through `streaming.stream_chat_completion()`.
 - Accumulate text and `reasoning_content`.
@@ -457,7 +459,7 @@ Keep this behavior intact:
 
 - Creates and reuses Docker containers named with `LUMEN_CONTAINER_PREFIX` plus a sanitized conversation id.
 - One host workspace directory is created per conversation under `LUMEN_CONTAINERS_ROOT`.
-- Containers are started with `/workspace` mounted to the host workspace.
+- Containers are started with `/workspace` mounted to the host workspace and `~/.lumen/memory.md` mounted read-write at `/memory.md`.
 - The sandbox drops all capabilities, then adds back a minimal set: `CHOWN`, `DAC_OVERRIDE`, `SETUID`, `SETGID`.
 - Provides stale container cleanup, container removal, workspace deletion, status inspection, and `docker exec` command wrapping.
 - Uses per-conversation locks to avoid concurrent create/start races.
