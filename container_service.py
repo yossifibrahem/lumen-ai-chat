@@ -102,9 +102,23 @@ def _get_mounted_sources(name: str) -> set[str]:
     return {line.strip() for line in result.stdout.splitlines() if line.strip()}
 
 
+def _memory_volume_spec() -> str | None:
+    """Return a Docker volume spec for the persistent memory.md file, creating it if needed."""
+    memory_file = Path.home() / ".lumen" / "memory.md"
+    try:
+        if not memory_file.exists():
+            memory_file.touch()
+        return f"{host_path_to_docker_src(str(memory_file))}:/memory.md:rw"
+    except OSError:
+        return None
+
+
 def _volume_args(workspace: Path, extra_volumes: list[str]) -> list[str]:
     workspace_source = host_path_to_docker_src(str(workspace))
+    memory_spec = _memory_volume_spec()
     specs = [f"{workspace_source}:/workspace", *extra_volumes]
+    if memory_spec:
+        specs.append(memory_spec)
     return [item for spec in specs for item in ("--volume", spec)]
 
 

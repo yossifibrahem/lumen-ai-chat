@@ -5,6 +5,7 @@ import json
 import threading
 import time
 from collections.abc import Callable
+from pathlib import Path
 
 from openai import OpenAI
 
@@ -16,6 +17,37 @@ import store
 import streaming as stream_module
 import title_service
 import tool_approval
+
+MEMORY_FILE = Path.home() / ".lumen" / "memory.md"
+
+
+def _read_memory() -> str:
+    """Return the contents of memory.md, or an empty string if it doesn't exist."""
+    try:
+        if MEMORY_FILE.exists():
+            return MEMORY_FILE.read_text().strip()
+    except OSError:
+        pass
+    return ""
+
+
+def _inject_memory(api_messages: list) -> list:
+    """Prepend or extend the system message with memory contents if any exist."""
+    memory = _read_memory()
+    if not memory:
+        return api_messages
+
+    block = f"## Persistent Memory\n{memory}"
+
+    messages = list(api_messages)
+    if messages and messages[0].get("role") == "system":
+        messages[0] = {
+            **messages[0],
+            "content": messages[0]["content"] + "\n\n" + block,
+        }
+    else:
+        messages.insert(0, {"role": "system", "content": block})
+    return messages
 
 Publish = Callable[[dict], None]
 
@@ -151,6 +183,7 @@ def run_persistent_chat_turn(body: dict, cancel_event: threading.Event, stream_i
     api_messages = list(body.get("messages") or [])
     tool_meta = _tool_meta_by_name(body)
     is_first_message = len([m for m in turn_messages if m.get("role") == "user"]) == 1
+    api_messages = _inject_memory(api_messages)
     recorder = TurnRecorder(conv_id, title, turn_messages, stream_id)
     assistant_completed = False
     session_pool: mcp_service.McpSessionPool | None = None
