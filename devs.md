@@ -27,10 +27,14 @@ The app is intentionally lightweight: no database, no frontend framework, no bun
 .
 ├── app.py                         # Flask app factory, startup checks, CORS, shutdown cleanup
 ├── app_config.py                  # Server-side API provider config and API key storage
+├── advanced_config.py             # Server-side container/file settings; env-lock support; written by UI
+├── runtime_requirements.py        # Docker availability + sandbox image checks; streaming build log
+├── fs_utils.py                    # atomic_replace helper for safe temp-file writes (Windows retry logic)
+├── docker_path_utils.py           # Cross-platform Docker volume path conversion for Windows host support
 ├── routes.py                      # Thin blueprint registration shim — registers five route-group blueprints
 ├── routes_startup.py              # Setup screen, health, Docker/image checks, streaming sandbox build
 ├── routes_conversations.py        # Conversation CRUD, workspace path, container status, danger-delete
-├── routes_chat.py                 # Streaming, cancel, approve, settings, container settings, model list
+├── routes_chat.py                 # Streaming, cancel, approve, settings, advanced/container settings, model list
 ├── routes_mcp.py                  # MCP config, tool discovery, direct tool calls
 ├── routes_files.py                # Workspace file listing, upload, preview, download, image storage
 ├── chat_turn_service.py           # Long-running chat turn orchestration; re-exports resolve_tool_approval
@@ -47,8 +51,8 @@ The app is intentionally lightweight: no database, no frontend framework, no bun
 ├── gunicorn.conf.py               # Single-worker/threaded production default
 ├── requirements.txt               # Flask, CORS, OpenAI SDK, MCP SDK
 ├── requirements-dev.txt           # Adds pytest and pytest-mock on top of requirements.txt
-├── package.json                    # Electron desktop scripts and packaging config
-├── desktop/                        # Electron main/preload process files for desktop app
+├── package.json                   # Electron desktop scripts and packaging config
+├── desktop/                       # Electron main/preload process files for desktop app
 ├── pytest.ini                     # Test discovery config
 ├── README.md                      # User-facing project description and setup docs
 ├── agent.md                       # This agent/developer guide
@@ -63,6 +67,8 @@ The app is intentionally lightweight: no database, no frontend framework, no bun
 │   ├── test_mcp_service.py        # Config cache, run_async, McpSessionPool behavior
 │   ├── test_mcp_adapters.py       # Docker process option and volume extraction helpers
 │   ├── test_container_service.py  # Container naming, lifecycle helpers, idle reaping
+│   ├── test_tool_approval.py      # Approval gate lifecycle, concurrent approvals, cancel-event unblocking
+│   ├── test_title_service.py      # Title tool definition, message-to-text, title extraction
 │   └── test_routes.py             # Flask HTTP integration tests via test client
 └── static/
     ├── css/                       # CSS entrypoint and module files
@@ -157,36 +163,40 @@ The backend stores user data outside the repo by default:
 
 ```text
 ~/.lumen/
-├── config.json       # server-side API provider config, unless LUMEN_CONFIG_FILE overrides it
-├── mcp.json          # MCP server config, unless LUMEN_MCP_CONFIG_FILE overrides it
-├── conversations/    # one JSON file per conversation
-├── containers/       # one workspace directory per conversation
-└── images/           # uploaded images keyed by SHA-256 hash
+├── config.json            # server-side API provider config, unless LUMEN_CONFIG_FILE overrides it
+├── advanced_config.json   # container/file settings written by the UI; env vars take precedence
+├── mcp.json               # MCP server config, unless LUMEN_MCP_CONFIG_FILE overrides it
+├── conversations/         # one JSON file per conversation
+├── containers/            # one workspace directory per conversation
+└── images/                # uploaded images keyed by SHA-256 hash
 ```
 
 Important environment variables:
 
 ```text
-OPENAI_API_KEY              overrides saved API key
-OPENAI_BASE_URL             overrides saved API base URL
-OPENAI_API_BASE             fallback alias for API base URL
-LUMEN_CONFIG_FILE           path to server-side config JSON
-LUMEN_CONFIG_CACHE_TTL      default: 5 seconds
-LUMEN_MCP_CONFIG_FILE       path to MCP config JSON; default ~/.lumen/mcp.json
-LUMEN_SANDBOX_IMAGE         default: lumen-sandbox
-LUMEN_CONTAINERS_ROOT       default: ~/.lumen/containers
-LUMEN_CONTAINER_MEMORY      default: 512m
-LUMEN_CONTAINER_CPUS        default: 1
-LUMEN_CONTAINER_NETWORK     default: bridge
-LUMEN_CONTAINER_PREFIX      default: lumen-chat-
-LUMEN_CONTAINER_IDLE_TIMEOUT default: 600 seconds; 0 disables idle reaping
-LUMEN_MAX_CONTENT_LENGTH    default: 60 MiB Flask request body cap
-LUMEN_CORS_ORIGINS          default: http://localhost:8080,http://127.0.0.1:8080
-LUMEN_MAX_FILE_PREVIEW_BYTES default: 512 KiB
-LUMEN_MAX_FILE_LIST_ENTRIES  default: 500
-LUMEN_MAX_UPLOAD_BYTES       default: 50 MiB
+OPENAI_API_KEY               overrides saved API key
+OPENAI_BASE_URL              overrides saved API base URL
+OPENAI_API_BASE              fallback alias for API base URL
+LUMEN_CONFIG_FILE            path to server-side config JSON
+LUMEN_CONFIG_CACHE_TTL       default: 5 seconds
+LUMEN_ADVANCED_CONFIG_FILE   path to advanced/container config JSON; default ~/.lumen/advanced_config.json
+LUMEN_MCP_CONFIG_FILE        path to MCP config JSON; default ~/.lumen/mcp.json
+LUMEN_SANDBOX_IMAGE          default: lumen-sandbox  [env-locks the UI field]
+LUMEN_CONTAINERS_ROOT        default: ~/.lumen/containers
+LUMEN_CONTAINER_MEMORY       default: 512m  [env-locks the UI field]
+LUMEN_CONTAINER_CPUS         default: 1  [env-locks the UI field]
+LUMEN_CONTAINER_NETWORK      default: bridge  [env-locks the UI field]
+LUMEN_CONTAINER_PREFIX       default: lumen-chat-
+LUMEN_CONTAINER_IDLE_TIMEOUT default: 600 seconds; 0 disables idle reaping  [env-locks the UI field]
+LUMEN_MAX_CONTENT_LENGTH     default: 60 MiB Flask request body cap
+LUMEN_CORS_ORIGINS           default: http://localhost:8080,http://127.0.0.1:8080
+LUMEN_MAX_FILE_PREVIEW_BYTES default: 512 KiB  [env-locks the UI field]
+LUMEN_MAX_FILE_LIST_ENTRIES  default: 500  [env-locks the UI field]
+LUMEN_MAX_UPLOAD_BYTES       default: 50 MiB  [env-locks the UI field]
 LUMEN_MCP_CONFIG_CACHE_TTL   default: 5 seconds
 ```
+
+Variables marked `[env-locks the UI field]` are managed by `advanced_config.py`. When set, `public_advanced_config()` marks the key as `<key>_env_locked: true` so the browser disables the corresponding form control.
 
 Browser `localStorage` keys such as `lumen_settings`, `lumen_models`, and `lumen_mcp_server_settings` are unrelated to the uppercase environment variables.
 
@@ -214,6 +224,52 @@ Key behavior:
 - `public_config()` returns only safe browser metadata: `api_base` and `has_api_key`.
 - `save_config()` persists allowed keys atomically with a temp-file replace.
 - Blank API key updates intentionally keep the existing saved key.
+
+### `advanced_config.py`
+
+Server-side container and file-handling settings live here. Complements `app_config.py` (which owns API provider settings) with a separate file so they can be stored, overridden, and cached independently.
+
+Key behavior:
+
+- Config defaults to `~/.lumen/advanced_config.json`.
+- `LUMEN_ADVANCED_CONFIG_FILE` can override the config path.
+- Values are resolved in three-tier priority: **env var > `advanced_config.json` > hardcoded default**.
+- Env vars that are set at import time are stored in `_ENV_LOCKED`. `save_advanced_config()` silently ignores any env-locked key so the operator value can never be overwritten from the UI.
+- `public_advanced_config()` returns every allowed key plus a `<key>_env_locked: bool` flag so the browser can disable the corresponding field and show which env var controls it.
+- Integer keys (`container_idle_timeout`, `max_file_preview_bytes`, `max_file_list_entries`, `max_upload_bytes`) are cast to `int`; string keys are stripped and returned as strings.
+- Results are cached for `LUMEN_CONFIG_CACHE_TTL` seconds (shared TTL with `app_config`); `save_advanced_config()` invalidates the cache immediately.
+- Writes use temp-file replace via `fs_utils.atomic_replace`.
+
+### `runtime_requirements.py`
+
+Owns Docker availability and sandbox image checks. Used by `app.py` at startup and by `routes_startup.py` at runtime.
+
+Key behavior:
+
+- `check_docker()` — runs `docker info` to verify the daemon is reachable.
+- `check_sandbox_image()` — verifies the configured image exists locally (`docker image inspect`).
+- `check_requirements()` — returns the first unmet requirement, or ok.
+- `build_sandbox_image()` — blocking build; returns a `RequirementStatus`.
+- `build_sandbox_image_stream()` — generator that yields `("log", {"line": str})`, `("done", status_dict)`, or `("error", status_dict)` tuples for SSE streaming from `routes_startup.py`.
+- The sandbox image name is read from `advanced_config.load_advanced_config()["sandbox_image"]` so `LUMEN_SANDBOX_IMAGE` and UI changes take effect without code changes.
+
+### `fs_utils.py`
+
+Shared filesystem utility. Contains `atomic_replace(src, dst)`, which does a safe temp-file replace with Windows-specific retry logic: `os.replace()` can raise `PermissionError` on Windows when another thread momentarily holds the destination file open. Up to 5 retries with linear back-off prevent transient file-lock races from surfacing as 500 errors. All modules that write persistent JSON (`app_config`, `advanced_config`, `mcp_service`, `store`) use this helper.
+
+### `docker_path_utils.py`
+
+Cross-platform Docker volume path conversion. On Linux and macOS, host paths can be used directly as Docker volume mount sources and targets. On Windows, this is impossible because drive-letter colons (`D:\foo`) conflict with Docker's volume spec separator, and Linux containers cannot have `D:\foo` as a mount target.
+
+Key functions:
+
+- `host_path_to_docker_src(path_str)` — converts `D:\foo\bar` → `D:/foo/bar` on Windows; identity on Linux/macOS.
+- `host_path_to_container_path(path_str)` — converts `D:\foo\bar` → `/d/foo/bar` for a valid Linux mount target; identity on Linux/macOS.
+- `make_volume_spec(host_path, mode="ro")` — builds a complete `source:target:mode` spec using the two helpers above.
+- `translate_arg_for_container(arg)` — rewrites absolute Windows path arguments to their in-container equivalents; no-op on Linux/macOS and for non-path strings.
+- `parse_volume_source(spec)` — extracts the host-side source from a volume spec string without misreading drive-letter colons as field separators.
+
+`mcp_adapters.py` and `container_service.py` use these helpers wherever they build Docker volume specs or rewrite MCP server command arguments.
 
 ### `routes.py`
 
@@ -257,7 +313,7 @@ Key routes:
 - `POST /api/chat/cancel` — cancel an active stream
 - `POST /api/chat/approve` — approve or deny a pending MCP tool call
 - `GET/POST /api/settings` — read/write server-side API provider config
-- `GET/POST /api/container-settings` — advanced model settings
+- `GET/POST /api/container-settings` — read/write advanced container and file-handling config (alias: `/api/advanced-settings` for backward compatibility)
 - `GET /api/models` — proxy model-list fetch
 
 ### `routes_mcp.py`
@@ -646,6 +702,8 @@ Coverage summary:
 | `test_mcp_service.py` | Config cache, malformed-config handling, atomic writes, `run_async`, `McpSessionPool` same-task cleanup behavior (pool now in `mcp_session_pool.py`) |
 | `test_mcp_adapters.py` | Docker exec param mutation, project-root detection, host mount extraction/deduplication |
 | `test_container_service.py` | Safe container names, exec argv/env ordering, name-conflict handling, idle reaper behavior |
+| `test_tool_approval.py` | Approval gate lifecycle, concurrent approvals in the same stream, cancel-event unblocking, slot cleanup after resolve/cancel |
+| `test_title_service.py` | `_SET_TITLE_TOOL` shape, `_messages_to_text` role/content handling, `_extract_title` from model tool-call response |
 | `test_routes.py` | HTTP routes, route error paths, settings routes, conversation update whitelist |
 
 Also syntax-check frontend modules after JS refactors:

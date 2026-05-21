@@ -173,7 +173,7 @@ gunicorn -c gunicorn.conf.py "app:create_app()"
 `gunicorn.conf.py` defaults to **one worker with multiple threads**. Active stream state (cancellation events, reattach buffers) is stored in process memory, so multiple worker processes are not supported until stream state is moved to shared storage.
 
 ### Built-in supported tools
-it is reccommended to use these MCP servers for this app
+It is recommended to use these MCP servers with this app:
 - [Agent Tools MCP server — view, create_file, str_replace, bash_tool](https://github.com/yossifibrahem/file-tools-mcp-server)
 - [Exa MCP server for web search](https://github.com/exa-labs/exa-mcp-server)
 
@@ -192,6 +192,21 @@ Open the settings panel in the browser to configure:
 | Model | Model ID for the next request |
 | System Prompt | Optional instruction prepended to every conversation |
 
+Open the **Container / Advanced Settings** panel to configure:
+
+| Setting | Description |
+|---|---|
+| Sandbox Image | Docker image name for sandbox containers |
+| Container Memory | Memory limit per container (e.g. `512m`, `1g`) |
+| Container CPUs | CPU quota per container |
+| Container Network | Docker network mode |
+| Container Idle Timeout | Seconds before idle containers are stopped; `0` disables |
+| Max File Preview Bytes | Maximum bytes loaded for in-browser text file preview |
+| Max File List Entries | Maximum workspace directory entries returned |
+| Max Upload Bytes | Maximum file upload size |
+
+> If a setting is locked by an environment variable, the field is disabled in the UI and shows which variable controls it.
+
 Local model providers typically use:
 
 ```
@@ -208,6 +223,7 @@ http://localhost:1234/v1     # LM Studio
 | `OPENAI_API_BASE` | — | Fallback alias for `OPENAI_BASE_URL` |
 | `LUMEN_CONFIG_FILE` | `~/.lumen/config.json` | Server-side API config path |
 | `LUMEN_CONFIG_CACHE_TTL` | `5` | Seconds to cache API config reads |
+| `LUMEN_ADVANCED_CONFIG_FILE` | `~/.lumen/advanced_config.json` | Advanced/container settings config path |
 | `LUMEN_MCP_CONFIG_FILE` | `~/.lumen/mcp.json` | MCP server config path |
 | `LUMEN_MCP_CONFIG_CACHE_TTL` | `5` | Seconds to cache MCP config reads |
 | `LUMEN_SANDBOX_IMAGE` | `lumen-sandbox` | Docker image for sandbox containers |
@@ -223,17 +239,20 @@ http://localhost:1234/v1     # LM Studio
 | `LUMEN_MAX_FILE_LIST_ENTRIES` | `500` | Max workspace directory entries returned |
 | `LUMEN_MAX_UPLOAD_BYTES` | `52428800` | Max file upload size (bytes) |
 
+Environment variables for container/advanced settings (`LUMEN_SANDBOX_IMAGE`, `LUMEN_CONTAINER_*`, `LUMEN_MAX_*`) take the highest precedence and lock the corresponding UI fields so the operator value cannot be overwritten from the browser.
+
 ### Persistent Data
 
 All runtime data is stored outside the repo under `~/.lumen/`:
 
 ```
 ~/.lumen/
-├── config.json       # Server-side API provider config
-├── mcp.json          # MCP server configuration
-├── conversations/    # One JSON file per conversation
-├── containers/       # One workspace directory per conversation
-└── images/           # Uploaded images keyed by SHA-256 hash
+├── config.json            # Server-side API provider config
+├── advanced_config.json   # Container and file-handling settings (written by the UI)
+├── mcp.json               # MCP server configuration
+├── conversations/         # One JSON file per conversation
+├── containers/            # One workspace directory per conversation
+└── images/                # Uploaded images keyed by SHA-256 hash
 ```
 
 ### MCP Configuration
@@ -307,10 +326,14 @@ Click the stop button while a response is streaming. The server marks the stream
 |---|---|
 | `app.py` | Flask app factory; startup requirement status handling; CORS; shutdown cleanup |
 | `app_config.py` | Server-side API key and provider config storage; env var overrides; safe public metadata |
+| `advanced_config.py` | Server-side container and file-handling settings; three-tier priority (env > file > defaults); UI-editable with env-lock support |
+| `runtime_requirements.py` | Docker availability and sandbox image checks; streaming build log generator |
+| `fs_utils.py` | `atomic_replace` helper for safe temp-file-replace writes; Windows retry logic |
+| `docker_path_utils.py` | Cross-platform Docker volume path conversion — translates Windows drive-letter paths to valid Linux container mount targets |
 | `routes.py` | Thin blueprint registration shim — registers the five route group blueprints |
 | `routes_startup.py` | Setup screen, health probe, Docker/image requirement checks, streaming sandbox image build |
 | `routes_conversations.py` | Conversation CRUD, workspace path, container status, danger-delete |
-| `routes_chat.py` | Streaming, cancel, approve, settings, container settings, model list |
+| `routes_chat.py` | Streaming, cancel, approve, settings, advanced/container settings, model list |
 | `routes_mcp.py` | MCP config, tool discovery, direct tool calls |
 | `routes_files.py` | Workspace file listing, upload, preview, download, image storage |
 | `chat_turn_service.py` | Full chat turn orchestration: streaming, tool approval, MCP calls, persistence |
@@ -321,6 +344,7 @@ Click the stop button while a response is streaming. The server marks the stream
 | `mcp_session_pool.py` | `McpSessionPool` class: worker coroutine, session lifecycle, retry logic for persistent cross-turn reuse |
 | `mcp_adapters.py` | Wraps MCP commands for Docker `exec`; extracts and mounts host volume paths |
 | `container_service.py` | Docker container lifecycle: create, start, stop, idle reaping, workspace management |
+| `workspace_service.py` | Safe file operations inside the conversation workspace; path traversal protection |
 | `store.py` | Filesystem persistence for conversations and images; cached conversation index |
 
 ### Chat Turn Flow
@@ -393,6 +417,8 @@ Tests are fully isolated: `conftest.py` redirects filesystem paths to `tmp_path`
 | `test_mcp_adapters.py` | Docker exec params, project-root detection, volume deduplication |
 | `test_container_service.py` | Container naming, exec argv/env, name conflicts, idle reaper |
 | `test_routes.py` | HTTP routes, error paths, conversation update whitelist |
+| `test_tool_approval.py` | Approval gate: request/resolve lifecycle, concurrent approvals, cancel-event unblocking |
+| `test_title_service.py` | Title tool definition, message-to-text conversion, title extraction from model response |
 
 Also lint frontend modules after any JS changes:
 
