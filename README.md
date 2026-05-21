@@ -84,6 +84,11 @@ Open **http://localhost:8080**, then open the settings panel to enter your API k
 
 > If Docker is not running or the `lumen-sandbox` image has not been built, the app starts and shows a setup screen with Retry / Build Sandbox Image actions.
 
+### Built-in supported tools
+It is recommended to use these MCP servers with this app:
+- [Agent Tools MCP server — view, create_file, str_replace, bash_tool](https://github.com/yossifibrahem/file-tools-mcp-server)
+- [Exa MCP server for web search](https://github.com/exa-labs/exa-mcp-server)
+
 ## Desktop app *(Experimental)*
 
 The desktop version is an Electron shell around the existing Flask app. It starts the Flask application object directly from `desktop/main.js` on a stable local port, opens a native window, and keeps the same `~/.lumen/` data folder, Docker sandbox image, MCP config, conversations, and workspaces. The stable port keeps browser `localStorage` on the same origin so saved UI settings survive app restarts. No Flask app source files need desktop-only changes.
@@ -176,11 +181,6 @@ gunicorn -c gunicorn.conf.py "app:create_app()"
 ```
 
 `gunicorn.conf.py` defaults to **one worker with multiple threads**. Active stream state (cancellation events, reattach buffers) is stored in process memory, so multiple worker processes are not supported until stream state is moved to shared storage.
-
-### Built-in supported tools
-It is recommended to use these MCP servers with this app:
-- [Agent Tools MCP server — view, create_file, str_replace, bash_tool](https://github.com/yossifibrahem/file-tools-mcp-server)
-- [Exa MCP server for web search](https://github.com/exa-labs/exa-mcp-server)
 
 ---
 
