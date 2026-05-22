@@ -15,6 +15,7 @@ import store
 import streaming as stream_module
 import title_service
 import memory_service
+import skill_service
 import tool_approval
 
 def _inject_memory(api_messages: list) -> list:
@@ -34,6 +35,23 @@ def _inject_memory(api_messages: list) -> list:
     else:
         messages.insert(0, {"role": "system", "content": block})
     return messages
+
+def _inject_skills(api_messages: list) -> list:
+    """Prepend or extend the system message with the available-skills catalog."""
+    catalog = skill_service.build_skills_catalog()
+    if not catalog:
+        return api_messages
+
+    messages = list(api_messages)
+    if messages and messages[0].get("role") == "system":
+        messages[0] = {
+            **messages[0],
+            "content": messages[0]["content"] + "\n\n" + catalog,
+        }
+    else:
+        messages.insert(0, {"role": "system", "content": catalog})
+    return messages
+
 
 Publish = Callable[[dict], None]
 
@@ -170,6 +188,7 @@ def run_persistent_chat_turn(body: dict, cancel_event: threading.Event, stream_i
     tool_meta = _tool_meta_by_name(body)
     is_first_message = len([m for m in turn_messages if m.get("role") == "user"]) == 1
     api_messages = _inject_memory(api_messages)
+    api_messages = _inject_skills(api_messages)
     recorder = TurnRecorder(conv_id, title, turn_messages, stream_id)
     assistant_completed = False
     session_pool: mcp_service.McpSessionPool | None = None
