@@ -90,9 +90,9 @@ def build_skills_catalog() -> str:
 
     lines = [
         "## Available Skills\n",
-        "You have access to the following skill files. "
+        "Assistant have access to the following skill files. "
         "When a skill is relevant to the user's request, use the `view` tool "
-        "to read it before responding. Do not read skills that are not relevant.\n",
+        "to read the markdown file before responding.\n",
     ]
     for skill in skills:
         desc = f": {skill['description']}" if skill["description"] else ""
