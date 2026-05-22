@@ -1,6 +1,6 @@
 # Agent Guide for Lumen AI Chat
 
-This file is the working guide for agents modifying this repository. It reflects the current post-cleanup codebase, including server-side API provider settings, typed internal streaming events, cached conversation indexing, and the persistent cross-turn MCP session pool.
+This file is the working guide for agents modifying this repository. It reflects the current post-cleanup codebase, including server-side API provider settings, typed internal streaming events, cached conversation indexing, persistent cross-turn MCP session pooling, and chat branching for edited messages/regenerated responses.
 
 ## Project at a glance
 
@@ -17,7 +17,7 @@ Lumen is a self-hosted Flask chat UI for OpenAI-compatible chat-completions APIs
 - Persistent cross-turn MCP stdio session reuse through `McpSessionPool`
 - Image uploads stored by content hash
 - Regular file uploads stored in the conversation workspace
-- Markdown, code highlighting, KaTeX, voice input, theming, and conversation search
+- Markdown, code highlighting, KaTeX, voice input, theming, conversation search, and branch navigation for edits/regenerations
 
 The app is intentionally lightweight: no database, no frontend framework, no bundler/build step, and plain browser ES modules served directly by Flask.
 
@@ -55,7 +55,7 @@ The app is intentionally lightweight: no database, no frontend framework, no bun
 ├── desktop/                       # Electron main/preload process files for desktop app
 ├── pytest.ini                     # Test discovery config
 ├── README.md                      # User-facing project description and setup docs
-├── agent.md                       # This agent/developer guide
+├── devs.md                        # This agent/developer guide
 ├── templates/index.html           # Full app shell and modal markup
 ├── tests/
 │   ├── conftest.py                # Shared fixtures and filesystem isolation
@@ -78,6 +78,7 @@ The app is intentionally lightweight: no database, no frontend framework, no bun
         ├── chat.js                # Chat orchestration exports / compatibility surface
         ├── chat_attachments.js    # Image/file attachment lifecycle helpers
         ├── chat_edit.js           # Edit, resend, regenerate helpers
+        ├── chat_branches.js       # Branch snapshots/switching for edits and regenerations
         ├── chat_payloads.js       # API message/payload construction
         ├── chat_send.js           # Send flow and stream start/handling
         ├── stream_consumer.js     # SSE response reader and error response helpers
@@ -97,6 +98,7 @@ The app is intentionally lightweight: no database, no frontend framework, no bun
         ├── renderer_thinking.js   # createThinkingBlock, updateThinkingBlock, finalizeThinkingBlock, appendThinkingBlock
         ├── renderer_attachments.js # normalizeContentAttachments, renderAttachmentCard, getRawText, appendContentParts
         ├── renderer_tools.js      # Tool strip states, cancelAllToolApprovals, appendToolResultInline
+        ├── renderer_actions.js    # Copy/edit/regenerate buttons, branch arrows, inline edit UI
         ├── settings.js            # API/model/chat settings UI
         ├── state.js               # Shared browser state and localStorage keys
         ├── storage.js             # localStorage wrapper
@@ -537,6 +539,7 @@ The previous oversized `chat.js` has been decomposed.
 - `chat_payloads.js`: builds model/API messages and chat request payloads.
 - `chat_attachments.js`: pending image/file attachment processing and helpers such as `hasPendingAttachments`.
 - `chat_edit.js`: edit, resend, regenerate, and related mapping helpers.
+- `chat_branches.js`: captures branch suffixes, stores branch variants on `displayLog` entries, switches visible branch paths, and syncs the active visible branch before persistence-sensitive operations.
 - `stream_consumer.js`: reads SSE responses and forwards raw event strings to a callback; also reads response error bodies.
 
 `stream_consumer.readSSEStream(response, onEvent)` requires a callback. It should fail loudly if called incorrectly rather than silently swallowing stream data.
@@ -549,23 +552,25 @@ When the user sends a message:
 2. A conversation is created if none exists.
 3. Images are uploaded to `/api/images` and stored as `image_ref` blocks in local message history.
 4. Regular files are uploaded to `/api/conversations/<conv_id>/files` and their `/workspace/uploads/...` paths are attached to the user message metadata.
-5. The user message is appended to `state.messages` and `state.displayLog`.
-6. The conversation is persisted before model streaming starts.
+5. Any active visible branch is synced so later messages stay attached to the selected path.
+6. The user message is appended to `state.messages` and `state.displayLog`.
+7. The conversation is persisted before model streaming starts.
 7. `buildApiMessages()` constructs the API payload:
    - Prepends system prompt and MCP policy prompt.
    - Adds file attachment context into user content.
    - Expands stored image refs to base64 `image_url` blocks for OpenAI-compatible vision input.
 8. `/api/chat/stream` is called without an API key in the body.
 9. The frontend reads SSE lines and updates the UI incrementally.
+10. When a streamed turn completes, the active branch snapshot is synced and the conversation is saved again.
 
 ### Conversation history model
 
 There are two parallel histories:
 
 - `state.messages`: model/API-facing history.
-- `state.displayLog`: UI-facing render log, including messages, thinking blocks, and tool results.
+- `state.displayLog`: UI-facing render log, including messages, thinking blocks, tool results, and branch metadata.
 
-Do not assume they have the same indices. Use helper mapping logic when editing/regenerating messages.
+Do not assume they have the same indices. Use helper mapping logic when editing/regenerating messages. Branch variants are stored on the `displayLog` entry that owns the fork. Each variant contains the visible suffix for that branch so later messages remain tied to the selected path. Before switching branches, editing, regenerating, or sending a continuation, call the branch sync helper so the active path is not lost.
 
 ### MCP/app frontend: `mcp.js`, `app_policy.js`, `mcp_tool_ui.js`, `tool_adapters/`
 
@@ -597,27 +602,30 @@ Existing adapters:
 
 ### Renderer: `renderer.js` and sub-modules
 
-`renderer.js` (259 lines) is now a re-export facade. It imports every public symbol from the five focused sub-modules and re-exports them unchanged. All existing importers (`chat_send.js`, `app.js`, etc.) continue to work without modification.
+`renderer.js` is a small render coordinator and compatibility surface. It keeps the high-level message rendering path while delegating focused work to sub-modules. Existing importers (`chat_send.js`, `app.js`, etc.) should continue importing public renderer helpers from `renderer.js` unless they need a narrowly owned helper such as `refreshMessageFooter()` from `renderer_actions.js`.
 
-The five sub-modules:
+The renderer sub-modules:
 
-**`renderer_core.js`** (46 lines) — foundational DOM helpers used by every other renderer module:
+**`renderer_core.js`** — foundational DOM helpers used by every other renderer module:
 - `scrollToBottom`, `stickToBottom`, `messagesEl`, `createMessageRow`
 
-**`renderer_groups.js`** (144 lines) — sequential block grouping:
+**`renderer_groups.js`** — sequential block grouping:
 - `tryGroupBlock`, `updateGroupLabel`, `attachCollapsible`, `prepareAssistantRow`
 
-**`renderer_thinking.js`** (95 lines) — thinking/reasoning block lifecycle:
+**`renderer_thinking.js`** — thinking/reasoning block lifecycle:
 - `createThinkingBlock`, `updateThinkingBlock`, `finalizeThinkingBlock`, `appendThinkingBlock`
 
-**`renderer_attachments.js`** (90 lines) — content-part and attachment card rendering:
+**`renderer_attachments.js`** — content-part and attachment card rendering:
 - `normalizeContentAttachments`, `renderAttachmentCard`, `getRawText`, `appendContentParts`
 
-**`renderer_tools.js`** (232 lines) — tool strip states, approval UI, and inline result rendering:
+**`renderer_tools.js`** — tool strip states, approval UI, and inline result rendering:
 - Tool strip state transitions (`tool_start` → approval → running → result)
 - `cancelAllToolApprovals`, `appendToolResultInline`
 
-When adding new renderer functionality, place it in the appropriate sub-module and re-export from `renderer.js`. Do not add new logic directly to `renderer.js`.
+**`renderer_actions.js`** — message footer actions:
+- Copy, edit, regenerate, inline user-message edit UI, branch arrows, and `refreshMessageFooter()`.
+
+When adding new renderer functionality, place it in the appropriate sub-module and re-export from `renderer.js` if broad callers need it. Do not grow `renderer.js` with footer/action logic.
 
 ### Workspace panel: `file_panel.js`
 
@@ -673,7 +681,7 @@ Follow the existing separation of concerns:
 - Keep Flask route handlers thin.
 - Put backend logic in service modules.
 - Keep streaming and persistence behavior deliberate; partial responses are saved during generation.
-- Keep `state.messages` and `state.displayLog` in sync conceptually, but do not merge them into one structure.
+- Keep `state.messages` and `state.displayLog` in sync conceptually, but do not merge them into one structure. Preserve branch metadata on `displayLog` when editing/regenerating.
 - Prefer adding frontend tool adapters for tool-specific UI instead of hardcoding tool names in renderer logic.
 - Keep workspace path handling strict. Do not weaken traversal checks.
 - Avoid introducing a frontend build step unless the whole project intentionally moves that direction.
@@ -817,6 +825,7 @@ When changing frontend rendering or module boundaries:
 
 - Render current live stream and historical `displayLog` consistently.
 - Keep edit/regenerate actions aligned with `displayLog` to `messages` index mapping.
+- Test branch arrows after editing a user message, regenerating an assistant response, continuing from a switched branch, and reloading the conversation.
 - Avoid injecting unsanitized HTML unless it is controlled UI markup and escaped user data.
 - Run `node --check` on all `static/js/**/*.js` files.
 - Open the browser console and verify there are no missing module exports.

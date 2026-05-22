@@ -50,6 +50,7 @@ Lumen is built for developers who want a capable local AI chat application witho
 - Voice input via the browser Web Speech API
 - Auto-generated conversation titles after the first exchange
 - Create, rename, delete, and search conversations
+- Switch between edited-message and regenerated-response branches with arrows in the message footer
 - Customizable theme, accent color, font size, sidebar, timestamps, and more — stored in `localStorage`
 
 **Architecture**
@@ -379,6 +380,7 @@ The frontend is plain browser ES modules — no build step, no framework. `templ
 | `chat_payloads.js` | Builds API message payloads including images and file context |
 | `chat_attachments.js` | Pending image and file attachment lifecycle |
 | `chat_edit.js` | Edit, resend, and regenerate helpers |
+| `chat_branches.js` | Branch snapshots and branch switching for edits/regenerations |
 | `stream_consumer.js` | SSE response reader |
 | `renderer.js` | Re-exports all public symbols from renderer sub-modules; sole import target for existing callers |
 | `renderer_core.js` | `scrollToBottom`, `stickToBottom`, `messagesEl`, `createMessageRow` |
@@ -386,6 +388,7 @@ The frontend is plain browser ES modules — no build step, no framework. `templ
 | `renderer_thinking.js` | `createThinkingBlock`, `updateThinkingBlock`, `finalizeThinkingBlock`, `appendThinkingBlock` |
 | `renderer_attachments.js` | `normalizeContentAttachments`, `renderAttachmentCard`, `getRawText`, `appendContentParts` |
 | `renderer_tools.js` | Tool strip states, `cancelAllToolApprovals`, `appendToolResultInline` |
+| `renderer_actions.js` | Copy/edit/regenerate buttons and branch arrows in message footers |
 | `mcp.js` | MCP config UI, tool loading, enable/auto-approve toggles |
 | `file_panel.js` | Workspace browser, preview, and download |
 | `conversations.js` | Conversation CRUD and sidebar |
@@ -393,7 +396,7 @@ The frontend is plain browser ES modules — no build step, no framework. `templ
 | `markdown.js` | Markdown, code highlighting, KaTeX, safe workspace file links |
 | `tool_adapters/` | Per-tool display adapters (`agent_tools.js`, `exa.js`) |
 
-The frontend maintains two parallel histories: `state.messages` (model/API-facing) and `state.displayLog` (UI-facing). These have different structures and indices — do not conflate them.
+The frontend maintains two parallel histories: `state.messages` (model/API-facing) and `state.displayLog` (UI-facing). These have different structures and indices — do not conflate them. Branches for edited messages and regenerated responses are stored in `displayLog` so the visible conversation can switch paths while preserving the saved model history.
 
 ---
 
@@ -455,8 +458,8 @@ git checkout -b feature/your-change
 - Keep persistent data access inside `store.py` where possible.
 - Do not send API keys in chat or model request bodies — use `app_config.py` and `/api/settings`.
 - Avoid introducing a frontend build step unless the project intentionally adopts one.
-- Keep browser code modular under `static/js/`; prefer adding tool adapters over hardcoding tool names in `renderer.js`.
-- Update both `README.md` and `agent.md` when changing architecture, setup, configuration, or agent-facing behavior.
+- Keep browser code modular under `static/js/`; prefer adding tool adapters over hardcoding tool names in renderer modules.
+- Update both `README.md` and `devs.md` when changing architecture, setup, configuration, or agent-facing behavior.
 
 ### Pull Request Checklist
 

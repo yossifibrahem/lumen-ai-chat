@@ -142,7 +142,7 @@
 .attachment-card-remove {
   position: absolute;
   top: -6px;
-  left: -6px;
+  right: -6px;
   width: 22px;
   height: 22px;
   padding: 0;
