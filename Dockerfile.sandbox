@@ -71,7 +71,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN pip3 install --no-cache-dir uv
 
 # ── Common Python packages useful in bash_tool sessions ──────────────────────
-RUN pip3 install --no-cache-dir \
+RUN python -m pip install --no-cache-dir \
     requests \
     httpx \
     beautifulsoup4 \
