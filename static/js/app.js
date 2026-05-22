@@ -8,7 +8,7 @@ import { storage }  from './storage.js';
 
 import { openModal, closeModal, toggleSidebar, autoResize, updateCharCount, initMobileKeyboardHandling, showToast } from './ui.js';
 import { loadSettings, saveSettings, saveChatSettings, syncSettingsUI, fetchModels, initKeyToggle, initParameterSliders } from './settings.js';
-import { loadConversationList, openConversation, renameConversationTitle, startNewChat } from './conversations.js';
+import { loadConversationList, openConversation, renameConversationTitle, startNewChat, persistConversationFor } from './conversations.js';
 import { loadMcpConfig, saveMcpConfig, applyMcpToolSettings, resetMcpDraftSettings, reloadTools, loadCachedTools } from './mcp.js';
 import { sendMessage, stopAssistantTurn, editAndResend, regenerateFrom } from './chat.js';
 import { initImageAttachments, hasPendingAttachments } from './chat_attachments.js';
@@ -18,6 +18,7 @@ import { ICONS, initIcons } from './icons.js';
 import { loadCustomization, saveCustomization, initSwatchPicker, syncCustomizationUI } from './customization.js';
 import { initFilePanel } from './file_panel.js';
 import { loadContainerSettings, saveContainerSettings, deleteAllData } from './container_settings.js';
+import { switchBranch } from './chat_branches.js';
 
 // ── Event binding ─────────────────────────────────────────────────────────────
 
@@ -243,6 +244,12 @@ function bindInputEvents() {
   document.getElementById('messages').addEventListener('chat:regenerate', e => {
     regenerateFrom(e.detail.logIndex);
   });
+
+  // Branch switching — dispatched from message footers when alternatives exist.
+  document.getElementById('messages').addEventListener('chat:switch-branch', e => {
+    switchBranch(e.detail.logIndex, e.detail.variantIndex, persistConversationFor);
+  });
+
   // Initialize send button state
   updateSendButton();
 }

@@ -70,7 +70,7 @@ def get_container_status(conv_id: str):
 def update_conversation(conv_id: str):
     if err := _bad_conv_id(conv_id):
         return err
-    allowed_fields = {"title", "system_prompt"}
+    allowed_fields = {"title", "system_prompt", "messages", "displayLog"}
     body = _body()
     data = store.load(conv_id)
     if data is None:

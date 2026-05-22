@@ -14,6 +14,7 @@
 .msg-action-btn { padding: 3px 5px; border: none; border-radius: 4px; color: var(--text3); background: none; display: grid; place-items: center; }
 .msg-action-btn:hover { background: var(--surface); color: var(--text2); }
 .msg-action-btn svg { width: 14px; height: 14px; }
+.msg-branch-label { min-width: 26px; padding: 0 3px; color: var(--text3); font-family: var(--font-mono); font-size: .68rem; line-height: 20px; text-align: center; }
 .msg-content { color: var(--text); font-size: .95rem; font-weight: 400; line-height: 1.75; }
 .msg-content p { margin-bottom: .65em; }
 .msg-content p:last-child { margin-bottom: 0; }

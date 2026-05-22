@@ -2,18 +2,8 @@
 
 import { state } from './state.js';
 import { appendMessage, renderAllMessages } from './renderer.js';
-
-// ── Index helpers ────────────────────────────────────────────────────────────
-
-/** Maps a displayLog index to the corresponding state.messages index. */
-function logIndexToMessagesIndex(logIndex) {
-  let count = 0;
-  for (let i = 0; i < logIndex; i++) {
-    const entry = state.displayLog[i];
-    if (entry && (entry.type === 'message' || entry.type === 'tool_result')) count++;
-  }
-  return count;
-}
+import { refreshMessageFooter } from './renderer_actions.js';
+import { attachAssistantBranch, attachUserBranch, captureSuffix, logIndexToMessagesIndex, syncVisibleBranches } from './chat_branches.js';
 
 // ── Edit & Resend ─────────────────────────────────────────────────────────────
 
@@ -39,7 +29,10 @@ export async function editAndResend(logIndex, newText, imageUrls = [], files = [
   if (!newText.trim() && !normalizedAttachments.length) return;
   if (!state.convId) await deps.createNewConversation();
 
+  syncVisibleBranches();
+  const existingBranch = state.displayLog[logIndex]?.branch?.kind === 'user' ? state.displayLog[logIndex].branch : null;
   const messagesIndex = logIndexToMessagesIndex(logIndex);
+  const oldBranch = captureSuffix({ messages: state.messages, displayLog: state.displayLog }, logIndex, messagesIndex, 'user', logIndex);
   state.displayLog.splice(logIndex);
   state.messages.splice(messagesIndex);
   renderAllMessages(state.displayLog);
@@ -76,12 +69,18 @@ export async function editAndResend(logIndex, newText, imageUrls = [], files = [
   await deps.persistTurnConversation(turn);
 
   await deps.runAssistantTurnAndPersist(turn);
+  const branchHostIndex = attachUserBranch(turn, logIndex, messagesIndex, oldBranch, existingBranch);
+  deps.syncVisibleTurn(turn);
+  if (deps.isTurnVisible(turn)) refreshMessageFooter(branchHostIndex);
+  await deps.persistTurnConversation(turn);
 }
 
 // ── Regenerate ────────────────────────────────────────────────────────────────
 
 export async function regenerateFrom(logIndex, deps) {
   if (state.isStreaming) return;
+
+  syncVisibleBranches();
 
   // Walk back to find the index right after the last user message — that's
   // where the whole assistant turn (thinking + tool calls + responses) begins.
@@ -94,7 +93,9 @@ export async function regenerateFrom(logIndex, deps) {
     }
   }
 
+  const existingBranch = state.displayLog[logIndex]?.branch?.kind === 'assistant' ? state.displayLog[logIndex].branch : null;
   const messagesIndex = logIndexToMessagesIndex(turnStart);
+  const oldBranch = captureSuffix({ messages: state.messages, displayLog: state.displayLog }, turnStart, messagesIndex, 'assistant', logIndex);
   state.displayLog.splice(turnStart);
   state.messages.splice(messagesIndex);
   renderAllMessages(state.displayLog);
@@ -103,4 +104,8 @@ export async function regenerateFrom(logIndex, deps) {
   const turn = deps.createTurnContext(state.convId);
   await deps.persistTurnConversation(turn);
   await deps.runAssistantTurnAndPersist(turn);
+  const branchHostIndex = attachAssistantBranch(turn, turnStart, messagesIndex, oldBranch, logIndex, existingBranch);
+  deps.syncVisibleTurn(turn);
+  if (deps.isTurnVisible(turn)) refreshMessageFooter(branchHostIndex);
+  await deps.persistTurnConversation(turn);
 }

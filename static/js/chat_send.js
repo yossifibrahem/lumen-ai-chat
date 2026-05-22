@@ -2,6 +2,7 @@
 
 import { state } from './state.js';
 import { appendMessage } from './renderer.js';
+import { syncVisibleBranches } from './chat_branches.js';
 import { refreshFilePanel } from './file_panel.js';
 import {
   drainPendingAttachments,
@@ -17,6 +18,7 @@ export async function sendMessage(userText, deps) {
   if (state.isStreaming) return;
   if (!state.convId) await deps.createNewConversation();
 
+  syncVisibleBranches();
   const turn = deps.createTurnContext(state.convId);
   deps.setStreaming(true);
 
@@ -105,4 +107,10 @@ export async function sendMessage(userText, deps) {
   await deps.persistTurnConversation(turn);
 
   await deps.runAssistantTurnAndPersist(turn);
+
+  deps.syncVisibleTurn(turn);
+  syncVisibleBranches();
+  turn.messages = state.messages;
+  turn.displayLog = state.displayLog;
+  await deps.persistTurnConversation(turn);
 }

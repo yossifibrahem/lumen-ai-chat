@@ -7,21 +7,23 @@
 //   renderer_thinking.js    – thinking block create/update/finalize
 //   renderer_attachments.js – attachment cards and content parts
 //   renderer_tools.js       – tool strip states (using/approval/running/result)
+//   renderer_actions.js     – copy/edit/regenerate/branch footers
 
 import { applyMarkdown } from './markdown.js';
-import { $, createElement, remove, setVisible } from './dom.js';
+import { createElement } from './dom.js';
 import { ICONS } from './icons.js';
-import { state } from './state.js';
 import { escapeHtml } from './format.js';
 
-import { scrollToBottom as _scrollToBottom, messagesEl, stickToBottom, createMessageRow } from './renderer_core.js';
-import { prepareAssistantRow, tryGroupBlock } from './renderer_groups.js';
-import { getRawText, appendContentParts, normalizeContentAttachments, renderAttachmentCard } from './renderer_attachments.js';
+import { scrollToBottom as _scrollToBottom, messagesEl, createMessageRow } from './renderer_core.js';
+import { prepareAssistantRow } from './renderer_groups.js';
+import { getRawText, appendContentParts } from './renderer_attachments.js';
 import { appendThinkingBlock } from './renderer_thinking.js';
 import { appendToolResultInline } from './renderer_tools.js';
+import { addUserFooter, addAssistantFooter } from './renderer_actions.js';
 
 export { createThinkingBlock, updateThinkingBlock, finalizeThinkingBlock } from './renderer_thinking.js';
 export { createToolStrip, toolStripSetApproval, toolStripSetRunning, toolStripFinalize, cancelAllToolApprovals } from './renderer_tools.js';
+export { refreshMessageFooter } from './renderer_actions.js';
 
 // Wrap scrollToBottom with the same signature expected by callers
 export function scrollToBottom(force = false) { _scrollToBottom(force); }
@@ -68,117 +70,7 @@ export function clearMessages() {
   }
 }
 
-function createMessageAction(icon, onClick) {
-  const btn = createElement('button', { className: 'msg-action-btn', html: `${icon}` });
-  btn.addEventListener('click', onClick);
-  return btn;
-}
-
-function createCopyAction(getText) {
-  const btn = createMessageAction(ICONS.copy, () => {
-    navigator.clipboard.writeText(getText());
-    btn.innerHTML = ICONS.check;
-    setTimeout(() => { btn.innerHTML = ICONS.copy; }, 1500);
-  });
-  return btn;
-}
-
-function addMessageFooter(row, actions = []) {
-  row.querySelector('.msg-footer')?.remove();
-  const footer = createElement('div', { className: 'msg-footer' });
-  actions.forEach(action => footer.appendChild(action));
-  row.appendChild(footer);
-}
-
-function addUserFooter(row, getText, logIndex, getContent = () => null) {
-  addMessageFooter(row, [
-    createCopyAction(getText),
-    createMessageAction(ICONS.edit, () => {
-      if (logIndex < 0) return;
-      startInlineEdit(row, logIndex, getText(), getContent());
-    }),
-  ]);
-}
-
-function addAssistantFooter(row, getText, logIndex) {
-  const actions = [createCopyAction(getText)];
-
-  if (logIndex >= 0) {
-    actions.push(createMessageAction(ICONS.refresh, () => {
-      row.dispatchEvent(new CustomEvent('chat:regenerate', { bubbles: true, detail: { logIndex } }));
-    }));
-  }
-
-  addMessageFooter(row, actions);
-}
-
-function startInlineEdit(row, logIndex, currentText, currentContent = null) {
-  const contentEl = row.querySelector('.msg-content');
-  const footerEl  = row.querySelector('.msg-footer');
-  if (!contentEl) return;
-
-  const preservedContent = currentContent && typeof currentContent === 'object' && !Array.isArray(currentContent)
-    ? currentContent
-    : {};
-  const attachments = normalizeContentAttachments(preservedContent);
-  const imageUrls = attachments.filter(entry => entry.kind === 'image').map(entry => entry.url).filter(Boolean);
-  const files = attachments.filter(entry => entry.kind === 'file');
-
-  contentEl.style.display = 'none';
-  footerEl?.remove();
-
-  const editWrap = createElement('div', { className: 'msg-edit-wrap' });
-  const textarea = createElement('textarea', { className: 'msg-edit-textarea' });
-  textarea.value = currentText;
-  textarea.rows = Math.min(Math.max(currentText.split('\n').length, 2), 10);
-
-  const actions = createElement('div', { className: 'msg-edit-actions' });
-  const saveBtn   = createElement('button', { className: 'msg-edit-save',   text: 'Send' });
-  const cancelBtn = createElement('button', { className: 'msg-edit-cancel', text: 'Cancel' });
-
-  const cancelEdit = () => {
-    editWrap.remove();
-    contentEl.style.display = '';
-    addUserFooter(row, () => currentText, logIndex, () => currentContent);
-  };
-
-  saveBtn.addEventListener('click', () => {
-    const newText = textarea.value.trim();
-    if (!newText && !attachments.length) return;
-    editWrap.remove();
-    contentEl.style.display = '';
-    row.dispatchEvent(new CustomEvent('chat:edit-resend', { bubbles: true, detail: { logIndex, newText, imageUrls, files, attachments } }));
-  });
-
-  cancelBtn.addEventListener('click', cancelEdit);
-
-  textarea.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveBtn.click(); }
-    if (e.key === 'Escape') cancelEdit();
-  });
-
-  actions.appendChild(cancelBtn);
-  actions.appendChild(saveBtn);
-
-  if (attachments.length) {
-    const attachmentStrip = createElement('div', { className: 'msg-edit-attachments msg-attachments-grid' });
-    attachments.forEach(attachment => attachmentStrip.appendChild(renderAttachmentCard(attachment, { edit: true })));
-    editWrap.appendChild(attachmentStrip);
-  }
-
-  editWrap.appendChild(textarea);
-  editWrap.appendChild(actions);
-  row.appendChild(editWrap);
-
-  setTimeout(() => {
-    textarea.style.height = 'auto';
-    textarea.style.height = textarea.scrollHeight + 'px';
-    textarea.focus();
-    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-  }, 0);
-}
-
-export function appendMessage(role, content, logIndex = -1) {
+export function appendMessage(role, content, logIndex = -1, entry = null) {
   if (!content) return null;
 
   const isUser = role === 'user';
@@ -194,9 +86,9 @@ export function appendMessage(role, content, logIndex = -1) {
   row.appendChild(contentEl);
 
   if (isUser) {
-    addUserFooter(row, () => getRawText(content), logIndex, () => content);
+    addUserFooter(row, () => getRawText(content), logIndex, () => content, entry?.branch);
   } else {
-    addAssistantFooter(row, () => getRawText(content), logIndex);
+    addAssistantFooter(row, () => getRawText(content), logIndex, entry?.branch);
   }
   _scrollToBottom(isUser);
   return contentEl;
@@ -235,6 +127,7 @@ export function setStreamingMessageLogIndex(contentEl, logIndex) {
   addAssistantFooter(row, getText, logIndex);
 }
 
+
 export function renderAllMessages(displayLog) {
   messagesEl().innerHTML = '';
   if (displayLog.length > 0) {
@@ -246,7 +139,7 @@ export function renderAllMessages(displayLog) {
   displayLog.forEach((entry, idx) => {
     if (entry.type === 'message') {
       if (entry.role === 'assistant' && !String(entry.content ?? '').trim()) return;
-      appendMessage(entry.role, entry.content, idx);
+      appendMessage(entry.role, entry.content, idx, entry);
     }
     if (entry.type === 'tool_result') appendToolResultInline(entry.name, entry.args, entry.result, entry.displayName);
     if (entry.type === 'thinking') appendThinkingBlock(entry.content);
