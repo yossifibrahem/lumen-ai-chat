@@ -9,7 +9,6 @@
 .msg-avatar.ai-av { background: var(--accent-dim); color: var(--accent); }
 .msg-avatar svg { width: 11px; height: 11px; }
 .msg-role-label { color: var(--text3); font-size: .65rem; letter-spacing: .6px; text-transform: uppercase; font-family: var(--font-mono); }
-.msg-model-label { color: var(--text3); font-size: .65rem; font-family: var(--font-mono); opacity: 1; margin-left: auto; }
 .msg-footer { gap: 3px; margin-top: 6px; opacity: 0; display: flex; align-items: center; }
 .msg-row:hover .msg-footer { opacity: 1; }
 .msg-action-btn { padding: 3px 5px; border: none; border-radius: 4px; color: var(--text3); background: none; display: grid; place-items: center; }

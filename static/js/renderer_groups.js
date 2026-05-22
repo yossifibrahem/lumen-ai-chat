@@ -25,7 +25,7 @@ export function getOrCreateAssistantRow() {
   const last = rows.at(-1);
   return last && !last.classList.contains('user-row')
     ? last
-    : createMessageRow({ avatarClass: 'ai-av', avatarIcon: ICONS.ai, roleLabel: 'Assistant', modelLabel: state.model || '' });
+    : createMessageRow({ avatarClass: 'ai-av', avatarIcon: ICONS.ai, roleLabel: 'Assistant' });
 }
 
 export function prepareAssistantRow() {

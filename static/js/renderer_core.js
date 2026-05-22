@@ -28,7 +28,7 @@ export function scrollToBottom(force = false) {
   });
 }
 
-export function createMessageRow({ avatarClass, avatarIcon, roleLabel, modelLabel = '', isUser = false }) {
+export function createMessageRow({ avatarClass, avatarIcon, roleLabel, isUser = false }) {
   remove('#empty-state');
   document.getElementById('main')?.classList.remove('is-empty');
 
@@ -37,7 +37,6 @@ export function createMessageRow({ avatarClass, avatarIcon, roleLabel, modelLabe
     <div class="msg-meta">
       <div class="msg-avatar ${avatarClass}">${avatarIcon}</div>
       <span class="msg-role-label">${roleLabel}</span>
-      ${modelLabel ? `<span class="msg-model-label">${modelLabel}</span>` : ''}
     </div>`;
 
   messagesEl().appendChild(row);
