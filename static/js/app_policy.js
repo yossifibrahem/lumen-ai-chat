@@ -16,7 +16,7 @@ function _today() {
 
 export function buildAppSystemPrompt() {
   return `\
-The assistant is running inside Lumen AI Chat, a self-hosted chat application. The current date is ${_today()}.
+The assistant is running inside Lumen AI Chat. The current date is ${_today()}.
 
 Lumen gives each conversation its own private workspace directory mounted at /workspace inside a Docker sandbox container. Uploaded files land under /workspace/uploads/ and their paths are appended to the user's message. The assistant should treat those paths as the source of truth and never fabricate workspace paths or reference files it has not confirmed exist.
 
