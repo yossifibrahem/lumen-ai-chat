@@ -52,7 +52,6 @@ The app is intentionally lightweight: no database, no frontend framework, no bun
 ├── requirements.txt               # Flask, CORS, OpenAI SDK, MCP SDK
 ├── requirements-dev.txt           # Adds pytest and pytest-mock on top of requirements.txt
 ├── package.json                   # Electron desktop scripts and packaging config
-├── skills/                            # Developer-authored skill files (.md with frontmatter)
 ├── desktop/                       # Electron main/preload process files for desktop app
 ├── pytest.ini                     # Test discovery config
 ├── README.md                      # User-facing project description and setup docs
@@ -674,49 +673,6 @@ With explicit environment variables:
 ```
 
 Server-level UI settings such as enabled, auto-approve, and icon are not stored in `mcp.json`; they are stored in browser localStorage under `lumen_mcp_server_settings`.
-
-
-## Skills
-
-Skills are developer-authored Markdown files in the `skills/` directory. They give the LLM reusable instruction sets it can consult on demand — analogous to how Claude.ai uses built-in skills.
-
-### How it works
-
-1. At the start of every chat turn, `skill_service.build_skills_catalog()` produces a short block listing every skill's name, description, and container-side path.
-2. `chat_turn_service._inject_skills()` appends this block to the system message (alongside memory and the app policy prompt).
-3. The LLM reads the catalog and decides whether any skill is relevant. If so, it calls the `view` tool on the skill file (e.g. `view /skills/code_review.md`) to read the full instructions.
-4. The `skills/` directory is mounted read-only into the sandbox container at `/skills/` so the model can access the files through its normal file tools.
-
-### Writing a skill
-
-Create a `.md` file in `skills/` with a YAML frontmatter block at the top:
-
-```markdown
----
-name: Human-readable Skill Name
-description: One sentence explaining when and why the LLM should use this skill.
----
-
-# Skill content here
-
-Full instructions, checklists, output formats, examples…
-```
-
-**Rules:**
-- `name` and `description` are required; the catalog entry shown to the LLM is built from them.
-- Keep `description` to one sentence — it is the hint the model uses to decide relevance.
-- The body can be as detailed as needed; it is only loaded when the model explicitly reads the file.
-- Filename becomes the skill `id` (stem); use `snake_case.md`.
-- Skills are discovered automatically — no registration required; just drop the file in `skills/`.
-- There is no enable/disable toggle; remove the file to retire a skill.
-
-### Key modules
-
-| Module | Responsibility |
-|--------|---------------|
-| `skill_service.py` | Discovers `skills/*.md`, parses frontmatter, builds catalog string, returns Docker volume spec |
-| `chat_turn_service.py` | Calls `_inject_skills()` to append catalog to the system message each turn |
-| `container_service.py` | Mounts `skills/` read-only at `/skills/` inside the sandbox container |
 
 ## Development conventions
 

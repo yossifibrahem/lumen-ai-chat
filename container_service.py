@@ -113,15 +113,11 @@ def _memory_volume_spec() -> str | None:
 
 
 def _volume_args(workspace: Path, extra_volumes: list[str]) -> list[str]:
-    import skill_service
     workspace_source = host_path_to_docker_src(str(workspace))
     memory_spec = _memory_volume_spec()
-    skills_spec = skill_service.volume_spec()
     specs = [f"{workspace_source}:/workspace", *extra_volumes]
     if memory_spec:
         specs.append(memory_spec)
-    if skills_spec:
-        specs.append(skills_spec)
     return [item for spec in specs for item in ("--volume", spec)]
 
 
@@ -140,15 +136,9 @@ def ensure_container(conv_id: str, extra_volumes: list[str] | None = None) -> Co
 
 
 def _ensure_container_locked(conv_id: str, extra_volumes: list[str]) -> ContainerInfo:
-    import skill_service
     name = container_name(conv_id)
     workspace = _workspace(conv_id)
     required_sources = {_volume_source(v) for v in extra_volumes}
-    # Always require the skills volume so containers created before the skills
-    # feature was added get recreated with the correct mount.
-    skills_spec = skill_service.volume_spec()
-    if skills_spec:
-        required_sources.add(_volume_source(skills_spec))
 
     status = get_status(conv_id)
     if status in {"running", "stopped"}:
