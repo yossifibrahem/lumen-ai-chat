@@ -62,7 +62,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openssl \
     && rm -rf /var/lib/apt/lists/*
 
-RUN ln -sf /usr/bin/python3 /usr/bin/python
 
 # ── create a virtual environment and activate it system-wide ─────────────────
 RUN python3 -m venv /opt/venv
