@@ -64,11 +64,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN ln -sf /usr/bin/python3 /usr/bin/python
 
+# ── create a virtual environment and activate it system-wide ─────────────────
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
 # ── uv — fast Python package installer (enables uvx for Python MCP servers) ──
-RUN pip3 install --break-system-packages --no-cache-dir uv
+RUN pip3 install --no-cache-dir uv
 
 # ── Common Python packages useful in bash_tool sessions ──────────────────────
-RUN pip3 install --break-system-packages --no-cache-dir \
+RUN pip3 install --no-cache-dir \
     requests \
     httpx \
     beautifulsoup4 \
