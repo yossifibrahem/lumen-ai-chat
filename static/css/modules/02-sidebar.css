@@ -107,6 +107,7 @@
   border-radius: 8px;
   cursor: pointer;
   color: var(--text2);
+  position: relative;
   transition: color var(--fast), background var(--fast), border-color var(--fast);
 }
 .conv-item:hover {
