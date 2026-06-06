@@ -3,6 +3,7 @@
 /* ─── Main layout & header ─────────────────────────────────────────────────── */
 #main {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   height: var(--vvh, 100dvh);

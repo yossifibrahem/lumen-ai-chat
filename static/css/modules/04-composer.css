@@ -7,6 +7,7 @@
   left: 50%;
   transform: translateX(-50%);
   width: min(var(--dock-w), calc(100% - 40px));
+  max-width: calc(100% - 40px);
   z-index: 20;
   animation: dockSlideIn .35s var(--ease) both;
 }

@@ -12,6 +12,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body { height: var(--vvh, 100dvh); overflow: hidden; }
+body { overflow-x: hidden; }
 html { font-size: var(--font-size-base, 15px); }
 body {
   font-family: var(--font-roman);
