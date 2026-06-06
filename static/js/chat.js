@@ -3,11 +3,11 @@
 import { api }   from './api.js';
 import { state } from './state.js';
 import {
-  createStreamingMessage,
+  createStreamingMessage, appendAssistantStatus,
   cancelAllToolApprovals, finalizeStreamingMessage, setStreamingMessageLogIndex,
-  scrollToBottom, renderAllMessages,
+  scrollToBottom, renderAllMessages, refreshMessageFooter,
   createThinkingBlock, updateThinkingBlock, finalizeThinkingBlock,
-  createToolStrip, toolStripFinalize, toolStripSetApproval, toolStripSetRunning,
+  createToolStrip, toolStripFinalize, toolStripSetApproval, toolStripSetRunning, toolStripSetStopped,
 } from './renderer.js';
 import { applyMarkdown } from './markdown.js';
 import { persistConversationFor, createNewConversation } from './conversations.js';
@@ -19,6 +19,7 @@ export { initImageAttachments, hasPendingAttachments } from './chat_attachments.
 import { buildApiMessages, buildToolsPayload, buildMcpToolMetaPayload } from './chat_payloads.js';
 import { sendMessage as sendMessageImpl } from './chat_send.js';
 import { editAndResend as editAndResendImpl, regenerateFrom as regenerateFromImpl } from './chat_edit.js';
+import { assistantFooterHostIndex, lastAssistantMessageIndex } from './chat_log_utils.js';
 
 let turnAbortController = null;
 let turnCancelled = false;
@@ -267,39 +268,118 @@ function finishAssistantTurn(turn = null, ctx = null) {
   }
 }
 
-function lastAssistantMessageIndex(displayLog = []) {
-  for (let i = displayLog.length - 1; i >= 0; i--) {
-    const entry = displayLog[i];
-    if (entry?.type === 'message' && entry.role === 'assistant' && String(entry.content ?? '').trim()) return i;
-  }
-  return -1;
-}
-
 function appendRuntimeEntry(ctx, entry) {
   if (!ctx?.turn || !entry) return;
   ctx.turn.displayLog.push(entry);
   syncVisibleTurn(ctx.turn);
 }
 
-function commitRuntimeAssistantPartial(ctx) {
+function commitRuntimeAssistantPartial(ctx, { includeMessageHistory = false, onEntry = null } = {}) {
   if (!ctx?.turn) return false;
 
   let changed = false;
-  if (ctx.accReasoning) {
-    appendRuntimeEntry(ctx, { type: 'thinking', content: ctx.accReasoning });
+  const appendCommittedEntry = entry => {
+    appendRuntimeEntry(ctx, entry);
+    const logIndex = ctx.turn.displayLog.length - 1;
+    onEntry?.(entry, logIndex);
     changed = true;
+  };
+
+  if (ctx.accReasoning) {
+    appendCommittedEntry({ type: 'thinking', content: ctx.accReasoning });
   }
   if (ctx.accText && ctx.accText.trim()) {
-    appendRuntimeEntry(ctx, { type: 'message', role: 'assistant', content: ctx.accText });
-    changed = true;
+    appendCommittedEntry({ type: 'message', role: 'assistant', content: ctx.accText });
+    if (includeMessageHistory) ctx.turn.messages.push({ role: 'assistant', content: ctx.accText });
   }
+  if (includeMessageHistory) syncVisibleTurn(ctx.turn);
   return changed;
+}
+
+function liveAssistantRowForContext(ctx) {
+  const liveNode = ctx?.contentEl ||
+    ctx?.reasoningBodyEl ||
+    ctx?.toolStrips?.find(strip => strip);
+  return liveNode?.closest('.msg-row') || null;
+}
+
+function markCommittedEntryInLiveDom(ctx, entry, logIndex) {
+  if (!Number.isInteger(logIndex) || logIndex < 0) return;
+
+  if (entry?.type === 'thinking') {
+    ctx.reasoningBodyEl?.closest('.thinking-block')?.setAttribute('data-log-index', String(logIndex));
+  } else if (entry?.type === 'message' && entry.role === 'assistant') {
+    ctx.contentEl?.closest('.msg-row')?.setAttribute('data-log-index', String(logIndex));
+  }
+}
+
+function branchForFooterHost(turn, logIndex) {
+  const branch = turn?.displayLog?.[logIndex]?.branch;
+  return branch?.kind === 'assistant' ? branch : null;
+}
+
+function stopLiveToolStrips(ctx) {
+  ctx.toolStrips.forEach(strip => {
+    if (!strip) return;
+    const isLive = strip.classList.contains('tool-strip-using') ||
+      strip.classList.contains('tool-strip-running') ||
+      strip.classList.contains('tool-strip-approval');
+    if (isLive) toolStripSetStopped(strip);
+  });
+}
+
+function appendStoppedStatus(ctx) {
+  appendRuntimeEntry(ctx, { type: 'status', content: 'Response stopped.' });
+  const logIndex = ctx.turn.displayLog.length - 1;
+  if (isTurnVisible(ctx.turn)) appendAssistantStatus('Response stopped.', logIndex, ctx.turn.displayLog[logIndex]);
+  return logIndex;
+}
+
+function finalizeInterruptedAssistantTurn(ctx) {
+  if (!ctx?.turn || ctx.assistantDone) return;
+
+  const liveRow = liveAssistantRowForContext(ctx);
+
+  if (ctx.reasoningBodyEl) {
+    finalizeThinkingBlock(ctx.reasoningBodyEl, ctx.accReasoning);
+  }
+
+  stopLiveToolStrips(ctx);
+
+  const hadContentEl = Boolean(ctx.contentEl);
+  const committed = commitRuntimeAssistantPartial(ctx, {
+    includeMessageHistory: true,
+    onEntry: (entry, logIndex) => markCommittedEntryInLiveDom(ctx, entry, logIndex),
+  });
+
+  let footerHostIndex = assistantFooterHostIndex(ctx.turn.displayLog);
+
+  if (hadContentEl) {
+    finalizeStreamingMessage(ctx.contentEl, ctx.accText, {
+      logIndex: footerHostIndex,
+      branch: branchForFooterHost(ctx.turn, footerHostIndex),
+    });
+  } else if (committed && footerHostIndex >= 0) {
+    refreshMessageFooter(footerHostIndex);
+  } else {
+    footerHostIndex = appendStoppedStatus(ctx);
+  }
+
+  if (!hadContentEl && committed && !liveRow?.querySelector('.msg-footer')) {
+    const row = liveAssistantRowForContext(ctx);
+    if (row && footerHostIndex >= 0) refreshMessageFooter(footerHostIndex);
+  }
+
+  ctx.reasoningBodyEl = null;
+  ctx.assistantDone = true;
+  syncVisibleTurn(ctx.turn);
+  scrollToBottom();
 }
 
 function syncFinalAssistantFooter(turn, ctx) {
   if (!ctx?.contentEl || !isTurnVisible(turn)) return;
   const logIndex = lastAssistantMessageIndex(turn.displayLog);
-  if (logIndex >= 0) setStreamingMessageLogIndex(ctx.contentEl, logIndex);
+  if (logIndex >= 0) setStreamingMessageLogIndex(ctx.contentEl, logIndex, branchForFooterHost(turn, logIndex));
 }
 
 function finalizeAssistantAnswer(ctx, messages = null, displayLog = null) {
@@ -349,11 +429,14 @@ async function runAssistantTurnAndPersist(turn) {
 export async function stopAssistantTurn() {
   if (!state.isStreaming && !state.streamId) return;
 
+  const runtime = state.convId ? activeTurns.get(state.convId) : null;
+  if (runtime?.ctx) finalizeInterruptedAssistantTurn(runtime.ctx);
+
   turnCancelled = true;
   cancelAllToolApprovals();
   turnAbortController?.abort();
 
-  const streamId = state.streamId;
+  const streamId = state.streamId || runtime?.streamId;
   state.streamId = null;
   setStreaming(false);
 
@@ -451,10 +534,8 @@ async function processSSEEvent(raw, ctx) {
       finalizeThinkingBlock(ctx.reasoningBodyEl, ctx.accReasoning);
       ctx.reasoningBodyEl = null;
     }
-    if (ctx.contentEl) {
-      finalizeStreamingMessage(ctx.contentEl, ctx.accText);
-      ctx.contentEl = null;
-    }
+    const hadContentEl = Boolean(ctx.contentEl);
+    if (ctx.contentEl) finalizeStreamingMessage(ctx.contentEl, ctx.accText);
 
     const strip = stripForToolEvent(ctx, evt, 'toolResultIndex');
     // Pass no displayName — renderer.js derives the label via getToolDisplayLabel()
@@ -462,7 +543,10 @@ async function processSSEEvent(raw, ctx) {
     if (strip) toolStripFinalize(strip, evt.name, evt.args || {}, evt.result || '');
     // Note: stripForToolEvent already increments ctx.toolResultIndex internally.
 
-    commitRuntimeAssistantPartial(ctx);
+    const committedPartial = commitRuntimeAssistantPartial(ctx);
+    if (hadContentEl && committedPartial) syncFinalAssistantFooter(ctx.turn, ctx);
+    ctx.contentEl = null;
+
     appendRuntimeEntry(ctx, {
       type: 'tool_result',
       name: evt.name,

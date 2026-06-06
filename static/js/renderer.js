@@ -20,9 +20,10 @@ import { getRawText, appendContentParts } from './renderer_attachments.js';
 import { appendThinkingBlock } from './renderer_thinking.js';
 import { appendToolResultInline } from './renderer_tools.js';
 import { addUserFooter, addAssistantFooter } from './renderer_actions.js';
+import { assistantFooterHostIndex } from './chat_log_utils.js';
 
 export { createThinkingBlock, updateThinkingBlock, finalizeThinkingBlock } from './renderer_thinking.js';
-export { createToolStrip, toolStripSetApproval, toolStripSetRunning, toolStripFinalize, cancelAllToolApprovals } from './renderer_tools.js';
+export { createToolStrip, toolStripSetApproval, toolStripSetRunning, toolStripFinalize, toolStripSetStopped, cancelAllToolApprovals } from './renderer_tools.js';
 export { refreshMessageFooter } from './renderer_actions.js';
 
 // Wrap scrollToBottom with the same signature expected by callers
@@ -102,7 +103,19 @@ export function createStreamingMessage() {
   return contentEl;
 }
 
-export function finalizeStreamingMessage(contentEl, text) {
+export function appendAssistantStatus(content = 'Response stopped.', logIndex = -1, entry = null) {
+  const row = prepareAssistantRow();
+  row.querySelector('.msg-footer')?.remove();
+  if (logIndex >= 0) row.dataset.logIndex = String(logIndex);
+  const statusEl = createElement('div', { className: 'msg-content msg-status', text: content });
+  if (logIndex >= 0) statusEl.dataset.logIndex = String(logIndex);
+  row.appendChild(statusEl);
+  addAssistantFooter(row, () => content, logIndex, entry?.branch);
+  _scrollToBottom();
+  return statusEl;
+}
+
+export function finalizeStreamingMessage(contentEl, text, { logIndex = -1, branch = null } = {}) {
   if (!text || !text.trim()) {
     contentEl.remove();
     return;
@@ -112,11 +125,12 @@ export function finalizeStreamingMessage(contentEl, text) {
   applyMarkdown(contentEl, text);
 
   const row = contentEl.parentElement;
+  if (logIndex >= 0) row.dataset.logIndex = String(logIndex);
   row.querySelector('.msg-footer')?.remove();
-  addAssistantFooter(row, () => text, -1);
+  addAssistantFooter(row, () => text, logIndex, branch);
 }
 
-export function setStreamingMessageLogIndex(contentEl, logIndex) {
+export function setStreamingMessageLogIndex(contentEl, logIndex, branch = null) {
   const row = contentEl?.parentElement;
   if (!row) return;
   row.dataset.logIndex = logIndex;
@@ -124,7 +138,21 @@ export function setStreamingMessageLogIndex(contentEl, logIndex) {
   if (!footerEl) return;
   const getText = () => contentEl?.dataset?.rawText || contentEl?.textContent || '';
   footerEl.remove();
-  addAssistantFooter(row, getText, logIndex);
+  addAssistantFooter(row, getText, logIndex, branch);
+}
+
+function ensureTerminalAssistantFooter(displayLog) {
+  const rows = [...messagesEl().querySelectorAll('.msg-row')];
+  const row = rows.at(-1);
+  if (!row || row.classList.contains('user-row') || row.querySelector('.msg-footer')) return;
+
+  const getText = () => row.querySelector('.msg-content')?.dataset.rawText ||
+    row.querySelector('.msg-content')?.textContent ||
+    row.textContent.trim();
+  const logIndex = assistantFooterHostIndex(displayLog);
+  if (logIndex < 0) return;
+  const branch = displayLog[logIndex]?.branch?.kind === 'assistant' ? displayLog[logIndex].branch : null;
+  addAssistantFooter(row, getText, logIndex, branch);
 }
 
 
@@ -141,8 +169,10 @@ export function renderAllMessages(displayLog) {
       if (entry.role === 'assistant' && !String(entry.content ?? '').trim()) return;
       appendMessage(entry.role, entry.content, idx, entry);
     }
-    if (entry.type === 'tool_result') appendToolResultInline(entry.name, entry.args, entry.result, entry.displayName);
-    if (entry.type === 'thinking') appendThinkingBlock(entry.content);
+    if (entry.type === 'tool_result') appendToolResultInline(entry.name, entry.args, entry.result, entry.displayName, idx);
+    if (entry.type === 'thinking') appendThinkingBlock(entry.content, idx);
+    if (entry.type === 'status') appendAssistantStatus(entry.content, idx, entry);
   });
+  ensureTerminalAssistantFooter(displayLog);
   _scrollToBottom(true);
 }

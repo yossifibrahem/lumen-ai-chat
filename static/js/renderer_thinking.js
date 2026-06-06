@@ -66,7 +66,7 @@ export function finalizeThinkingBlock(bodyEl, fullText) {
   updateGroupLabel(block.closest('.block-group'));
 }
 
-export function appendThinkingBlock(reasoningText) {
+export function appendThinkingBlock(reasoningText, logIndex = -1) {
   if (!reasoningText) return;
 
   const row = prepareAssistantRow();
@@ -79,6 +79,8 @@ export function appendThinkingBlock(reasoningText) {
       display: 'none',
     }),
   });
+
+  if (logIndex >= 0) block.dataset.logIndex = String(logIndex);
 
   attachCollapsible(block, {
     headerSelector:  '.thinking-header',

@@ -141,18 +141,45 @@ function startInlineEdit(row, logIndex, currentText, currentContent = null, bran
   }, 0);
 }
 
+function rowForLogIndex(logIndex) {
+  const root = messagesEl();
+  const rows = Array.from(root.querySelectorAll('.msg-row'));
+  return rows.find(row => Number(row.dataset.logIndex) === logIndex) ||
+    root.querySelector(`[data-log-index="${logIndex}"]`)?.closest('.msg-row') ||
+    null;
+}
+
+function assistantRowText(row) {
+  return row?.querySelector('.msg-content')?.dataset.rawText ||
+    row?.querySelector('.msg-content')?.textContent ||
+    row?.textContent?.trim() ||
+    '';
+}
+
+function isAssistantFooterHost(entry) {
+  return entry?.role === 'assistant' ||
+    entry?.type === 'thinking' ||
+    entry?.type === 'tool_result' ||
+    entry?.type === 'status';
+}
+
 export function refreshMessageFooter(logIndex) {
   if (!Number.isInteger(logIndex) || logIndex < 0) return;
 
-  const row = Array.from(messagesEl().querySelectorAll('.msg-row'))
-    .find(candidate => Number(candidate.dataset.logIndex) === logIndex);
   const entry = state.displayLog[logIndex];
-  if (!row || entry?.type !== 'message') return;
+  const row = entry ? rowForLogIndex(logIndex) : null;
+  if (!entry || !row) return;
 
-  const getText = () => getRawText(entry.content);
-  if (entry.role === 'user') {
-    addUserFooter(row, getText, logIndex, () => entry.content, entry.branch);
-  } else if (entry.role === 'assistant') {
-    addAssistantFooter(row, getText, logIndex, entry.branch);
+  if (entry.type === 'message' && entry.role === 'user') {
+    addUserFooter(row, () => getRawText(entry.content), logIndex, () => entry.content, entry.branch);
+    return;
+  }
+
+  if (isAssistantFooterHost(entry)) {
+    const branch = entry.branch?.kind === 'assistant' ? entry.branch : null;
+    const getText = entry.type === 'message'
+      ? () => getRawText(entry.content)
+      : () => assistantRowText(row);
+    addAssistantFooter(row, getText, logIndex, branch);
   }
 }

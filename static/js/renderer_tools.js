@@ -202,10 +202,28 @@ export function toolStripFinalize(strip, toolName, args, result, displayName = '
   scrollToBottom();
 }
 
+export function toolStripSetStopped(strip) {
+  if (!strip) return;
+
+  restorePoppedApproval(strip);
+  const name = strip.dataset.toolName || '';
+  const displayName = strip.dataset.displayName || getToolDisplayLabel(name, {}) || name || 'Tool use';
+
+  strip.className = 'tool-strip tool-strip-stopped';
+  strip.innerHTML = `
+    <span class="tool-icon">${getToolIconSvg(name)}</span>
+    <span class="tui-name">${escapeHtml(displayName)}</span>
+    <span class="tc-status denied">${ICONS.close} stopped</span>`;
+
+  regroupToolStrip(strip);
+  scrollToBottom();
+}
+
 /** Appends a finalized tool result to the current assistant row (history replay). */
-export function appendToolResultInline(toolName, args, result, displayName = '') {
+export function appendToolResultInline(toolName, args, result, displayName = '', logIndex = -1) {
   const row = prepareAssistantRow();
   const strip = createElement('div');
+  if (logIndex >= 0) strip.dataset.logIndex = String(logIndex);
   applyToolResultStrip(strip, toolName, args, result, displayName);
   row.appendChild(strip);
   regroupToolStrip(strip);

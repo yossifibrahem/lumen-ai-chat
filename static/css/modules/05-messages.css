@@ -16,6 +16,7 @@
 .msg-action-btn svg { width: 14px; height: 14px; }
 .msg-branch-label { min-width: 26px; padding: 0 3px; color: var(--text3); font-family: var(--font-mono); font-size: .68rem; line-height: 20px; text-align: center; }
 .msg-content { color: var(--text); font-size: .95rem; font-weight: 400; line-height: 1.75; }
+.msg-content.msg-status { color: var(--text3); font-style: italic; }
 .msg-content p { margin-bottom: .65em; }
 .msg-content p:last-child { margin-bottom: 0; }
 .msg-content :is(h1, h2, h3, h4) { margin: 1.1em 0 .4em; color: var(--text); font-family: var(--font-roman); font-weight: 600; }

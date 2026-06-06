@@ -2,6 +2,8 @@
 
 import { state } from './state.js';
 import { renderAllMessages } from './renderer.js';
+import { assistantTurnStartIndex, branchHostIndex, logIndexToMessagesIndex } from './chat_log_utils.js';
+export { logIndexToMessagesIndex } from './chat_log_utils.js';
 
 function clone(value) {
   if (value === undefined) return undefined;
@@ -9,30 +11,8 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-export function logIndexToMessagesIndex(logIndex, displayLog = state.displayLog) {
-  let count = 0;
-  for (let i = 0; i < logIndex; i++) {
-    const entry = displayLog[i];
-    if (entry && (entry.type === 'message' || entry.type === 'tool_result')) count++;
-  }
-  return count;
-}
-
-function assistantBranchStart(logIndex, displayLog = state.displayLog) {
-  for (let i = logIndex - 1; i >= 0; i--) {
-    const entry = displayLog[i];
-    if (entry?.type === 'message' && entry.role === 'user') return i + 1;
-  }
-  return 0;
-}
-
 function branchLogStart(logIndex, branch, displayLog = state.displayLog) {
-  return branch?.kind === 'assistant' ? assistantBranchStart(logIndex, displayLog) : logIndex;
-}
-
-function branchHostIndex(segment = [], kind) {
-  const role = kind === 'user' ? 'user' : 'assistant';
-  return segment.findIndex(entry => entry?.type === 'message' && entry.role === role);
+  return branch?.kind === 'assistant' ? assistantTurnStartIndex(logIndex, displayLog) : logIndex;
 }
 
 function omitSelfBranch(segment = [], kind, absoluteHostIndex = null, absoluteStartIndex = 0) {
@@ -62,8 +42,9 @@ function makeVariant(turn, logStart, messageStart, kind, hostLogIndex = null) {
 }
 
 function findBranchHost(segment = [], kind) {
-  const role = kind === 'user' ? 'user' : 'assistant';
-  return segment.find(entry => entry?.type === 'message' && entry.role === role && entry.branch?.kind === kind);
+  const hostIndex = branchHostIndex(segment, kind);
+  const host = hostIndex >= 0 ? segment[hostIndex] : null;
+  return host?.branch?.kind === kind ? host : null;
 }
 
 function putBranchOnSegment(segment = [], branch) {
