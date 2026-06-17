@@ -1,9 +1,15 @@
 # Theme icon overrides
 
-Default icons live in `static/js/icons/default.js` and are used globally.
+Default/global icons live in `static/js/icons/default.js`.
 
-A theme icon pack should export a small object containing only the keys it wants
-to replace. Register that object in `index.js` using the same key as the UI theme.
+Theme icon packs live beside this file and are registered in `index.js` with the
+same key used by `data-ui-theme`, for example `retro-pixel`.
+
+A theme pack can be either:
+
+- **Partial**: export only the icons that should look different.
+- **Complete**: export every key from the default pack when the theme has a very
+  different visual language, such as pixel art.
 
 Example:
 
@@ -14,4 +20,6 @@ export const MY_THEME_ICON_OVERRIDES = Object.freeze({
 });
 ```
 
-Icons not listed in a theme pack automatically fall back to the default pack.
+Icons not listed by a theme automatically fall back to the default pack. This is
+useful for small skins, but complete packs avoid visual mixing in strongly styled
+themes.

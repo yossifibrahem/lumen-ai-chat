@@ -1,79 +1,80 @@
 // Global/default icon pack.
-// All themes inherit these icons unless they provide a small override pack.
+// This is the modern Lumen base pack: soft, rounded, readable at small sizes.
+// UI themes can replace any key through static/js/icons/themes/*.
 
-import { icon, smallIcon, ICON_BODIES } from './svg.js';
+import { icon, smallIcon } from './svg.js';
 
 export const DEFAULT_ICONS = Object.freeze({
   // ── Avatars ────────────────────────────────────────────────────────────────
-  user: icon('<circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/><path d="M9 8h.01M15 8h.01"/>'),
-  ai: icon('<rect x="4" y="6" width="16" height="13" rx="4"/><path d="M9 11h.01M15 11h.01M9.5 15h5"/><path d="M12 6V3"/><path d="M9.5 3h5"/>'),
+  user: icon('<circle cx="12" cy="7.5" r="3.5"/><path d="M5.25 21a6.75 6.75 0 0 1 13.5 0"/><path d="M9.8 7.35h.01M14.2 7.35h.01"/>'),
+  ai: icon('<path d="M8 5h8a4 4 0 0 1 4 4v6a4 4 0 0 1-4 4h-1.8L12 21.25 9.8 19H8a4 4 0 0 1-4-4V9a4 4 0 0 1 4-4z"/><path d="M12 5V2.75"/><path d="M9 2.75h6"/><path d="M8.75 11h.01M15.25 11h.01"/><path d="M9.5 14.5h5"/>'),
 
   // ── Actions ────────────────────────────────────────────────────────────────
-  check: icon('<polyline points="20 6 9 17 4 12"/>', 'stroke-width="2.5"'),
-  close: icon(ICON_BODIES.x, 'stroke-width="2.5"'),
-  moreVertical: icon('<circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/>', 'fill="currentColor" stroke="none"'),
-  trash: icon('<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>'),
-  copy: icon('<rect x="8" y="8" width="12" height="12" rx="3"/><rect x="4" y="4" width="12" height="12" rx="3"/>'),
-  download: icon('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>'),
-  edit: icon(ICON_BODIES.pen),
-  refresh: icon('<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>'),
+  check: icon('<path d="M20 6.5 9.4 17.1 4 11.7"/>', 'stroke-width="2.7"'),
+  close: icon('<path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5"/>', 'stroke-width="2.5"'),
+  moreVertical: icon('<circle cx="12" cy="5" r="1.65" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.65" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.65" fill="currentColor" stroke="none"/>'),
+  trash: icon('<path d="M4 6.5h16"/><path d="M9 6.5V4.75A1.75 1.75 0 0 1 10.75 3h2.5A1.75 1.75 0 0 1 15 4.75V6.5"/><path d="M18.25 6.5 17.4 19.2A2 2 0 0 1 15.4 21H8.6a2 2 0 0 1-2-1.8L5.75 6.5"/><path d="M10 11v5.5M14 11v5.5"/>'),
+  copy: icon('<rect x="8" y="8" width="12" height="12" rx="3"/><path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8"/>'),
+  download: icon('<path d="M5 20.5h14a2 2 0 0 0 2-2V16"/><path d="M3 16v2.5a2 2 0 0 0 2 2"/><path d="M12 3v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/>'),
+  edit: icon('<path d="M4.5 17.25V20h2.75L18.8 8.45a1.95 1.95 0 0 0 0-2.75l-.5-.5a1.95 1.95 0 0 0-2.75 0L4.5 17.25z"/><path d="M14.5 6.25 17.75 9.5"/><path d="M12 20h8"/>'),
+  refresh: icon('<path d="M20.5 12a8.5 8.5 0 0 1-14.7 5.85"/><path d="M3.5 12A8.5 8.5 0 0 1 18.2 6.15"/><path d="M18.5 3.5v4h-4"/><path d="M5.5 20.5v-4h4"/>'),
 
   // ── Navigation / chrome ────────────────────────────────────────────────────
-  chevronLeft: icon('<polyline points="15 18 9 12 15 6"/>', 'width="10" height="10" stroke-width="2.5"'),
-  chevronRight: icon('<polyline points="9 18 15 12 9 6"/>', 'width="10" height="10" stroke-width="2.5"'),
-  chevronDown: icon('<polyline points="6 9 12 15 18 9"/>', 'width="10" height="10" stroke-width="2.5"'),
-  menu: icon('<path d="M4 7h16M4 12h16M4 17h16"/>', 'stroke-width="2.5"'),
-  settings: icon('<path d="M4 7h16M4 17h16"/><rect x="7" y="4" width="4" height="6"/><rect x="13" y="14" width="4" height="6"/>'),
-  plus: icon('<path d="M12 5v14M5 12h14"/>', 'stroke-width="2.6"'),
+  chevronLeft: icon('<path d="m15 18-6-6 6-6"/>', 'width="10" height="10" stroke-width="2.6"'),
+  chevronRight: icon('<path d="m9 6 6 6-6 6"/>', 'width="10" height="10" stroke-width="2.6"'),
+  chevronDown: icon('<path d="m6 9 6 6 6-6"/>', 'width="10" height="10" stroke-width="2.6"'),
+  menu: icon('<path d="M4.5 7h15M4.5 12h15M4.5 17h15"/>', 'stroke-width="2.6"'),
+  settings: icon('<path d="M4 7h9"/><path d="M17 7h3"/><circle cx="15" cy="7" r="2"/><path d="M4 17h3"/><path d="M11 17h9"/><circle cx="9" cy="17" r="2"/>'),
+  plus: icon('<path d="M12 5v14M5 12h14"/>', 'stroke-width="2.7"'),
 
   // ── Brand / logo ───────────────────────────────────────────────────────────
-  logo: icon('<rect x="4" y="4" width="16" height="16" rx="5"/><path d="M8.5 10h.01M15.5 10h.01M9 15h6"/><path d="M12 4V2"/>'),
+  logo: icon('<path d="M7.5 4h9A3.5 3.5 0 0 1 20 7.5v9a3.5 3.5 0 0 1-3.5 3.5h-9A3.5 3.5 0 0 1 4 16.5v-9A3.5 3.5 0 0 1 7.5 4z"/><path d="M12 4V2.5"/><path d="M9 2.5h6"/><path d="M8.7 10h.01M15.3 10h.01"/><path d="M9 14.75c1.9 1.25 4.1 1.25 6 0"/>'),
 
   // ── Input toolbar ──────────────────────────────────────────────────────────
-  send: icon('<path d="M4 5l16 7-16 7 3-7-3-7z"/><path d="M7 12h8"/>', 'stroke-width="2.2"'),
-  stop: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="3"/></svg>',
-  mic: icon('<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>'),
-  file: icon('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'),
+  send: icon('<path d="M4 5.25 21 12 4 18.75 7.25 12 4 5.25z"/><path d="M7.25 12H14"/>', 'stroke-width="2.2"'),
+  stop: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5"/></svg>',
+  mic: icon('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/><path d="M8.5 21h7"/>'),
+  file: icon('<path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M14 3v5h5"/><path d="M8.5 13h7M8.5 17h5"/>'),
 
   // ── Conversation list ──────────────────────────────────────────────────────
-  chat: icon('<path d="M4 5a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-5l-5 4v-4a3 3 0 0 1-3-3V5z"/><path d="M8 7h8M8 11h5"/>'),
-  search: icon('<circle cx="10" cy="10" r="6"/><path d="M15 15l5 5"/>', 'stroke-width="2.2"'),
+  chat: icon('<path d="M6.5 4h11A3.5 3.5 0 0 1 21 7.5v6A3.5 3.5 0 0 1 17.5 17H12l-5 4v-4h-.5A3.5 3.5 0 0 1 3 13.5v-6A3.5 3.5 0 0 1 6.5 4z"/><path d="M8 9h8M8 12.5h5"/>'),
+  search: icon('<circle cx="10.75" cy="10.75" r="6.25"/><path d="m15.5 15.5 4.75 4.75"/>', 'stroke-width="2.3"'),
 
   // ── Decorative / small ─────────────────────────────────────────────────────
-  bulb: icon('<path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 7 7c0 2.5-1.3 4.7-3 6l-1 2H9l-1-2C6.3 13.7 5 11.5 5 9a7 7 0 0 1 7-7z"/>', 'width="14" height="14"'),
-  layers: icon('<polygon points="12 2 22 8.5 12 15 2 8.5"/><polyline points="2 13 12 19.5 22 13"/><polyline points="2 17.5 12 24 22 17.5"/>', 'width="14" height="14"'),
+  bulb: icon('<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6.5 6.5 0 0 1 4 11.65L15 16H9l-1-1.35A6.5 6.5 0 0 1 12 3z"/><path d="M10.5 9.5 12 11l1.5-1.5"/>', 'width="14" height="14"'),
+  layers: icon('<path d="M12 3 21 8l-9 5-9-5 9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 16 9 5 9-5"/>', 'width="14" height="14"'),
 
-  // ── Suggestion chip icons (sized by CSS) ───────────────────────────────────
-  chipCode: icon('<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>'),
-  chipPencil: icon('<path d="M5 17v2h2L19 7l-2-2L5 17z"/><path d="M14 6l4 4"/>'),
-  chipInfo: icon('<rect x="5" y="4" width="14" height="16" rx="3"/><path d="M9 9h6M9 13h6M9 17h3"/>'),
-  chipBox: icon('<rect x="4" y="5" width="16" height="14" rx="3"/><path d="M8 9h8M8 13h5"/>'),
-  chipHelp: icon('<rect x="5" y="5" width="14" height="14" rx="3"/><path d="M9 9h6M9 13h3M14 13h1M9 17h6"/>'),
+  // ── Suggestion chip icons ──────────────────────────────────────────────────
+  chipCode: icon('<path d="m8 7-5 5 5 5"/><path d="m16 7 5 5-5 5"/><path d="m14 4-4 16"/>'),
+  chipPencil: icon('<path d="M5 17.5V20h2.5L18.7 8.8a1.8 1.8 0 0 0 0-2.55l-.95-.95a1.8 1.8 0 0 0-2.55 0L5 17.5z"/><path d="M14.5 6 18 9.5"/>'),
+  chipInfo: icon('<path d="M7 4h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><path d="M12 10.5V16"/><path d="M12 7.5h.01"/>'),
+  chipBox: icon('<path d="M5 7.5 12 4l7 3.5v9L12 20l-7-3.5v-9z"/><path d="M5 7.5 12 11l7-3.5"/><path d="M12 11v9"/>'),
+  chipHelp: icon('<path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/><path d="M9.7 9.3a2.5 2.5 0 0 1 4.85.85c0 1.8-2.2 2.05-2.2 3.55"/><path d="M12.35 16.5h.01"/>'),
 
   // ── Tab icons (modal navigation) ──────────────────────────────────────────
-  tabApi: smallIcon('<rect x="1" y="4.5" width="14" height="8.5" rx="2"/><path d="M5.5 4.5V3.5a2.5 2.5 0 0 1 5 0v1"/><circle cx="8" cy="8.5" r="1.2" fill="currentColor" stroke="none"/>'),
-  tabChat: smallIcon('<path d="M14 2H2a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h3l3 3 3-3h3a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z"/>'),
-  tabAppearance: smallIcon('<circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.42 1.42M11.53 11.53l1.42 1.42M3.05 12.95l1.42-1.42M11.53 4.47l1.42-1.42"/>'),
-  tabMcp: smallIcon('<rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><path d="M11.5 9v3M9 11.5h3"/>'),
-  toolDefault: smallIcon('<path d="M13 2L3 6l4 2 2 4 4-10z"/>', 'width="14" height="14"'),
-  tabContainers: smallIcon('<path d="M8 1L1 4.5v7L8 15l7-3.5v-7L8 1z"/><path d="M1 4.5l7 3.5 7-3.5"/><path d="M8 8v7"/>'),
+  tabApi: smallIcon('<rect x="2" y="5" width="12" height="8" rx="2"/><path d="M5.5 5V4a2.5 2.5 0 0 1 5 0v1"/><path d="M6 9h4"/>'),
+  tabChat: smallIcon('<path d="M3.5 3h9A1.5 1.5 0 0 1 14 4.5v5A1.5 1.5 0 0 1 12.5 11H8l-3.5 3v-3h-1A1.5 1.5 0 0 1 2 9.5v-5A1.5 1.5 0 0 1 3.5 3z"/>'),
+  tabAppearance: smallIcon('<circle cx="8" cy="8" r="2.25"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/>'),
+  tabMcp: smallIcon('<rect x="2" y="2" width="4.5" height="4.5" rx="1"/><rect x="9.5" y="2" width="4.5" height="4.5" rx="1"/><rect x="2" y="9.5" width="4.5" height="4.5" rx="1"/><path d="M6.5 4.25h3M4.25 6.5v3M9.5 4.25v7a2.25 2.25 0 0 1-2.25 2.25H6.5"/>'),
+  toolDefault: smallIcon('<path d="M13.5 2.5 3 6.5l4.25 2.25L9.5 13 13.5 2.5z"/>', 'width="14" height="14"'),
+  tabContainers: smallIcon('<path d="M8 1.5 14 4.75v6.5L8 14.5l-6-3.25v-6.5L8 1.5z"/><path d="M2 4.75 8 8l6-3.25"/><path d="M8 8v6.5"/>'),
 
   // ── API key visibility toggle ──────────────────────────────────────────────
-  eyeShow: smallIcon('<path d="M1 8s3-5.5 7-5.5S15 8 15 8s-3 5.5-7 5.5S1 8 1 8z"/><circle cx="8" cy="8" r="2"/>', 'width="14" height="14"'),
-  eyeHide: smallIcon('<path d="M1 8s3-5.5 7-5.5S15 8 15 8s-3 5.5-7 5.5S1 8 1 8z"/><circle cx="8" cy="8" r="2"/><line x1="2" y1="2" x2="14" y2="14"/>', 'width="14" height="14"'),
+  eyeShow: smallIcon('<path d="M1.5 8s2.7-4.75 6.5-4.75S14.5 8 14.5 8 11.8 12.75 8 12.75 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/>', 'width="14" height="14"'),
+  eyeHide: smallIcon('<path d="M1.5 8s2.7-4.75 6.5-4.75S14.5 8 14.5 8 11.8 12.75 8 12.75 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/><path d="M2.5 2.5 13.5 13.5"/>', 'width="14" height="14"'),
 
-  // ── Sync / fetch (used for Fetch Models and Reload Tools buttons) ──────────
-  syncIcon: smallIcon('<path d="M14 8A6 6 0 1 1 9.7 2.5"/><path d="M14 2v4h-4"/>'),
+  // ── Sync / fetch ───────────────────────────────────────────────────────────
+  syncIcon: smallIcon('<path d="M13.5 8A5.5 5.5 0 0 1 4 11.85"/><path d="M2.5 8A5.5 5.5 0 0 1 12 4.15"/><path d="M12.5 2.5v3h-3"/><path d="M3.5 13.5v-3h3"/>'),
 
-  // ── MCP server icons (used in tool strips & the per-server icon picker) ────
-  mcpWebSearch: icon('<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>', 'width="14" height="14"'),
-  mcpBash: icon('<rect x="1" y="2" width="22" height="20" rx="2"/><polyline points="7 9 11 13 7 17"/><line x1="13" y1="17" x2="19" y2="17"/>', 'width="14" height="14"'),
-  mcpFileSystem: icon('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>', 'width="14" height="14"'),
-  mcpMemory: icon('<rect x="4" y="4" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/>', 'width="14" height="14"'),
-  mcpDatabase: icon('<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>', 'width="14" height="14"'),
-  mcpGit: icon('<line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>', 'width="14" height="14"'),
-  mcpFile: icon('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>', 'width="14" height="14"'),
-  mcpPencil: icon('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>', 'width="14" height="14"'),
-  mcpLink: icon('<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>', 'width="14" height="14"'),
-  mcpEye: icon('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>', 'width="14" height="14"'),
+  // ── MCP server icons ───────────────────────────────────────────────────────
+  mcpWebSearch: icon('<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 3.5 9A14 14 0 0 1 12 21a14 14 0 0 1-3.5-9A14 14 0 0 1 12 3z"/>', 'width="14" height="14"'),
+  mcpBash: icon('<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="m7.5 9 3 3-3 3"/><path d="M13 15h4"/>', 'width="14" height="14"'),
+  mcpFileSystem: icon('<path d="M3 6.5A2.5 2.5 0 0 1 5.5 4h4l2 2.5h7A2.5 2.5 0 0 1 21 9v8.5A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5v-11z"/>', 'width="14" height="14"'),
+  mcpMemory: icon('<rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx=".75"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>', 'width="14" height="14"'),
+  mcpDatabase: icon('<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.65 3.6 3 8 3s8-1.35 8-3V6"/><path d="M20 12c0 1.65-3.6 3-8 3s-8-1.35-8-3"/>', 'width="14" height="14"'),
+  mcpGit: icon('<path d="M7 5v8.5a3.5 3.5 0 0 0 3.5 3.5H14"/><circle cx="7" cy="5" r="2.5"/><circle cx="7" cy="18" r="2.5"/><circle cx="17" cy="17" r="2.5"/><path d="M7 13.5V18"/>', 'width="14" height="14"'),
+  mcpFile: icon('<path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M14 3v5h5"/>', 'width="14" height="14"'),
+  mcpPencil: icon('<path d="M4.5 17.5V20h2.5L18.7 8.3a1.8 1.8 0 0 0 0-2.55l-.45-.45a1.8 1.8 0 0 0-2.55 0L4.5 17.5z"/><path d="M14.75 6.25 17.75 9.25"/>', 'width="14" height="14"'),
+  mcpLink: icon('<path d="M10.25 13.75a4 4 0 0 0 5.65 0l2.35-2.35a4 4 0 0 0-5.65-5.65L11.25 7.1"/><path d="M13.75 10.25a4 4 0 0 0-5.65 0L5.75 12.6a4 4 0 0 0 5.65 5.65l1.35-1.35"/>', 'width="14" height="14"'),
+  mcpEye: icon('<path d="M2 12s3.8-7 10-7 10 7 10 7-3.8 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>', 'width="14" height="14"'),
 });
