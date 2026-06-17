@@ -7,7 +7,17 @@ const BOTTOM_THRESHOLD = 32;
 export let stickToBottom = true;
 
 export const messagesEl = () => $('#messages');
+const mainEl = () => document.getElementById('main');
+const composerEl = () => document.getElementById('composer-area');
 const isNearBottom = el => el.scrollHeight - el.scrollTop - el.clientHeight <= BOTTOM_THRESHOLD;
+
+export function moveComposerToMain() {
+  const main = mainEl();
+  const messages = messagesEl();
+  const composer = composerEl();
+  if (!main || !messages || !composer || composer.parentElement === main) return;
+  main.insertBefore(composer, messages.nextSibling);
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   messagesEl()?.addEventListener('scroll', event => {
@@ -29,8 +39,9 @@ export function scrollToBottom(force = false) {
 }
 
 export function createMessageRow({ avatarClass, avatarIcon, roleLabel, isUser = false }) {
+  moveComposerToMain();
   remove('#empty-state');
-  document.getElementById('main')?.classList.remove('is-empty');
+  mainEl()?.classList.remove('is-empty');
 
   const row = createElement('div', { className: `msg-row${isUser ? ' user-row' : ''}` });
   const metaHtml = isUser

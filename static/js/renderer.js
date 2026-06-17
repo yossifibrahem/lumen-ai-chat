@@ -14,7 +14,7 @@ import { createElement } from './dom.js';
 import { ICONS } from './icons.js';
 import { escapeHtml } from './format.js';
 
-import { scrollToBottom as _scrollToBottom, messagesEl, createMessageRow } from './renderer_core.js';
+import { scrollToBottom as _scrollToBottom, messagesEl, createMessageRow, moveComposerToMain } from './renderer_core.js';
 import { prepareAssistantRow } from './renderer_groups.js';
 import { getRawText, appendContentParts } from './renderer_attachments.js';
 import { appendThinkingBlock } from './renderer_thinking.js';
@@ -38,12 +38,16 @@ const SUGGESTION_CHIPS = [
 ];
 
 export function clearMessages() {
-  messagesEl().innerHTML = `
+  const messages = messagesEl();
+  const composer = document.getElementById('composer-area');
+
+  messages.innerHTML = `
     <div id="empty-state">
       <div class="es-logo"><span>Lu</span><em>men</em></div>
       <div class="es-sub">A clean little console for big thoughts.</div>
     </div>`;
 
+  if (composer) messages.appendChild(composer);
   document.getElementById('main')?.classList.add('is-empty');
 
   const suggestionsBar = document.getElementById('suggestions-bar');
@@ -157,6 +161,7 @@ function ensureTerminalAssistantFooter(displayLog) {
 
 
 export function renderAllMessages(displayLog) {
+  moveComposerToMain();
   messagesEl().innerHTML = '';
   if (displayLog.length > 0) {
     document.getElementById('main')?.classList.remove('is-empty');

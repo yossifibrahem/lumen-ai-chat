@@ -12,12 +12,17 @@
   animation: dockSlideIn .35s var(--ease) both;
 }
 
-/* Centered mode: new conversation */
+/* Empty state: the composer becomes part of the centered welcome stack. */
 #main.is-empty #composer-area {
-  top: 50%;
+  position: relative;
+  top: auto;
   bottom: auto;
-  transform: translateX(-50%) translateY(-50%);
-  animation: centerFadeIn .35s var(--ease) both;
+  left: auto;
+  flex: 0 0 auto;
+  width: min(var(--dock-w), 100%);
+  max-width: 100%;
+  transform: none;
+  animation: fadeUp .35s var(--ease) both;
 }
 
 #composer-input-panel {

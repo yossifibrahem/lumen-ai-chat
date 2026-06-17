@@ -50,13 +50,26 @@
 }
 
 /* ─── Empty state ──────────────────────────────────────────────────────────── */
-#empty-state {
-  height: 100%;
+#main.is-empty #messages {
+  padding: clamp(18px, 4vh, 40px) clamp(12px, 4vw, 20px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding-bottom: 240px; /* push heading up to make room for centered dock */
+  gap: clamp(16px, 3vh, 26px);
+  overflow-y: auto;
+}
+
+@supports (justify-content: safe center) {
+  #main.is-empty #messages { justify-content: safe center; }
+}
+
+#empty-state {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   animation: fadeUp .3s ease both;
 }

@@ -13,7 +13,7 @@
   #chat-header { height: calc(var(--chat-header-mobile-h, 50px) + env(safe-area-inset-top, 0px)); padding: env(safe-area-inset-top, 0px) 12px 0; gap: 8px; }
   #chat-title-input { font-size: .82rem; }
   #composer-area { bottom: env(safe-area-inset-bottom, 12px); width: calc(100% - 24px); }
-  #main.is-empty #composer-area { transform: translateX(-50%) translateY(-50%); }
+  #main.is-empty #composer-area { width: 100%; transform: none; }
   .msg-row { padding: 12px 14px 4px; }
   .msg-row:first-child { padding-top: 18px; }
   .msg-content { font-size: .875rem; }
@@ -25,7 +25,7 @@
   .msg-content table { display: block; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .msg-content pre { max-width: 100%; }
   .msg-content pre code { font-size: .75rem; }
-  #empty-state { padding-bottom: 280px; }
+  #main.is-empty #messages { padding-block: clamp(14px, 3vh, 28px); }
   .input-hint { display: none; }
   .conv-item { padding: 10px 8px; }
   .conv-menu-btn { opacity: 1; padding: 6px; }
