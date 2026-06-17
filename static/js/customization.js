@@ -2,6 +2,7 @@
 
 import { state, CUSTOMIZATION_DEFAULTS, STORAGE_KEYS } from './state.js';
 import { storage } from './storage.js';
+import { refreshIcons } from './icons.js';
 
 // ── Apply ─────────────────────────────────────────────────────────────────────
 // Reads from `state` and pushes every setting into the live DOM.
@@ -61,6 +62,8 @@ function _applyUiTheme(theme) {
     const link = document.getElementById(linkId);
     if (link) link.disabled = normalized !== themeKey;
   });
+
+  refreshIcons();
 }
 
 function _applyFontFamily(family) {
