@@ -1,4 +1,4 @@
-/* Retro flat pixel visual style. Loaded only when selected in Appearance. */
+/* Retro flat pixel redesign. Loaded last as a visual skin over the existing UI. */
 
 :root {
   --fast: .12s;
@@ -99,13 +99,8 @@ button, input, textarea, select {
   letter-spacing: inherit;
 }
 
-/* Keep press effects scoped. Collapsible thinking/tool headers should not shift. */
-:is(.sidebar-action, #btn-new-chat, #send-btn, #stop-btn, #attach-btn, #mic-btn, #model-badge, .suggestion-chip, .msg-action-btn, .btn-primary, .btn-secondary, .msg-edit-save, .msg-edit-cancel, .file-row, .modal-tab, .cust-swatch):active {
+button:active {
   transform: translate(1px, 1px);
-}
-
-:is(.thinking-header, .tc-item-header, .tr-summary, .group-header):active {
-  transform: none;
 }
 
 :is(button, [role="button"], input, textarea, select, .mp-chip, .model-chip, .model-row, .file-row):focus-visible {
@@ -543,12 +538,29 @@ button, input, textarea, select {
   opacity: 1;
 }
 
-/* Pixel message accents */
+/* Messages */
 .msg-row {
+  max-width: var(--content-w);
+  padding: 24px 30px 8px;
   animation: pixelMessageIn .18s steps(6, end) both;
 }
 
+.msg-row:first-child {
+  padding-top: 34px;
+}
+
+.msg-meta {
+  gap: 9px;
+  margin-bottom: 9px;
+}
+
+.user-row .msg-meta {
+  justify-content: flex-end;
+}
+
 .msg-avatar {
+  width: 28px;
+  height: 28px;
   border: 2px solid var(--border-strong);
   border-radius: 5px;
   box-shadow: 2px 2px 0 var(--pixel-shadow);
@@ -564,8 +576,14 @@ button, input, textarea, select {
   color: var(--accent);
 }
 
+.msg-avatar svg {
+  width: 14px;
+  height: 14px;
+}
+
 .msg-role-label {
   color: var(--accent);
+  font-size: .64rem;
   font-weight: 800;
   letter-spacing: .13em;
 }
@@ -575,15 +593,21 @@ button, input, textarea, select {
 }
 
 .msg-content {
+  width: fit-content;
+  max-width: 100%;
+  padding: 15px 17px;
   border: 2px solid var(--border-strong);
   border-radius: 9px;
   background: var(--message-ai);
+  color: var(--text);
   box-shadow: 5px 5px 0 var(--pixel-shadow);
   font-size: .98rem;
   line-height: 1.72;
 }
 
 .user-row .msg-content {
+  max-width: min(78%, 680px);
+  margin-left: auto;
   background: var(--message-user);
   color: var(--on-accent);
 }
@@ -611,6 +635,7 @@ button, input, textarea, select {
   font-family: var(--font-pixel);
   font-weight: 600;
   letter-spacing: .01em;
+  text-transform: none;
 }
 
 .msg-content blockquote {
@@ -644,6 +669,7 @@ button, input, textarea, select {
 }
 
 .msg-content code:not(pre code) {
+  padding: 2px 6px;
   border: 2px solid var(--border);
   border-radius: 5px;
   background: var(--code-bg);
@@ -702,9 +728,17 @@ button, input, textarea, select {
   opacity: 1;
 }
 
+.user-row .msg-footer {
+  justify-content: flex-end;
+}
+
 .msg-action-btn {
+  min-width: 26px;
+  height: 24px;
+  padding: 3px 6px;
   border: 2px solid transparent;
   border-radius: 5px;
+  background: transparent;
 }
 
 .msg-action-btn:hover {
@@ -714,12 +748,20 @@ button, input, textarea, select {
 }
 
 #main.is-streaming .msg-row:not(.user-row):last-child .msg-content:not(.msg-status)::after {
+  content: ' ▌';
   color: var(--accent);
   animation: pixelBlink 1s steps(2, end) infinite;
 }
 
 .msg-attachments-grid {
   gap: 10px;
+  margin-top: 8px;
+}
+
+.user-row .msg-attachments-grid,
+.user-row .msg-footer {
+  margin-left: auto;
+  max-width: min(78%, 680px);
 }
 
 /* Thinking and tool panels */
@@ -762,18 +804,6 @@ button, input, textarea, select {
   background: var(--surface2);
   border: 2px solid var(--border);
   border-radius: 4px;
-}
-
-.group-body > .thinking-block .thinking-header:active,
-.group-body > .tool-strip .tr-summary:active,
-.group-body > .tool-strip .tool-strip-using:active,
-.group-body > .tool-strip .tool-strip-running-row:active {
-  transform: none;
-}
-
-.group-body > .thinking-block .thinking-icon,
-.group-body > .tool-strip .tool-icon {
-  transform: none !important;
 }
 
 .tool-strip-using .tui-name,
@@ -1100,15 +1130,6 @@ svg {
   .modal-tab {
     padding: 8px 9px;
   }
-}
-
-
-@media (max-width: 1024px) {
-  #file-panel { --file-panel-overlay-top: calc(60px + env(safe-area-inset-top, 0px)); }
-}
-
-@media (max-width: 768px) {
-  #file-panel { --file-panel-overlay-top: calc(56px + env(safe-area-inset-top, 0px)); }
 }
 
 @media (prefers-reduced-motion: reduce) {

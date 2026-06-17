@@ -40,7 +40,6 @@ const SUGGESTION_CHIPS = [
 export function clearMessages() {
   messagesEl().innerHTML = `
     <div id="empty-state">
-      <div class="es-badge">READY PLAYER TEXT</div>
       <div class="es-logo"><span>Lu</span><em>men</em></div>
       <div class="es-sub">A clean little console for big thoughts.</div>
     </div>`;
