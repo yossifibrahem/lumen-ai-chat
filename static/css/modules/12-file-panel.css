@@ -187,9 +187,11 @@ body.file-panel-resizing { cursor: col-resize; user-select: none; }
   overflow: hidden;
 }
 .file-preview-content.msg-content {
+  width: 100%;
   max-width: none;
   min-height: 100%;
 }
+.file-preview-code.msg-content { width: 100%; }
 .file-preview-code.msg-content pre {
   margin: 0;
   min-height: 100%;
