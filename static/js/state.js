@@ -20,6 +20,7 @@ export const CUSTOMIZATION_DEFAULTS = {
   fontSize:              'medium',    // 'small' | 'medium' | 'large'
   fontFamily:            'space',     // 'space' | 'pixel' | 'sora' | 'tiempos' | 'mono' | 'system'
   theme:                 'auto',      // 'dark' | 'light' | 'auto'
+  uiTheme:              'retro-pixel', // 'default' | 'retro-pixel'
   accentColor:           '#d96c4b',   // preset swatch
   customAccentColor:     '',          // user custom hex
 };

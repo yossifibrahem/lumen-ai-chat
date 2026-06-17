@@ -8,9 +8,20 @@ import { storage } from './storage.js';
 
 let autoThemeListenerAttached = false;
 
+const UI_THEME_STYLESHEETS = {
+  'retro-pixel': 'ui-theme-retro-pixel',
+};
+
+function normalizeUiTheme(theme) {
+  return theme === 'retro-pixel' ? 'retro-pixel' : 'default';
+}
+
 export function applyCustomization() {
   // Theme (light/dark/auto)
   _applyTheme(state.theme || CUSTOMIZATION_DEFAULTS.theme);
+
+  // Visual style / UI theme
+  _applyUiTheme(state.uiTheme || CUSTOMIZATION_DEFAULTS.uiTheme);
 
   // Font size
   const isMobile = window.innerWidth <= 768;
@@ -40,6 +51,16 @@ function _applyTheme(theme) {
     effective = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
   }
   document.documentElement.setAttribute('data-theme', effective);
+}
+
+function _applyUiTheme(theme) {
+  const normalized = normalizeUiTheme(theme);
+  document.documentElement.setAttribute('data-ui-theme', normalized);
+
+  Object.entries(UI_THEME_STYLESHEETS).forEach(([themeKey, linkId]) => {
+    const link = document.getElementById(linkId);
+    if (link) link.disabled = normalized !== themeKey;
+  });
 }
 
 function _applyFontFamily(family) {
@@ -97,6 +118,7 @@ export function saveCustomization() {
     fontSize:              state.fontSize,
     fontFamily:            state.fontFamily,
     theme:                 state.theme,
+    uiTheme:               state.uiTheme,
     accentColor:           state.accentColor,
     customAccentColor:     state.customAccentColor,
   });
@@ -164,6 +186,9 @@ export function syncCustomizationUI() {
   const ff = document.getElementById('cust-font-family');
   if (ff) ff.value = state.fontFamily;
 
+  const uiTheme = document.getElementById('cust-ui-theme');
+  if (uiTheme) uiTheme.value = normalizeUiTheme(state.uiTheme || CUSTOMIZATION_DEFAULTS.uiTheme);
+
   // Theme radio
   const themeRadio = document.querySelector(`input[name="cust-theme"][value="${state.theme || CUSTOMIZATION_DEFAULTS.theme}"]`);
   if (themeRadio) themeRadio.checked = true;
@@ -192,6 +217,7 @@ function _readControlsIntoState() {
   state.groupSequentialBlocks = document.getElementById('cust-group-seq-blocks')?.checked  ?? state.groupSequentialBlocks;
   state.fontSize              = document.getElementById('cust-font-size')?.value           ?? state.fontSize;
   state.fontFamily            = document.getElementById('cust-font-family')?.value         ?? state.fontFamily;
+  state.uiTheme               = normalizeUiTheme(document.getElementById('cust-ui-theme')?.value ?? state.uiTheme);
 
   const themeRadio = document.querySelector('input[name="cust-theme"]:checked');
   if (themeRadio) state.theme = themeRadio.value;

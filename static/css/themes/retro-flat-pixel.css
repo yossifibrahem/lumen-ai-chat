@@ -1,4 +1,4 @@
-/* Retro flat pixel redesign. Loaded last as a visual skin over the existing UI. */
+/* Retro flat pixel visual style. Loaded only when selected in Appearance. */
 
 :root {
   --fast: .12s;

@@ -9,11 +9,18 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600&family=Pixelify+Sans:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+<link id="ui-theme-retro-pixel" rel="stylesheet" href="{{ url_for('static', filename='css/themes/retro-flat-pixel.css') }}" disabled />
 <script>
 (function () {
   try {
     var prefs = JSON.parse(localStorage.getItem('lumen_customization') || '{}');
     var root = document.documentElement;
+    var uiTheme = prefs.uiTheme || 'retro-pixel';
+    if (uiTheme !== 'retro-pixel') uiTheme = 'default';
+    root.setAttribute('data-ui-theme', uiTheme);
+    var retroThemeLink = document.getElementById('ui-theme-retro-pixel');
+    if (retroThemeLink) retroThemeLink.disabled = uiTheme !== 'retro-pixel';
+
     var hex = prefs.customAccentColor || prefs.accentColor;
     if (/^#[0-9a-f]{6}$/i.test(hex || '')) {
       var n = parseInt(hex.slice(1), 16);
