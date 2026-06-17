@@ -13,13 +13,12 @@ export const SETTINGS_DEFAULTS = {
 };
 
 export const CUSTOMIZATION_DEFAULTS = {
-  uiStyle:              'retro-pixel', // 'default' | 'retro-pixel'
   showSuggestionChips:   true,
   hideToolBlocks:         true,
   groupSequentialBlocks:  true,
   hideThinkingTokens:     true,
   fontSize:              'medium',    // 'small' | 'medium' | 'large'
-  fontFamily:            'style',     // 'style' | 'space' | 'pixel' | 'sora' | 'tiempos' | 'mono' | 'system'
+  fontFamily:            'space',     // 'space' | 'pixel' | 'sora' | 'tiempos' | 'mono' | 'system'
   theme:                 'auto',      // 'dark' | 'light' | 'auto'
   accentColor:           '#d96c4b',   // preset swatch
   customAccentColor:     '',          // user custom hex

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-ui-style="retro-pixel">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -29,10 +29,6 @@
   try {
     var prefs = JSON.parse(localStorage.getItem('lumen_customization') || '{}');
     var r = document.documentElement;
-
-    // UI style
-    var uiStyle = prefs.uiStyle || 'retro-pixel';
-    r.setAttribute('data-ui-style', uiStyle === 'default' ? 'default' : 'retro-pixel');
 
     // Accent color
     var hex = prefs.customAccentColor || prefs.accentColor;
@@ -79,7 +75,7 @@
 
     // Font family
     var fontMap = { space: "'Space Grotesk', sans-serif", pixel: "'Pixelify Sans', 'JetBrains Mono', monospace", sora: "'Sora', sans-serif", tiempos: "'Instrument Serif', Georgia, serif", mono: "'JetBrains Mono', monospace", system: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" };
-    if (prefs.fontFamily && prefs.fontFamily !== 'style' && fontMap[prefs.fontFamily]) {
+    if (prefs.fontFamily && fontMap[prefs.fontFamily]) {
       r.style.setProperty('--font-roman', fontMap[prefs.fontFamily]);
     }
 
@@ -370,20 +366,6 @@
       <div id="tab-appearance" class="tab-panel">
 
         <div class="settings-section">
-          <div class="section-title">UI Style</div>
-          <div class="field">
-            <label>Style pack</label>
-            <select id="cust-ui-style">
-              <option value="retro-pixel">Retro Pixel</option>
-              <option value="default">Default Lumen</option>
-            </select>
-            <div class="field-note">Switch the whole visual skin. This is ready for more style packs later.</div>
-          </div>
-        </div>
-
-        <div class="section-sep"></div>
-
-        <div class="settings-section">
           <div class="section-title">Theme</div>
           <div class="theme-cards">
             <label class="theme-card" data-theme="dark">
@@ -432,7 +414,6 @@
             <div class="field">
               <label>Font family</label>
               <select id="cust-font-family">
-                <option value="style">Style default</option>
                 <option value="space">Space Grotesk (modern)</option>
                 <option value="pixel">Pixelify Sans (pixel)</option>
                 <option value="sora">Sora (sans-serif)</option>
