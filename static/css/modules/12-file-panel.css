@@ -228,7 +228,7 @@ body.file-panel-resizing { cursor: col-resize; user-select: none; }
 
 @media (max-width: 1024px) {
   #file-panel {
-    --file-panel-overlay-top: calc(54px + env(safe-area-inset-top, 0px));
+    --file-panel-overlay-top: calc(var(--chat-header-h, 54px) + env(safe-area-inset-top, 0px));
     position: fixed;
     top: var(--file-panel-overlay-top);
     right: 0;
@@ -248,7 +248,7 @@ body.file-panel-resizing { cursor: col-resize; user-select: none; }
 }
 
 @media (max-width: 768px) {
-  #file-panel { --file-panel-overlay-top: calc(50px + env(safe-area-inset-top, 0px)); }
+  #file-panel { --file-panel-overlay-top: calc(var(--chat-header-mobile-h, 50px) + env(safe-area-inset-top, 0px)); }
   .file-panel-header,
   .file-preview-header { min-height: calc(50px + env(safe-area-inset-top, 0px)); }
 }

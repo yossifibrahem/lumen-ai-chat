@@ -85,6 +85,21 @@
   margin-top: 4px;
 }
 
+/* Interaction guard: themes may add pressed-button transforms, but expanding/collapsing
+   thinking and tool rows should not move their timeline icons. */
+:is(.thinking-header, .tc-item-header, .tr-summary, .group-header):active,
+.group-body > .thinking-block .thinking-header:active,
+.group-body > .tool-strip .tr-summary:active,
+.group-body > .tool-strip .tool-strip-using:active,
+.group-body > .tool-strip .tool-strip-running-row:active {
+  transform: none;
+}
+.group-body > .thinking-block .thinking-icon,
+.group-body > .tool-strip .tool-icon {
+  transform: none !important;
+}
+
+
 .tc-item { margin-bottom: 4px; }
 .tc-item-row { gap: 6px; display: flex; align-items: center; }
 .tc-item-header { min-width: 0; }

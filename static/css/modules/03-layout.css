@@ -1,5 +1,10 @@
 /* Main shell, chat header, message viewport, and empty state. */
 
+:root {
+  --chat-header-h: 54px;
+  --chat-header-mobile-h: 50px;
+}
+
 /* ─── Main layout & header ─────────────────────────────────────────────────── */
 #main {
   flex: 1;
@@ -12,7 +17,7 @@
   transition: margin-left .28s var(--ease);
 }
 #chat-header {
-  height: calc(54px + env(safe-area-inset-top, 0px));
+  height: calc(var(--chat-header-h, 54px) + env(safe-area-inset-top, 0px));
   padding: env(safe-area-inset-top, 0px) 20px 0;
   display: flex;
   align-items: center;
