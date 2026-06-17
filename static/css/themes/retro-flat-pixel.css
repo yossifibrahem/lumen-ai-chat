@@ -18,7 +18,6 @@
   --red: #c84f42;
   --blue: #547fb2;
 
-  --sidebar-w: 304px;
   --content-w: 900px;
   --dock-w: 820px;
   --chat-header-h: 60px;
@@ -542,7 +541,6 @@ svg { shape-rendering: geometricPrecision; }
 
 
 @media (max-width: 768px) {
-  :root { --sidebar-w: min(86vw, 316px); }
   #chat-header { padding-inline: 12px; }
   #messages { padding-bottom: 290px; }
   .msg-row { padding: 18px 14px 6px; }

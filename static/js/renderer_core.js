@@ -33,10 +33,13 @@ export function createMessageRow({ avatarClass, avatarIcon, roleLabel, isUser = 
   document.getElementById('main')?.classList.remove('is-empty');
 
   const row = createElement('div', { className: `msg-row${isUser ? ' user-row' : ''}` });
+  const metaHtml = isUser
+    ? `<span class="msg-role-label">${roleLabel}</span><div class="msg-avatar ${avatarClass}">${avatarIcon}</div>`
+    : `<div class="msg-avatar ${avatarClass}">${avatarIcon}</div><span class="msg-role-label">${roleLabel}</span>`;
+
   row.innerHTML = `
     <div class="msg-meta">
-      <div class="msg-avatar ${avatarClass}">${avatarIcon}</div>
-      <span class="msg-role-label">${roleLabel}</span>
+      ${metaHtml}
     </div>`;
 
   messagesEl().appendChild(row);
