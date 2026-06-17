@@ -659,6 +659,47 @@
   </div>
 </div>
 
+<!-- Rename conversation modal -->
+<div class="modal-overlay" id="rename-conv-modal" role="dialog" aria-modal="true" aria-labelledby="rename-conv-title">
+  <div class="modal" style="max-width:420px;height:auto;">
+    <div class="modal-header" style="display:flex;">
+      <span id="rename-conv-title" class="section-title" style="margin:0;font-size:.95rem;">Rename conversation</span>
+      <button class="modal-close" data-close="rename-conv-modal" aria-label="Close" style="margin-left:auto;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" style="padding:20px 22px 16px;">
+      <div class="field" style="margin-bottom:0;">
+        <label for="rename-conv-input">Title</label>
+        <input id="rename-conv-input" type="text" class="input-base" placeholder="Conversation title" autocomplete="off" />
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex;">
+      <button class="btn-secondary" data-close="rename-conv-modal">Cancel</button>
+      <button class="btn-primary" id="rename-conv-confirm">Rename</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete conversation confirm modal -->
+<div class="modal-overlay" id="delete-conv-modal" role="dialog" aria-modal="true" aria-labelledby="delete-conv-title">
+  <div class="modal" style="max-width:380px;height:auto;">
+    <div class="modal-header" style="display:flex;">
+      <span id="delete-conv-title" class="section-title" style="margin:0;font-size:.95rem;">Delete conversation?</span>
+      <button class="modal-close" data-close="delete-conv-modal" aria-label="Close" style="margin-left:auto;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" style="padding:16px 22px;">
+      <p style="margin:0;color:var(--text2);font-size:.82rem;line-height:1.55;">This will permanently delete the conversation and cannot be undone.</p>
+    </div>
+    <div class="modal-footer" style="display:flex;">
+      <button class="btn-secondary" data-close="delete-conv-modal">Cancel</button>
+      <button class="btn-danger" id="delete-conv-confirm">Delete</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div id="toast"></div>
 

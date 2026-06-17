@@ -4,7 +4,7 @@ import { api }         from './api.js';
 import { state, STORAGE_KEYS } from './state.js';
 import { storage } from './storage.js';
 import { clearMessages, renderAllMessages } from './renderer.js';
-import { toggleSidebar } from './ui.js';
+import { toggleSidebar, openModal, closeModal } from './ui.js';
 import { ICONS } from './icons.js';
 import { escapeHtml } from './format.js';
 import { refreshFilePanel, resetFilePanel } from './file_panel.js';
@@ -231,26 +231,55 @@ export async function createNewConversation() {
   upsertConversationListItem(data);
 }
 
-export async function renameConversation(convId) {
+export function renameConversation(convId) {
   if (!convId) return;
 
   const currentTitle = document.querySelector(`.conv-item[data-id="${CSS.escape(convId)}"] .conv-title`)?.textContent || 'Untitled';
-  const title = prompt('Rename conversation', currentTitle);
-  if (title === null) return;
+  const input   = document.getElementById('rename-conv-input');
+  const confirm = document.getElementById('rename-conv-confirm');
+  const overlay = document.getElementById('rename-conv-modal');
 
-  const nextTitle = title.trim() || 'Untitled';
-  await persistConversationFor(convId, { title: nextTitle });
+  input.value = currentTitle;
+  openModal('rename-conv-modal');
+  requestAnimationFrame(() => { input.focus(); input.select(); });
 
-  if (state.convId === convId) updateTitleInput(nextTitle);
+  // Clone to drop any previous listeners
+  const freshConfirm = confirm.cloneNode(true);
+  confirm.replaceWith(freshConfirm);
+
+  const cleanup = () => closeModal('rename-conv-modal');
+
+  const submit = async () => {
+    input.removeEventListener('keydown', keyHandler);
+    const nextTitle = input.value.trim() || 'Untitled';
+    cleanup();
+    await persistConversationFor(convId, { title: nextTitle });
+    if (state.convId === convId) updateTitleInput(nextTitle);
+  };
+
+  function keyHandler(e) {
+    if (e.key === 'Enter')  { submit(); }
+    if (e.key === 'Escape') { input.removeEventListener('keydown', keyHandler); cleanup(); }
+  }
+
+  freshConfirm.addEventListener('click', submit, { once: true });
+  input.addEventListener('keydown', keyHandler);
 }
 
-export async function deleteConversation(convId) {
-  if (!confirm('Delete this conversation?')) return;
-  await api.delete(`/api/conversations/${convId}`);
-  if (state.convId === convId) {
-    startNewChat();
-  }
-  await loadConversationList();
+export function deleteConversation(convId) {
+  const confirmBtn = document.getElementById('delete-conv-confirm');
+  openModal('delete-conv-modal');
+
+  // Clone to drop any previous listeners, then re-attach once
+  const freshConfirm = confirmBtn.cloneNode(true);
+  confirmBtn.replaceWith(freshConfirm);
+
+  freshConfirm.addEventListener('click', async () => {
+    closeModal('delete-conv-modal');
+    await api.delete(`/api/conversations/${convId}`);
+    if (state.convId === convId) startNewChat();
+    await loadConversationList();
+  }, { once: true });
 }
 
 export async function persistConversationFor(convId, { title, messages, displayLog }) {
