@@ -3,7 +3,7 @@
 // are hydrated at boot by calling initIcons().
 
 const icon = (body, attrs = '') =>
-  `<svg ${attrs} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+  `<svg ${attrs} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" shape-rendering="crispEdges">${body}</svg>`;
 
 // Shared SVG bodies reused by multiple icons to avoid duplicate paths.
 const _xBody   = '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>';
@@ -11,8 +11,8 @@ const _penBody = '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2
 
 export const ICONS = {
   // ── Avatars ────────────────────────────────────────────────────────────────
-  user: icon('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'),
-  ai:   icon('<rect x="7" y="7" width="10" height="10" rx="1"/><line x1="9" y1="7" x2="9" y2="3"/><line x1="12" y1="7" x2="12" y2="3"/><line x1="15" y1="7" x2="15" y2="3"/><line x1="9" y1="17" x2="9" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="15" y1="17" x2="15" y2="21"/><line x1="7" y1="9" x2="3" y2="9"/><line x1="7" y1="12" x2="3" y2="12"/><line x1="7" y1="15" x2="3" y2="15"/><line x1="17" y1="9" x2="21" y2="9"/><line x1="17" y1="12" x2="21" y2="12"/><line x1="17" y1="15" x2="21" y2="15"/>'),
+  user: icon('<rect x="7" y="4" width="10" height="10"/><path d="M5 22v-3a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v3"/><path d="M10 8h.01M14 8h.01"/>'),
+  ai:   icon('<rect x="4" y="5" width="16" height="14"/><path d="M8 9h2M14 9h2M9 14h6"/><path d="M12 5V2M9 2h6"/>'),
 
   // ── Actions ────────────────────────────────────────────────────────────────
   check:   icon('<polyline points="20 6 9 17 4 12"/>', 'stroke-width="2.5"'),
@@ -28,33 +28,33 @@ export const ICONS = {
   chevronLeft:  icon('<polyline points="15 18 9 12 15 6"/>',   'width="10" height="10" stroke-width="2.5"'),
   chevronRight: icon('<polyline points="9 18 15 12 9 6"/>',   'width="10" height="10" stroke-width="2.5"'),
   chevronDown:  icon('<polyline points="6 9 12 15 18 9"/>',   'width="10" height="10" stroke-width="2.5"'),
-  menu:         icon('<rect x="3" y="4" width="18" height="16" rx="3"/><line x1="9" y1="4" x2="9" y2="20"/>'),
-  settings:     icon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'),
-  plus: icon('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',              'stroke-width="2.2"'),
+  menu:         icon('<rect x="3" y="4" width="18" height="16"/><path d="M9 4v16M5 8h2M5 12h2M5 16h2"/>'),
+  settings:     icon('<path d="M4 7h16M4 17h16"/><rect x="7" y="4" width="4" height="6"/><rect x="13" y="14" width="4" height="6"/>'),
+  plus: icon('<path d="M12 5v14M5 12h14"/>', 'stroke-width="2.6"'),
 
   // ── Brand / logo ───────────────────────────────────────────────────────────
-  logo: icon('<path d="M12 1l2.7 7.9L23 12l-8.3 3.1L12 23l-2.7-7.9L1 12l8.3-3.1L12 1z"/>'),
+  logo: icon('<path d="M4 4h16v16H4z"/><path d="M8 9h2v2H8zM14 9h2v2h-2zM9 15h6"/>'),
 
   // ── Input toolbar ──────────────────────────────────────────────────────────
-  send:      icon('<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>', 'stroke-width="2.5"'),
+  send:      icon('<path d="M4 4l16 8-16 8v-6l8-2-8-2V4z"/>', 'stroke-width="2.2"'),
   stop: `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`,
   mic:       icon('<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>'),
   file:      icon('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'),
 
   // ── Conversation list ──────────────────────────────────────────────────────
-  chat: icon('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
-  search: icon('<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>', 'stroke-width="2.2"'),
+  chat: icon('<path d="M4 4h16v12H9l-5 4V4z"/><path d="M8 8h8M8 12h6"/>'),
+  search: icon('<rect x="4" y="4" width="11" height="11"/><path d="M15 15l5 5"/>', 'stroke-width="2.2"'),
 
   // ── Decorative / small ─────────────────────────────────────────────────────
   bulb:   icon('<path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 7 7c0 2.5-1.3 4.7-3 6l-1 2H9l-1-2C6.3 13.7 5 11.5 5 9a7 7 0 0 1 7-7z"/>', 'width="14" height="14"'),
   layers: icon('<polygon points="12 2 22 8.5 12 15 2 8.5"/><polyline points="2 13 12 19.5 22 13"/><polyline points="2 17.5 12 24 22 17.5"/>', 'width="14" height="14"'),
 
   // ── Suggestion chip icons (sized by CSS) ───────────────────────────────────
-  chipCode:    icon('<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>'),
-  chipPencil:  icon(_penBody),
-  chipInfo:    icon('<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'),
-  chipBox:     icon('<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>'),
-  chipHelp:    icon('<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>'),
+  chipCode:    icon('<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>'),
+  chipPencil:  icon('<path d="M5 17v2h2L19 7l-2-2L5 17z"/><path d="M14 6l4 4"/>'),
+  chipInfo:    icon('<rect x="5" y="4" width="14" height="16"/><path d="M9 9h6M9 13h6M9 17h3"/>'),
+  chipBox:     icon('<path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/>'),
+  chipHelp:    icon('<path d="M5 5h14v14H5z"/><path d="M9 9h6M9 13h3M14 13h1M9 17h6"/>'),
 
 
   // ── Tab icons (modal navigation) ──────────────────────────────────────────

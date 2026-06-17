@@ -18,9 +18,9 @@ export const CUSTOMIZATION_DEFAULTS = {
   groupSequentialBlocks:  true,
   hideThinkingTokens:     true,
   fontSize:              'medium',    // 'small' | 'medium' | 'large'
-  fontFamily:            'sora',      // 'sora' | 'tiempos' | 'mono' | 'system'
+  fontFamily:            'space',     // 'space' | 'pixel' | 'sora' | 'tiempos' | 'mono' | 'system'
   theme:                 'auto',      // 'dark' | 'light' | 'auto'
-  accentColor:           '#c9a96e',   // preset swatch
+  accentColor:           '#d96c4b',   // preset swatch
   customAccentColor:     '',          // user custom hex
 };
 

@@ -9,7 +9,7 @@
 
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600&family=Pixelify+Sans:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
 <!-- Rendering libraries -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -74,7 +74,7 @@
     r.setAttribute('data-theme', theme);
 
     // Font family
-    var fontMap = { sora: "'Sora', sans-serif", tiempos: "'Tiempos Text', Georgia, serif", mono: "'JetBrains Mono', monospace", system: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" };
+    var fontMap = { space: "'Space Grotesk', sans-serif", pixel: "'Pixelify Sans', 'JetBrains Mono', monospace", sora: "'Sora', sans-serif", tiempos: "'Instrument Serif', Georgia, serif", mono: "'JetBrains Mono', monospace", system: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" };
     if (prefs.fontFamily && fontMap[prefs.fontFamily]) {
       r.style.setProperty('--font-roman', fontMap[prefs.fontFamily]);
     }
@@ -414,8 +414,10 @@
             <div class="field">
               <label>Font family</label>
               <select id="cust-font-family">
+                <option value="space">Space Grotesk (modern)</option>
+                <option value="pixel">Pixelify Sans (pixel)</option>
                 <option value="sora">Sora (sans-serif)</option>
-                <option value="tiempos">Tiempos Text (serif)</option>
+                <option value="tiempos">Instrument Serif (vintage)</option>
                 <option value="mono">JetBrains Mono</option>
                 <option value="system">System default</option>
               </select>
@@ -428,14 +430,14 @@
         <div class="settings-section">
           <div class="section-title">Accent Color</div>
           <div class="cust-swatches">
-            <button class="cust-swatch" data-color="#c9a96e" title="Gold"   style="--sw: #c9a96e;"></button>
+            <button class="cust-swatch" data-color="#d96c4b" title="Terracotta" style="--sw: #d96c4b;"></button>
             <button class="cust-swatch" data-color="#6fa3c9" title="Blue"   style="--sw: #6fa3c9;"></button>
             <button class="cust-swatch" data-color="#6db87a" title="Green"  style="--sw: #6db87a;"></button>
             <button class="cust-swatch" data-color="#c96e9a" title="Pink"   style="--sw: #c96e9a;"></button>
             <button class="cust-swatch" data-color="#9a6ec9" title="Purple" style="--sw: #9a6ec9;"></button>
             <button class="cust-swatch" data-color="#c97a6e" title="Coral"  style="--sw: #c97a6e;"></button>
             <button class="cust-swatch" data-color="#6ec9be" title="Teal"   style="--sw: #6ec9be;"></button>
-            <button class="cust-swatch" data-color="#c66240" title="Ochre"  style="--sw: #c66240;"></button>
+            <button class="cust-swatch" data-color="#c9a96e" title="Honey"  style="--sw: #c9a96e;"></button>
           </div>
           <div class="custom-color-row">
             <label class="custom-color-label">Custom color</label>

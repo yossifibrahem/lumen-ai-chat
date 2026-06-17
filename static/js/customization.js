@@ -44,12 +44,14 @@ function _applyTheme(theme) {
 
 function _applyFontFamily(family) {
   const map = {
+    space:   "'Space Grotesk', sans-serif",
+    pixel:   "'Pixelify Sans', 'JetBrains Mono', monospace",
     sora:    "'Sora', sans-serif",
-    tiempos: "'Tiempos Text', Georgia, serif",
+    tiempos: "'Instrument Serif', Georgia, serif",
     mono:    "'JetBrains Mono', monospace",
     system:  "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   };
-  document.documentElement.style.setProperty('--font-roman', map[family] || map.sora);
+  document.documentElement.style.setProperty('--font-roman', map[family] || map.space);
 }
 
 function _applyAccent(hex) {

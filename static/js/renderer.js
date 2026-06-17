@@ -30,18 +30,19 @@ export { refreshMessageFooter } from './renderer_actions.js';
 export function scrollToBottom(force = false) { _scrollToBottom(force); }
 
 const SUGGESTION_CHIPS = [
-  { icon: ICONS.chipCode,   label: 'Code',       prompt: 'Help me write some code' },
-  { icon: ICONS.chipPencil, label: 'Write',       prompt: 'Help me write something' },
-  { icon: ICONS.chipInfo,   label: 'Explain',     prompt: 'Explain a concept to me' },
-  { icon: ICONS.chipBox,    label: 'Analyze',     prompt: 'Analyze this for me' },
-  { icon: ICONS.chipHelp,   label: 'Brainstorm',  prompt: 'Help me brainstorm ideas about' },
+  { icon: ICONS.chipCode,   label: 'Build',      prompt: 'Help me build a clean solution for' },
+  { icon: ICONS.chipPencil, label: 'Draft',      prompt: 'Help me draft this clearly:' },
+  { icon: ICONS.chipInfo,   label: 'Teach',      prompt: 'Explain this step by step:' },
+  { icon: ICONS.chipBox,    label: 'Inspect',    prompt: 'Analyze this carefully:' },
+  { icon: ICONS.chipHelp,   label: 'Ideas',      prompt: 'Brainstorm practical ideas for' },
 ];
 
 export function clearMessages() {
   messagesEl().innerHTML = `
     <div id="empty-state">
-      <div class="es-logo">Lu<em>men</em></div>
-      <div class="es-sub">Your AI assistant — ready to help</div>
+      <div class="es-badge">READY PLAYER TEXT</div>
+      <div class="es-logo"><span>Lu</span><em>men</em></div>
+      <div class="es-sub">A clean little console for big thoughts.</div>
     </div>`;
 
   document.getElementById('main')?.classList.add('is-empty');
