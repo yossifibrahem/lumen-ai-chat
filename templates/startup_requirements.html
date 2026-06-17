@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="dark" data-ui-style="retro-pixel">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -14,6 +14,9 @@
   try {
     var prefs = JSON.parse(localStorage.getItem('lumen_customization') || '{}');
     var root = document.documentElement;
+    var uiStyle = prefs.uiStyle || 'retro-pixel';
+    root.setAttribute('data-ui-style', uiStyle === 'default' ? 'default' : 'retro-pixel');
+
     var hex = prefs.customAccentColor || prefs.accentColor;
     if (/^#[0-9a-f]{6}$/i.test(hex || '')) {
       var n = parseInt(hex.slice(1), 16);

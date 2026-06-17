@@ -9,6 +9,9 @@ import { storage } from './storage.js';
 let autoThemeListenerAttached = false;
 
 export function applyCustomization() {
+  // Visual style pack
+  _applyUIStyle(state.uiStyle || CUSTOMIZATION_DEFAULTS.uiStyle);
+
   // Theme (light/dark/auto)
   _applyTheme(state.theme || CUSTOMIZATION_DEFAULTS.theme);
 
@@ -20,7 +23,7 @@ export function applyCustomization() {
   document.documentElement.style.setProperty('--font-size-base', sizes[state.fontSize] || sizes.medium);
 
   // Font family
-  _applyFontFamily(state.fontFamily || 'sora');
+  _applyFontFamily(state.fontFamily || CUSTOMIZATION_DEFAULTS.fontFamily);
 
   // Accent color — custom hex overrides swatch if set
   const accent = (state.customAccentColor && /^#[0-9a-f]{6}$/i.test(state.customAccentColor))
@@ -34,6 +37,11 @@ export function applyCustomization() {
 
 }
 
+function _applyUIStyle(style) {
+  const next = style === 'default' ? 'default' : 'retro-pixel';
+  document.documentElement.setAttribute('data-ui-style', next);
+}
+
 function _applyTheme(theme) {
   let effective = theme;
   if (theme === 'auto') {
@@ -43,6 +51,11 @@ function _applyTheme(theme) {
 }
 
 function _applyFontFamily(family) {
+  if (!family || family === 'style') {
+    document.documentElement.style.removeProperty('--font-roman');
+    return;
+  }
+
   const map = {
     space:   "'Space Grotesk', sans-serif",
     pixel:   "'Pixelify Sans', 'JetBrains Mono', monospace",
@@ -89,6 +102,7 @@ export function loadCustomization() {
 export function saveCustomization() {
   _readControlsIntoState();
   storage.set(STORAGE_KEYS.customization, {
+    uiStyle:              state.uiStyle,
     sidebarDefaultOpen:    state.sidebarDefaultOpen,
     showSuggestionChips:   state.showSuggestionChips,
     hideToolBlocks:        state.hideToolBlocks,
@@ -152,6 +166,9 @@ function _deactivateSwatches() {
 // ── Sync UI controls → current state ─────────────────────────────────────────
 
 export function syncCustomizationUI() {
+  const uiStyle = document.getElementById('cust-ui-style');
+  if (uiStyle) uiStyle.value = state.uiStyle || CUSTOMIZATION_DEFAULTS.uiStyle;
+
   _setCheckbox('cust-sidebar-open',    state.sidebarDefaultOpen);
   _setCheckbox('cust-suggestion-chips',state.showSuggestionChips);
   _setCheckbox('cust-hide-tool-blocks',   state.hideToolBlocks);
@@ -185,6 +202,7 @@ export function syncCustomizationUI() {
 // ── Read DOM controls → state ─────────────────────────────────────────────────
 
 function _readControlsIntoState() {
+  state.uiStyle              = document.getElementById('cust-ui-style')?.value || state.uiStyle;
   state.sidebarDefaultOpen    = document.getElementById('cust-sidebar-open')?.checked     ?? state.sidebarDefaultOpen;
   state.showSuggestionChips   = document.getElementById('cust-suggestion-chips')?.checked  ?? state.showSuggestionChips;
   state.hideToolBlocks        = document.getElementById('cust-hide-tool-blocks')?.checked   ?? state.hideToolBlocks;
