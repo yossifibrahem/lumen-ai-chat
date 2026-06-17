@@ -26,8 +26,9 @@ body.lumen-desktop-chrome #file-panel.open {
 
 @media (max-width: 1024px) {
   body.lumen-desktop-chrome #file-panel {
-    top: var(--desktop-titlebar-h);
-    height: calc(var(--vvh, 100dvh) - var(--desktop-titlebar-h));
+    --desktop-file-panel-overlay-top: calc(var(--desktop-titlebar-h) + var(--file-panel-overlay-top, calc(54px + env(safe-area-inset-top, 0px))));
+    top: var(--desktop-file-panel-overlay-top);
+    height: calc(var(--vvh, 100dvh) - var(--desktop-file-panel-overlay-top));
     margin-top: 0;
     margin-right: 0;
   }

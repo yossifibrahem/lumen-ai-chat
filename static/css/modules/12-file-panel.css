@@ -226,13 +226,15 @@ body.file-panel-resizing { cursor: col-resize; user-select: none; }
 
 @media (max-width: 1024px) {
   #file-panel {
+    --file-panel-overlay-top: calc(54px + env(safe-area-inset-top, 0px));
     position: fixed;
-    top: 0;
+    top: var(--file-panel-overlay-top);
     right: 0;
-    bottom: 0;
+    bottom: auto;
     width: min(460px, 94vw) !important;
     min-width: min(460px, 94vw);
     max-width: 94vw;
+    height: calc(var(--vvh, 100dvh) - var(--file-panel-overlay-top));
     margin-right: 0;
     box-shadow: -12px 0 40px rgba(0,0,0,.55);
     transform: translateX(105%);
@@ -244,6 +246,7 @@ body.file-panel-resizing { cursor: col-resize; user-select: none; }
 }
 
 @media (max-width: 768px) {
+  #file-panel { --file-panel-overlay-top: calc(50px + env(safe-area-inset-top, 0px)); }
   .file-panel-header,
   .file-preview-header { min-height: calc(50px + env(safe-area-inset-top, 0px)); }
 }

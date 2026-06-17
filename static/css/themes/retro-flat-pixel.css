@@ -99,8 +99,13 @@ button, input, textarea, select {
   letter-spacing: inherit;
 }
 
-button:active {
+/* Keep press effects scoped. Collapsible thinking/tool headers should not shift. */
+:is(.sidebar-action, #btn-new-chat, #send-btn, #stop-btn, #attach-btn, #mic-btn, #model-badge, .suggestion-chip, .msg-action-btn, .btn-primary, .btn-secondary, .msg-edit-save, .msg-edit-cancel, .file-row, .modal-tab, .cust-swatch):active {
   transform: translate(1px, 1px);
+}
+
+:is(.thinking-header, .tc-item-header, .tr-summary, .group-header):active {
+  transform: none;
 }
 
 :is(button, [role="button"], input, textarea, select, .mp-chip, .model-chip, .model-row, .file-row):focus-visible {
@@ -819,6 +824,18 @@ button:active {
   border-radius: 4px;
 }
 
+.group-body > .thinking-block .thinking-header:active,
+.group-body > .tool-strip .tr-summary:active,
+.group-body > .tool-strip .tool-strip-using:active,
+.group-body > .tool-strip .tool-strip-running-row:active {
+  transform: none;
+}
+
+.group-body > .thinking-block .thinking-icon,
+.group-body > .tool-strip .tool-icon {
+  transform: none !important;
+}
+
 .tool-strip-using .tui-name,
 .tool-strip-running .tui-name,
 .thinking-block.thinking-streaming .thinking-label,
@@ -1143,6 +1160,15 @@ svg {
   .modal-tab {
     padding: 8px 9px;
   }
+}
+
+
+@media (max-width: 1024px) {
+  #file-panel { --file-panel-overlay-top: calc(60px + env(safe-area-inset-top, 0px)); }
+}
+
+@media (max-width: 768px) {
+  #file-panel { --file-panel-overlay-top: calc(56px + env(safe-area-inset-top, 0px)); }
 }
 
 @media (prefers-reduced-motion: reduce) {
