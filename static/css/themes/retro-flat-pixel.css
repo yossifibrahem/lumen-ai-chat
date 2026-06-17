@@ -45,7 +45,7 @@
   --text3: #9c8d6b;
   --code-bg: #11100c;
   --message-ai: #27241a;
-  --message-user: #d96c4b;
+  --message-user: var(--accent);
   --on-accent: #20110c;
   --pixel-shadow: rgba(0, 0, 0, .36);
   --soft-shadow: 6px 6px 0 rgba(0, 0, 0, .26);
@@ -65,7 +65,7 @@
   --text3: #8c704e;
   --code-bg: #fffdf2;
   --message-ai: #fff8e6;
-  --message-user: #d96c4b;
+  --message-user: var(--accent);
   --on-accent: #25150f;
   --pixel-shadow: rgba(47, 36, 24, .24);
   --soft-shadow: 5px 5px 0 rgba(111, 82, 47, .20);
@@ -353,10 +353,16 @@ button, input, textarea, select { letter-spacing: inherit; }
 .msg-avatar {
   border: var(--pixel-border-strong);
   border-radius: 5px;
+  background: var(--surface2);
+  color: var(--accent);
   box-shadow: 2px 2px 0 var(--pixel-shadow);
 }
-.msg-avatar.user-av { background: var(--accent); color: var(--on-accent); }
-.msg-avatar.ai-av { background: var(--surface2); color: var(--accent); }
+.msg-avatar.user-av,
+.msg-avatar.ai-av {
+  background: var(--surface2);
+  border-color: var(--border-strong);
+  color: var(--accent);
+}
 .msg-role-label { color: var(--accent); font-weight: 800; letter-spacing: .13em; }
 .user-row .msg-role-label { color: var(--text3); }
 .msg-content {

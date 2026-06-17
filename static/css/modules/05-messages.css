@@ -27,9 +27,15 @@
   place-items: center;
   font-size: .72rem;
   border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--accent);
 }
-.msg-avatar.user-av { background: var(--accent-dim); color: var(--accent); }
-.msg-avatar.ai-av { background: var(--surface2); color: var(--accent); }
+.msg-avatar.user-av,
+.msg-avatar.ai-av {
+  background: var(--surface2);
+  border-color: var(--border);
+  color: var(--accent);
+}
 .msg-avatar svg { width: 14px; height: 14px; }
 
 .msg-role-label {
