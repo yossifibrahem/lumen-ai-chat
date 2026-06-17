@@ -14,7 +14,7 @@ import { sendMessage, stopAssistantTurn, editAndResend, regenerateFrom } from '.
 import { initImageAttachments, hasPendingAttachments } from './chat_attachments.js';
 import { initVoiceInput } from './voice.js';
 import { clearMessages } from './renderer.js';
-import { ICONS, initIcons } from './icons.js';
+import { initIcons } from './icons.js';
 import { loadCustomization, saveCustomization, initSwatchPicker, syncCustomizationUI } from './customization.js';
 import { initFilePanel } from './file_panel.js';
 import { loadContainerSettings, saveContainerSettings, deleteAllData } from './container_settings.js';
@@ -64,9 +64,6 @@ function bindSidebarEvents() {
 function bindModelPickerEvents() {
   const modelBadge   = document.getElementById('model-badge');
   const modelPopover = document.getElementById('model-popover');
-
-  // Prepend the AI avatar icon from the single source of truth in icons.js
-  modelBadge.insertAdjacentHTML('afterbegin', `<span class="model-icon">${ICONS.ai}</span>`);
 
   modelBadge.addEventListener('click', e => {
     e.stopPropagation();
