@@ -3,19 +3,9 @@
 
 [data-ui-theme="vintage-typewriter"] {
   --font-roman: 'Special Elite', 'Courier New', ui-monospace, monospace;
-  --font-tiempos: 'Instrument Serif', Georgia, serif;
   --type-font: var(--font-roman);
 
-  --green: #65794f;
   --red: #a94338;
-  --blue: #536e74;
-
-  --radius: 9px;
-  --radius-sm: 5px;
-  --radius-md: 7px;
-  --content-w: 810px;
-  --dock-w: 790px;
-  --sidebar-w: 292px;
 
   --machine: #201e1a;
   --machine2: #302b24;
@@ -105,7 +95,6 @@
 
 [data-ui-theme="vintage-typewriter"] body::before { display: none; }
 
-[data-ui-theme="vintage-typewriter"] body::after { display: none; }
 [data-ui-theme="vintage-typewriter"] :is(button, input, textarea, select) { font-family: var(--type-font); }
 
 [data-ui-theme="vintage-typewriter"] :is(
@@ -293,10 +282,6 @@
 
 [data-ui-theme="vintage-typewriter"] #chat-title-input { min-height: 34px; padding: 6px 11px; font-family: var(--type-font); font-size: .86rem; font-weight: 900; }
 [data-ui-theme="vintage-typewriter"] :is(.header-actions button, #btn-toggle-sidebar, #btn-toggle-files) { min-width: 34px; min-height: 34px; }
-[data-ui-theme="vintage-typewriter"] .modal-overlay { z-index: 300; }
-[data-ui-theme="vintage-typewriter"] #composer-area { z-index: 30; }
-[data-ui-theme="vintage-typewriter"] #main.is-empty #composer-area { width: min(var(--dock-w), 100%); }
-
 [data-ui-theme="vintage-typewriter"] #empty-state::before {
   content: 'LUMEN';
   display: grid;
@@ -359,13 +344,11 @@
 [data-ui-theme="vintage-typewriter"] .input-toolbar { padding: 9px 10px 11px; border-top: 1px solid rgba(255,255,255,.08); border-radius: 0 0 12px 12px; background: var(--machine2); }
 [data-ui-theme="vintage-typewriter"] :is(.input-hint, .char-count) { color: rgba(239,225,193,.68); }
 [data-ui-theme="vintage-typewriter"] :is(.input-hint, .char-count, #model-badge, .mp-header, .model-row, .model-chip) { font-family: var(--type-font); }
-[data-ui-theme="vintage-typewriter"] #model-popover { bottom: calc(100% + 12px); z-index: 240; }
+[data-ui-theme="vintage-typewriter"] #model-popover { bottom: calc(100% + 12px); }
 [data-ui-theme="vintage-typewriter"] .mp-header { border-bottom: 1px solid var(--border2); background: var(--paper3); color: var(--accent); font-weight: 900; letter-spacing: .12em; }
 [data-ui-theme="vintage-typewriter"] #mp-model-list { background: transparent; }
-[data-ui-theme="vintage-typewriter"] #model-badge-label { max-width: 150px; }
-
 /* Messages: typed sheets. */
-[data-ui-theme="vintage-typewriter"] .msg-row { max-width: var(--content-w); padding-top: 26px; }
+[data-ui-theme="vintage-typewriter"] .msg-row { padding-top: 26px; }
 [data-ui-theme="vintage-typewriter"] .msg-meta { margin-bottom: 8px; }
 [data-ui-theme="vintage-typewriter"] .msg-avatar { width: 31px; height: 31px; }
 [data-ui-theme="vintage-typewriter"] .msg-role-label { color: var(--accent); font-family: var(--type-font); font-size: .64rem; font-weight: 900; letter-spacing: .16em; }
