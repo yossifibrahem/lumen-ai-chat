@@ -39,7 +39,7 @@
   .modal-body { padding: 16px; }
   .modal-footer { padding: 12px 16px; }
   .field :is(input, select, textarea) { padding: 11px 12px; font-size: 0.94rem; }
-  .btn-primary, .btn-secondary { padding: 10px 18px; }
+  .btn-primary, .btn-secondary, .btn-danger { padding: 10px 18px; }
   #model-badge-label { max-width: 100px; }
   .suggestion-chip { font-size: .65rem; padding: 6px 11px; }
 }

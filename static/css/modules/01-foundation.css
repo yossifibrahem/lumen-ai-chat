@@ -88,7 +88,7 @@ svg { flex-shrink: 0; }
 #file-preview-body::-webkit-scrollbar-thumb,
 .msg-content pre::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 999px; }
 
-:is(#btn-toggle-sidebar, #btn-toggle-files, .modal-close, .conv-menu-btn, #attach-btn, #mic-btn, #send-btn, #stop-btn, .file-panel-actions button, .file-preview-actions button, .msg-action-btn, .tc-allow, .tc-deny, .btn-primary, .btn-secondary, .modal-tab, .sidebar-action, #btn-new-chat, #model-badge, .mp-chip, .model-chip, .model-row, .model-refresh-btn, .server-icon-btn, .icon-option, .eye-btn, .file-row, .suggestion-chip, .code-copy, .img-preview-remove) {
+:is(#btn-toggle-sidebar, #btn-toggle-files, .modal-close, .conv-menu-btn, #attach-btn, #mic-btn, #send-btn, #stop-btn, .file-panel-actions button, .file-preview-actions button, .msg-action-btn, .tc-allow, .tc-deny, .btn-primary, .btn-secondary, .btn-danger, .modal-tab, .sidebar-action, #btn-new-chat, #model-badge, .mp-chip, .model-chip, .model-row, .model-refresh-btn, .server-icon-btn, .icon-option, .eye-btn, .file-row, .suggestion-chip, .code-copy, .img-preview-remove) {
   transition: color var(--fast), background var(--fast), border-color var(--fast), opacity var(--fast), transform var(--fast), box-shadow var(--fast);
 }
 
@@ -107,7 +107,7 @@ svg { flex-shrink: 0; }
   align-items: center;
 }
 
-:is(.conv-section-label, .msg-role-label, .input-hint, .char-count, .field label, .field-note, .status-msg, .mp-header, .mp-chip, .model-chip, .mp-empty, .btn-primary, .btn-secondary, .tc-item-header, .tr-summary, .thinking-header, .arg-value, .tr-result, .tr-args, .arg-name, .tr-section-label, .tool-card-name, .no-tools-label, #mcp-config-editor, #btn-new-chat, #model-badge, .msg-action-btn, .tc-allow, .tc-deny, .tc-status, .tool-strip-running, .tool-strip-using, .group-header) {
+:is(.conv-section-label, .msg-role-label, .input-hint, .char-count, .field label, .field-note, .status-msg, .mp-header, .mp-chip, .model-chip, .mp-empty, .btn-primary, .btn-secondary, .btn-danger, .tc-item-header, .tr-summary, .thinking-header, .arg-value, .tr-result, .tr-args, .arg-name, .tr-section-label, .tool-card-name, .no-tools-label, #mcp-config-editor, #btn-new-chat, #model-badge, .msg-action-btn, .tc-allow, .tc-deny, .tc-status, .tool-strip-running, .tool-strip-using, .group-header) {
   font-family: var(--font-mono);
 }
 

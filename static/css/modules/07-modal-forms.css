@@ -31,12 +31,12 @@
 #system-prompt { min-height: 180px; }
 .btn-row { gap: 8px; margin-bottom: 4px; }
 .mcp-actions-row { margin-top: 10px; }
-.btn-primary, .btn-secondary { min-height: 34px; padding: 8px 16px; border: none; border-radius: var(--radius-md); font-size: .73rem; font-weight: 500; letter-spacing: .3px; }
+.btn-primary, .btn-secondary, .btn-danger { min-height: 34px; padding: 8px 16px; border: none; border-radius: var(--radius-md); font-size: .73rem; font-weight: 500; letter-spacing: .3px; cursor: pointer; }
 .btn-primary { background: var(--accent); color: var(--bg); }
 .btn-primary:hover { opacity: .9; transform: translateY(-1px); }
 .btn-secondary { border: 1px solid var(--border); background: var(--surface2); color: var(--text2); }
 .btn-secondary:hover { border-color: var(--border2); background: var(--surface); color: var(--text); }
-.btn-secondary:disabled { cursor: wait; opacity: .65; }
+.btn-secondary:disabled, .btn-danger:disabled { cursor: wait; opacity: .65; }
 .status-msg { display: none; margin-top: 12px; padding: 8px 12px; border-radius: 7px; font-size: .72rem; font-family: var(--font-mono); }
 .status-msg strong, .status-msg span { display: block; }
 .status-msg span { margin-top: 3px; opacity: .75; font-size: .64rem; line-height: 1.4; }
@@ -85,21 +85,8 @@
 .danger-zone .section-title { color: var(--red); }
 .danger-zone-desc { margin: 0 0 14px; color: var(--text2); font-size: .75rem; line-height: 1.55; }
 .danger-zone-row { display: flex; align-items: center; gap: 10px; }
-.btn-danger {
-  min-height: 34px;
-  padding: 8px 16px;
-  border: 1px solid rgba(196, 78, 66, .45);
-  border-radius: var(--radius-md);
-  background: rgba(196, 78, 66, .1);
-  color: var(--red);
-  font-size: .73rem;
-  font-weight: 500;
-  letter-spacing: .3px;
-  transition: background var(--fast), border-color var(--fast), opacity var(--fast);
-  cursor: pointer;
-}
-.btn-danger:hover:not(:disabled) { background: rgba(196, 78, 66, .18); border-color: rgba(196, 78, 66, .65); }
-.btn-danger:disabled { opacity: .5; cursor: wait; }
+.btn-danger { border: 1px solid rgba(196, 78, 66, .45); background: var(--surface2); color: var(--red); }
+.btn-danger:hover:not(:disabled) { border-color: rgba(196, 78, 66, .65); background: var(--surface); color: var(--red); }
 .danger-status {
   margin-top: 10px;
   font-size: .72rem;

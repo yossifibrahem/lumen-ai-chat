@@ -81,7 +81,7 @@ body::before {
     linear-gradient(to bottom, rgba(160,100,0,.045) 1px, transparent 1px);
 }
 /* Keep press effects scoped so collapsible thinking/tool headers do not jump. */
-:is(.sidebar-action, #btn-new-chat, #send-btn, #stop-btn, #attach-btn, #mic-btn, #model-badge, .suggestion-chip, .msg-action-btn, .btn-primary, .btn-secondary, .msg-edit-save, .msg-edit-cancel, .file-row, .modal-tab, .cust-swatch):active {
+:is(.sidebar-action, #btn-new-chat, #send-btn, #stop-btn, #attach-btn, #mic-btn, #model-badge, .suggestion-chip, .msg-action-btn, .btn-primary, .btn-secondary, .btn-danger, .msg-edit-save, .msg-edit-cancel, .file-row, .modal-tab, .cust-swatch):active {
   transform: translate(1px, 1px);
 }
 /* Shared pixel boxes */
@@ -106,18 +106,20 @@ body::before {
   background: var(--surface2);
   box-shadow: var(--shadow);
 }
-:is(.btn-primary, .btn-secondary, .msg-edit-save, .msg-edit-cancel) {
+:is(.btn-primary, .btn-secondary, .btn-danger, .msg-edit-save, .msg-edit-cancel) {
   border: var(--pixel-border-strong);
   border-radius: 6px;
   box-shadow: var(--pixel-shadow-sm);
   font-weight: 800;
 }
-:is(.btn-primary, .btn-secondary, .msg-edit-save, .msg-edit-cancel):hover {
+:is(.btn-primary, .btn-secondary, .btn-danger, .msg-edit-save, .msg-edit-cancel):hover {
   transform: translate(-1px, -1px);
   box-shadow: var(--pixel-shadow-md);
 }
 :is(.btn-primary, .msg-edit-save) { background: var(--accent); color: var(--on-accent); }
-:is(.btn-secondary, .msg-edit-cancel) { background: var(--surface2); color: var(--text); }
+:is(.btn-secondary, .btn-danger, .msg-edit-cancel) { background: var(--surface2); color: var(--text); }
+.btn-danger { color: var(--red); }
+.btn-danger:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
 
 /* Sidebar */
 #sidebar {
