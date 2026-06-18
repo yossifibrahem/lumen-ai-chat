@@ -23,6 +23,11 @@
   --dock-w: 790px;
   --sidebar-w: 292px;
 
+  --machine: #201e1a;
+  --machine2: #302b24;
+  --machine3: #100e0b;
+  --machine-fg: #efe1c1;
+
   --key-radius: 8px;
   --key-drop: 4px;
   --key-face: #e2d3b5;
@@ -60,10 +65,6 @@
   --code-text: #2a1f13;
   --shadow: 0 24px 60px rgba(37, 28, 17, .25);
 
-  --machine: #201e1a;
-  --machine2: #302b24;
-  --machine3: #100e0b;
-  --machine-fg: #efe1c1;
   --paper: #ead9b7;
   --paper2: #dfcba2;
   --paper3: #c7ad7d;
@@ -82,7 +83,7 @@
   --accent-border-mid: rgba(154, 61, 50, .62);
 
   --bg: #1a1009;
-  --surface: #3C2A1E;
+  --surface: #332419;
   --surface2: #4a2f1d;
   --surface3: #5b3a24;
   --border: #4a3d29;
@@ -94,10 +95,6 @@
   --code-text: #ecd4a7;
   --shadow: 0 30px 72px rgba(0, 0, 0, .62);
 
-  --machine: #0e0d0a;
-  --machine2: #19150f;
-  --machine3: #050403;
-  --machine-fg: #e4d0a5;
   --paper: #a78d60;
   --paper2: #94784e;
   --paper3: #765b37;
