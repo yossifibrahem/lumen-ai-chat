@@ -2,7 +2,7 @@ import { createElement } from './dom.js';
 import { ICONS } from './icons.js';
 import { state } from './state.js';
 import { messagesEl } from './renderer_core.js';
-import { getRawText, normalizeContentAttachments, renderAttachmentCard } from './renderer_attachments.js';
+import { getRawText, normalizeContentAttachments, createAttachmentsGrid } from './renderer_attachments.js';
 
 function createMessageAction(icon, onClick) {
   const btn = createElement('button', { className: 'msg-action-btn', html: `${icon}` });
@@ -78,6 +78,7 @@ export function addAssistantFooter(row, getText, logIndex, branch = null) {
 function startInlineEdit(row, logIndex, currentText, currentContent = null, branch = null) {
   const contentEl = row.querySelector('.msg-content');
   const footerEl  = row.querySelector('.msg-footer');
+  const outsideAttachmentsEl = row.querySelector(':scope > .msg-attachments-grid--outside');
   if (!contentEl) return;
 
   const preservedContent = currentContent && typeof currentContent === 'object' && !Array.isArray(currentContent)
@@ -88,6 +89,7 @@ function startInlineEdit(row, logIndex, currentText, currentContent = null, bran
   const files = attachments.filter(entry => entry.kind === 'file');
 
   contentEl.style.display = 'none';
+  if (outsideAttachmentsEl) outsideAttachmentsEl.style.display = 'none';
   footerEl?.remove();
 
   const editWrap = createElement('div', { className: 'msg-edit-wrap' });
@@ -102,6 +104,7 @@ function startInlineEdit(row, logIndex, currentText, currentContent = null, bran
   const cancelEdit = () => {
     editWrap.remove();
     contentEl.style.display = '';
+    if (outsideAttachmentsEl) outsideAttachmentsEl.style.display = '';
     addUserFooter(row, () => currentText, logIndex, () => currentContent, branch);
   };
 
@@ -110,6 +113,7 @@ function startInlineEdit(row, logIndex, currentText, currentContent = null, bran
     if (!newText && !attachments.length) return;
     editWrap.remove();
     contentEl.style.display = '';
+    if (outsideAttachmentsEl) outsideAttachmentsEl.style.display = '';
     row.dispatchEvent(new CustomEvent('chat:edit-resend', { bubbles: true, detail: { logIndex, newText, imageUrls, files, attachments } }));
   });
 
@@ -124,9 +128,8 @@ function startInlineEdit(row, logIndex, currentText, currentContent = null, bran
   actions.appendChild(saveBtn);
 
   if (attachments.length) {
-    const attachmentStrip = createElement('div', { className: 'msg-edit-attachments msg-attachments-grid' });
-    attachments.forEach(attachment => attachmentStrip.appendChild(renderAttachmentCard(attachment, { edit: true })));
-    editWrap.appendChild(attachmentStrip);
+    const attachmentStrip = createAttachmentsGrid(preservedContent, { className: 'msg-edit-attachments', edit: true });
+    if (attachmentStrip) editWrap.appendChild(attachmentStrip);
   }
 
   editWrap.appendChild(textarea);

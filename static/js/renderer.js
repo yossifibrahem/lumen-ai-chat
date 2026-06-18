@@ -16,7 +16,7 @@ import { escapeHtml } from './format.js';
 
 import { scrollToBottom as _scrollToBottom, messagesEl, createMessageRow, moveComposerToMain } from './renderer_core.js';
 import { prepareAssistantRow } from './renderer_groups.js';
-import { getRawText, appendContentParts } from './renderer_attachments.js';
+import { getRawText, appendContentParts, createAttachmentsGrid } from './renderer_attachments.js';
 import { appendThinkingBlock } from './renderer_thinking.js';
 import { appendToolResultInline } from './renderer_tools.js';
 import { addUserFooter, addAssistantFooter } from './renderer_actions.js';
@@ -87,7 +87,17 @@ export function appendMessage(role, content, logIndex = -1, entry = null) {
   row.querySelector('.msg-footer')?.remove();
 
   const contentEl = createElement('div', { className: 'msg-content' });
-  appendContentParts(contentEl, content);
+
+  if (isUser) {
+    const attachmentsEl = createAttachmentsGrid(content, { className: 'msg-attachments-grid--outside' });
+    if (attachmentsEl) row.appendChild(attachmentsEl);
+
+    appendContentParts(contentEl, content, { includeAttachments: false });
+    if (attachmentsEl && !getRawText(content).trim()) contentEl.classList.add('msg-content-empty');
+  } else {
+    appendContentParts(contentEl, content);
+  }
+
   row.appendChild(contentEl);
 
   if (isUser) {

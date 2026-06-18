@@ -17,6 +17,18 @@ export function normalizeContentAttachments(content = {}) {
   ];
 }
 
+export function createAttachmentsGrid(content, { className = '', edit = false } = {}) {
+  const attachments = normalizeContentAttachments(content);
+  if (!attachments.length) return null;
+
+  const classes = ['msg-attachments-grid'];
+  if (className) classes.push(className);
+
+  const attachmentsWrap = createElement('div', { className: classes.join(' ') });
+  attachments.forEach(attachment => attachmentsWrap.appendChild(renderAttachmentCard(attachment, { edit })));
+  return attachmentsWrap;
+}
+
 export function renderAttachmentCard(attachment, { edit = false } = {}) {
   if (attachment.kind === 'image') {
     const card = createElement('div', {
@@ -61,15 +73,10 @@ export function getRawText(content) {
   return '';
 }
 
-export function appendContentParts(contentEl, content) {
+export function appendContentParts(contentEl, content, { includeAttachments = true } = {}) {
   if (content && typeof content === 'object' && !Array.isArray(content) && ('attachments' in content || 'imageUrls' in content || 'files' in content)) {
-    const attachments = normalizeContentAttachments(content);
-
-    if (attachments.length) {
-      const attachmentsWrap = createElement('div', { className: 'msg-attachments-grid' });
-      attachments.forEach(attachment => attachmentsWrap.appendChild(renderAttachmentCard(attachment)));
-      contentEl.appendChild(attachmentsWrap);
-    }
+    const attachmentsWrap = includeAttachments ? createAttachmentsGrid(content) : null;
+    if (attachmentsWrap) contentEl.appendChild(attachmentsWrap);
 
     if (content.text) {
       const textChunk = createElement('div');
