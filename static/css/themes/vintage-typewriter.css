@@ -411,7 +411,7 @@
   font-family: var(--type-font);
 }
 
-[data-ui-theme="vintage-typewriter"] :is(.msg-content pre, .msg-content table, .file-preview-content pre) {
+[data-ui-theme="vintage-typewriter"] :is(.msg-content pre, .file-preview-content pre) {
   border: 2px solid var(--border2);
   border-radius: 7px;
   background: var(--code-bg);
@@ -420,7 +420,18 @@
 }
 
 [data-ui-theme="vintage-typewriter"] .msg-content pre code { color: var(--code-text); }
-[data-ui-theme="vintage-typewriter"] .msg-content th { background: var(--paper3); color: var(--ink); font-family: var(--type-font); }
+[data-ui-theme="vintage-typewriter"] .msg-content table {
+  border: 2px solid var(--border2);
+  border-radius: 7px;
+  background: var(--paper-bg);
+  background-size: var(--paper-bg-size);
+  color: var(--ink);
+  box-shadow: 0 4px 0 rgba(22,18,13,.18);
+  overflow: hidden;
+}
+[data-ui-theme="vintage-typewriter"] .msg-content :is(th, td) { border-color: var(--border); color: var(--ink); }
+[data-ui-theme="vintage-typewriter"] .msg-content th { background: var(--paper2); color: var(--ink); font-family: var(--type-font); }
+[data-ui-theme="vintage-typewriter"] .msg-content td { background: transparent; }
 
 /* Thinking and tools as typed status slips. */
 [data-ui-theme="vintage-typewriter"] :is(.thinking-header, .tc-item-header, .tr-summary, .group-header) {
@@ -481,9 +492,17 @@
 [data-ui-theme="vintage-typewriter"] .cust-toggle input:checked + .cust-toggle-track { background: var(--accent); border-color: rgba(0,0,0,.45); }
 [data-ui-theme="vintage-typewriter"] .cust-swatch { border: 2px solid var(--paper); outline: 1px solid var(--key-edge); box-shadow: 0 3px 0 rgba(22,18,13,.24); }
 [data-ui-theme="vintage-typewriter"] :is(.cust-swatch:hover, .cust-swatch.active) { transform: translateY(-1px) scale(1.08); outline-color: var(--accent-border-mid); }
-[data-ui-theme="vintage-typewriter"] .theme-card:has(input:checked) .theme-card-preview,
 [data-ui-theme="vintage-typewriter"] .model-row.selected { border-color: var(--accent-border-mid); background: var(--accent-dim); color: var(--ink); box-shadow: 0 0 0 2px var(--accent-dim), 0 3px 0 rgba(22,18,13,.14); }
+[data-ui-theme="vintage-typewriter"] .theme-card:has(input:checked) .theme-card-preview {
+  border-color: var(--accent);
+  background: var(--paper-bg-hover);
+  background-size: var(--paper-bg-size);
+  box-shadow: 0 0 0 3px var(--accent-dim), 0 6px 0 rgba(22,18,13,.2), inset 0 0 0 1px var(--accent-border-mid);
+  transform: translateY(-1px);
+}
+[data-ui-theme="vintage-typewriter"] .theme-card:has(input:checked) span { color: var(--accent); font-weight: 900; }
 [data-ui-theme="vintage-typewriter"] :is(.model-box-header, .server-group-header, .tool-list-header) { border-bottom: 1px solid var(--border2); background: var(--paper3); color: var(--muted-ink); }
+
 [data-ui-theme="vintage-typewriter"] .danger-zone { border-color: color-mix(in srgb, var(--red) 50%, var(--border2)); }
 [data-ui-theme="vintage-typewriter"] .danger-zone .section-title { color: var(--red); }
 
@@ -493,6 +512,19 @@
 [data-ui-theme="vintage-typewriter"] #file-panel-path { color: rgba(239,225,193,.68); }
 [data-ui-theme="vintage-typewriter"] #file-panel-list { padding: 14px; }
 [data-ui-theme="vintage-typewriter"] #file-panel-list:has(.file-panel-empty) { display: grid; place-items: center; }
+[data-ui-theme="vintage-typewriter"] #file-preview-body:has(.file-preview-content.msg-content:not(.file-preview-code)) {
+  padding: 14px;
+  background: var(--surface);
+}
+[data-ui-theme="vintage-typewriter"] #file-preview .file-preview-content.msg-content:not(.file-preview-code) {
+  padding: 16px 18px;
+  border: 2px solid var(--border2);
+  border-radius: 7px;
+  background: var(--paper-bg);
+  background-size: var(--paper-bg-size);
+  color: var(--ink);
+  box-shadow: 0 5px 0 rgba(22,18,13,.16), inset 0 2px 0 rgba(255,255,255,.04);
+}
 [data-ui-theme="vintage-typewriter"] .file-panel-empty { width: min(280px, 100%); min-height: 132px; padding: 28px 18px; display: grid; align-content: center; color: var(--muted-ink); font-family: var(--type-font); font-size: .72rem; line-height: 1.55; }
 [data-ui-theme="vintage-typewriter"] .file-panel-empty::before { content: 'NO FILES'; display: block; margin-bottom: 10px; color: var(--accent); font-weight: 900; letter-spacing: .18em; }
 [data-ui-theme="vintage-typewriter"] .file-row { color: var(--ink); }
@@ -517,7 +549,7 @@
 [data-ui-theme="vintage-typewriter"] .setup-kicker { color: var(--accent); }
 
 [data-ui-theme="vintage-typewriter"][data-theme="dark"] :is(.msg-content code:not(pre code), #details, .thinking-body, .tc-item-args, .tr-body) { background: #23170d; color: #f0d5a6; }
-[data-ui-theme="vintage-typewriter"][data-theme="dark"] :is(.msg-content pre, .msg-content table, .file-preview-content pre) { background: #1b120a; color: #ecd4a7; }
+[data-ui-theme="vintage-typewriter"][data-theme="dark"] :is(.msg-content pre, .file-preview-content pre) { background: #1b120a; color: #ecd4a7; }
 [data-ui-theme="vintage-typewriter"][data-theme="dark"] .msg-content pre code { color: #ecd4a7; }
 
 [data-ui-theme="vintage-typewriter"][data-theme="dark"] :is(
