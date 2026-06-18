@@ -11,10 +11,12 @@ let autoThemeListenerAttached = false;
 
 const UI_THEME_STYLESHEETS = {
   'retro-pixel': 'ui-theme-retro-pixel',
+  'vintage-typewriter': 'ui-theme-vintage-typewriter',
 };
 
 function normalizeUiTheme(theme) {
-  return theme === 'retro-pixel' ? 'retro-pixel' : 'default';
+  if (theme === 'vintage-ledger') return 'vintage-typewriter';
+  return Object.prototype.hasOwnProperty.call(UI_THEME_STYLESHEETS, theme) ? theme : 'default';
 }
 
 export function applyCustomization() {
@@ -70,6 +72,7 @@ function _applyFontFamily(family) {
   const map = {
     space:   "'Space Grotesk', sans-serif",
     pixel:   "'Pixelify Sans', 'JetBrains Mono', monospace",
+    typewriter: "'Special Elite', 'Courier New', monospace",
     sora:    "'Sora', sans-serif",
     tiempos: "'Instrument Serif', Georgia, serif",
     mono:    "'JetBrains Mono', monospace",

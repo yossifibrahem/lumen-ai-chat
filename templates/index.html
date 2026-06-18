@@ -9,7 +9,7 @@
 
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600&family=Pixelify+Sans:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600&family=Pixelify+Sans:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&family=Special+Elite&display=swap" rel="stylesheet" />
 
 <!-- Rendering libraries -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -23,6 +23,7 @@
 <!-- App styles -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
 <link id="ui-theme-retro-pixel" rel="stylesheet" href="{{ url_for('static', filename='css/themes/retro-flat-pixel.css') }}" disabled />
+<link id="ui-theme-vintage-typewriter" rel="stylesheet" href="{{ url_for('static', filename='css/themes/vintage-typewriter.css') }}" disabled />
 
 <!-- Apply saved customization before first paint to prevent flash of defaults -->
 <script>
@@ -31,12 +32,19 @@
     var prefs = JSON.parse(localStorage.getItem('lumen_customization') || '{}');
     var r = document.documentElement;
 
-    // Visual style / UI theme. Default to the new retro skin for this build.
-    var uiTheme = prefs.uiTheme || 'retro-pixel';
-    if (uiTheme !== 'retro-pixel') uiTheme = 'default';
+    // Visual style / UI theme. Default to the typewriter skin for this build.
+    var uiTheme = prefs.uiTheme || 'vintage-typewriter';
+    if (uiTheme === 'vintage-ledger') uiTheme = 'vintage-typewriter';
+    var uiThemeLinks = {
+      'retro-pixel': 'ui-theme-retro-pixel',
+      'vintage-typewriter': 'ui-theme-vintage-typewriter'
+    };
+    if (!Object.prototype.hasOwnProperty.call(uiThemeLinks, uiTheme)) uiTheme = 'default';
     r.setAttribute('data-ui-theme', uiTheme);
-    var retroThemeLink = document.getElementById('ui-theme-retro-pixel');
-    if (retroThemeLink) retroThemeLink.disabled = uiTheme !== 'retro-pixel';
+    Object.keys(uiThemeLinks).forEach(function (themeKey) {
+      var link = document.getElementById(uiThemeLinks[themeKey]);
+      if (link) link.disabled = uiTheme !== themeKey;
+    });
 
     // Accent color
     var hex = prefs.customAccentColor || prefs.accentColor;
@@ -82,7 +90,7 @@
     r.setAttribute('data-theme', theme);
 
     // Font family
-    var fontMap = { space: "'Space Grotesk', sans-serif", pixel: "'Pixelify Sans', 'JetBrains Mono', monospace", sora: "'Sora', sans-serif", tiempos: "'Instrument Serif', Georgia, serif", mono: "'JetBrains Mono', monospace", system: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" };
+    var fontMap = { space: "'Space Grotesk', sans-serif", pixel: "'Pixelify Sans', 'JetBrains Mono', monospace", typewriter: "'Special Elite', 'Courier New', monospace", sora: "'Sora', sans-serif", tiempos: "'Instrument Serif', Georgia, serif", mono: "'JetBrains Mono', monospace", system: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" };
     if (prefs.fontFamily && fontMap[prefs.fontFamily]) {
       r.style.setProperty('--font-roman', fontMap[prefs.fontFamily]);
     }
@@ -414,6 +422,7 @@
             <select id="cust-ui-theme">
               <option value="default">Default Classic</option>
               <option value="retro-pixel">Retro Pixel</option>
+              <option value="vintage-typewriter">Vintage Typewriter</option>
             </select>
             <div class="field-note">Changes the whole app skin. Light/dark mode, fonts, and accent color still work separately.</div>
           </div>
@@ -437,6 +446,7 @@
               <select id="cust-font-family">
                 <option value="space">Space Grotesk (modern)</option>
                 <option value="pixel">Pixelify Sans (pixel)</option>
+                <option value="typewriter">Special Elite (typewriter)</option>
                 <option value="sora">Sora (sans-serif)</option>
                 <option value="tiempos">Instrument Serif (vintage)</option>
                 <option value="mono">JetBrains Mono</option>

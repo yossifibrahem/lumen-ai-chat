@@ -18,9 +18,9 @@ export const CUSTOMIZATION_DEFAULTS = {
   groupSequentialBlocks:  true,
   hideThinkingTokens:     true,
   fontSize:              'medium',    // 'small' | 'medium' | 'large'
-  fontFamily:            'space',     // 'space' | 'pixel' | 'sora' | 'tiempos' | 'mono' | 'system'
+  fontFamily:            'typewriter', // 'space' | 'pixel' | 'typewriter' | 'sora' | 'tiempos' | 'mono' | 'system'
   theme:                 'auto',      // 'dark' | 'light' | 'auto'
-  uiTheme:              'retro-pixel', // 'default' | 'retro-pixel'
+  uiTheme:              'vintage-typewriter', // 'default' | 'retro-pixel' | 'vintage-typewriter'
   accentColor:           '#d96c4b',   // preset swatch
   customAccentColor:     '',          // user custom hex
 };

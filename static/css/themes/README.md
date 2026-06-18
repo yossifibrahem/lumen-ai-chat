@@ -13,3 +13,8 @@ Theme-specific icons are optional. Default/global icons live in `static/js/icons
 To override only the icons a theme needs, add a small override file in
 `static/js/icons/themes/` and register it in `static/js/icons/themes/index.js`.
 Any icon key not listed by the theme automatically uses the default icon.
+
+Current optional skins:
+
+- `retro-flat-pixel.css` → `retro-pixel`
+- `vintage-typewriter.css` → `vintage-typewriter`
