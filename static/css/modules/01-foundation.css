@@ -186,3 +186,10 @@ svg { flex-shrink: 0; }
 }
 :is(.field input, .field select, .field textarea, #mcp-config-editor, .msg-edit-textarea, #conv-search, #cust-accent-hex):focus { border-color: var(--accent-border); }
 
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
