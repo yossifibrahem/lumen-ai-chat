@@ -1,1255 +1,551 @@
-/* Vintage Typewriter visual style.
-   Design goal: clean paper, dark machine metal, ink, type keys, red ribbon accents.
-   No paper noise, no random panel lines, no decorative texture overlays. */
+/* Vintage Typewriter theme
+   Desk, paper, platen and keycaps with compact, intentional overrides. */
 
 [data-ui-theme="vintage-typewriter"] {
   --font-roman: 'Special Elite', 'Courier New', ui-monospace, monospace;
-  --type-font: var(--font-roman, 'Special Elite', 'Courier New', ui-monospace, monospace);
-  --type-display: 'Instrument Serif', Georgia, serif;
+  --font-tiempos: 'Instrument Serif', Georgia, serif;
+  --type-font: var(--font-roman);
 
-  --accent: #b54135;
-  --accent-dim: rgba(181, 65, 53, .12);
-  --accent-hover: rgba(181, 65, 53, .18);
-  --accent-glow: rgba(181, 65, 53, .08);
-  --accent-border: rgba(181, 65, 53, .42);
-  --accent-border-dim: rgba(181, 65, 53, .24);
-  --accent-border-mid: rgba(181, 65, 53, .56);
-  --green: #4d7046;
-  --red: #b54135;
-  --blue: #496e7a;
+  --accent: #9e3f33;
+  --accent-2: #6d2d26;
+  --accent-dim: rgba(158, 63, 51, .14);
+  --accent-hover: rgba(158, 63, 51, .22);
+  --accent-border-dim: rgba(158, 63, 51, .30);
+  --accent-border-mid: rgba(158, 63, 51, .56);
+  --green: #65794f;
+  --red: #a94338;
+  --blue: #536e74;
 
-  --radius: 8px;
+  --radius: 9px;
   --radius-sm: 5px;
-  --radius-md: 6px;
-  --content-w: 800px;
-  --dock-w: 780px;
+  --radius-md: 7px;
+  --content-w: 810px;
+  --dock-w: 790px;
   --sidebar-w: 292px;
 
-  --key-radius: 7px;
-  --key-press: 3px;
+  --key-radius: 8px;
+  --key-drop: 4px;
+  --key-face: #e2d3b5;
+  --key-face-hover: #f2e2c1;
+  --key-ink: #211b13;
+  --key-edge: #17120c;
+  --key-shadow: rgba(16, 11, 6, .54);
+  --key-glint: rgba(255, 250, 231, .35);
   --type-transition: 110ms ease;
+
+  --paper-bg:
+    radial-gradient(circle at 22% 18%, var(--paper-fleck) 0 1px, transparent 1.4px),
+    radial-gradient(circle at 74% 72%, var(--paper-fleck) 0 1px, transparent 1.5px),
+    repeating-linear-gradient(180deg, transparent 0 31px, var(--paper-line) 32px, transparent 33px),
+    var(--paper);
+  --paper-bg-hover:
+    radial-gradient(circle at 18% 24%, var(--paper-fleck) 0 1px, transparent 1.4px),
+    radial-gradient(circle at 82% 68%, var(--paper-fleck) 0 1px, transparent 1.5px),
+    repeating-linear-gradient(180deg, transparent 0 31px, var(--paper-line) 32px, transparent 33px),
+    var(--paper2);
+  --paper-bg-size: 96px 96px, 132px 132px, 100% 34px, auto;
 }
 
 [data-ui-theme="vintage-typewriter"][data-theme="light"] {
-  --bg: #cfc6b5;
-  --surface: #ded4c2;
-  --surface2: #f4ecd8;
-  --surface3: #d5c7b1;
-  --border: #928674;
-  --border2: #4f493f;
-  --text: #201e1a;
-  --text2: #46423a;
-  --text3: #786f61;
-  --code-bg: #fff8e8;
-  --shadow: 0 20px 50px rgba(41, 35, 27, .20);
+  --bg: #b9ae99;
+  --surface: #c8bba3;
+  --surface2: #d6c8ad;
+  --surface3: #aa9b82;
+  --border: #8e816d;
+  --border2: #514736;
+  --text: #292319;
+  --text2: #4d4333;
+  --text3: #776a55;
+  --code-bg: #2a2118;
+  --code-text: #f0dfbd;
+  --shadow: 0 24px 60px rgba(37, 28, 17, .25);
 
-  --machine: #2d2a26;
-  --machine2: #3a3630;
-  --machine3: #201e1a;
-  --machine-fg: #f4ecd8;
-  --paper: #fbf3df;
-  --paper2: #f2e6cb;
-  --paper3: #e7d9bd;
-  --ink: #201e1a;
-  --muted-ink: #5b5348;
-  --key-bg: #f4ecd8;
-  --key-hover: #fff7e6;
-  --key-edge: #4f493f;
-  --key-shadow: rgba(32, 30, 26, .36);
-  --key-inset: rgba(255, 255, 255, .44);
+  --machine: #201e1a;
+  --machine2: #302b24;
+  --machine3: #100e0b;
+  --machine-fg: #efe1c1;
+  --paper: #ead9b7;
+  --paper2: #dfcba2;
+  --paper3: #c7ad7d;
+  --paper-line: rgba(78, 57, 31, .13);
+  --paper-fleck: rgba(70, 49, 25, .11);
+  --ink: #241c12;
+  --muted-ink: #5d4b32;
 }
 
 [data-ui-theme="vintage-typewriter"][data-theme="dark"] {
-  --bg: #131211;
-  --surface: #211f1c;
-  --surface2: #2c2924;
-  --surface3: #38342d;
-  --border: #5e574b;
-  --border2: #b5a384;
-  --text: #f1e5cc;
-  --text2: #cfbf9f;
-  --text3: #95876e;
-  --code-bg: #171512;
-  --shadow: 0 22px 58px rgba(0, 0, 0, .46);
+  --accent: #9a3d32;
+  --accent-2: #642920;
+  --accent-dim: rgba(154, 61, 50, .16);
+  --accent-hover: rgba(154, 61, 50, .25);
+  --accent-border-dim: rgba(154, 61, 50, .36);
+  --accent-border-mid: rgba(154, 61, 50, .62);
 
-  --machine: #171614;
-  --machine2: #24221f;
-  --machine3: #0d0c0b;
-  --machine-fg: #f1e5cc;
-  --paper: #2b2823;
-  --paper2: #363229;
-  --paper3: #433d33;
-  --ink: #f1e5cc;
-  --muted-ink: #c7b793;
-  --key-bg: #e8dcc2;
-  --key-hover: #fff0d0;
-  --key-edge: #120f0c;
-  --key-shadow: rgba(0, 0, 0, .58);
-  --key-inset: rgba(255, 255, 255, .28);
-}
+  --bg: #0b0907;
+  --surface: #12100d;
+  --surface2: #1b1711;
+  --surface3: #272016;
+  --border: #4a3d29;
+  --border2: #765e3d;
+  --text: #ead9b7;
+  --text2: #c9b182;
+  --text3: #9f875d;
+  --code-bg: #21170e;
+  --code-text: #ecd4a7;
+  --shadow: 0 30px 72px rgba(0, 0, 0, .62);
 
-/* Hard reset for decorative overlays from the base app. */
-[data-ui-theme="vintage-typewriter"] body::before,
-[data-ui-theme="vintage-typewriter"] body::after {
-  display: none;
+  --machine: #0e0d0a;
+  --machine2: #19150f;
+  --machine3: #050403;
+  --machine-fg: #e4d0a5;
+  --paper: #a78d60;
+  --paper2: #94784e;
+  --paper3: #765b37;
+  --paper-line: rgba(44, 29, 13, .18);
+  --paper-fleck: rgba(41, 24, 8, .16);
+  --ink: #211508;
+  --muted-ink: #4b361e;
+  --key-face: #cbb58a;
+  --key-face-hover: #dac69e;
+  --key-shadow: rgba(0, 0, 0, .78);
+  --key-glint: rgba(255, 242, 207, .22);
 }
 
 [data-ui-theme="vintage-typewriter"] body {
-  background: var(--bg);
   color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(255,255,255,.08), transparent 34%),
+    linear-gradient(135deg, var(--surface2), var(--surface));
 }
 
-[data-ui-theme="vintage-typewriter"] button,
-[data-ui-theme="vintage-typewriter"] input,
-[data-ui-theme="vintage-typewriter"] textarea,
-[data-ui-theme="vintage-typewriter"] select {
-  font-family: var(--type-font);
-}
+[data-ui-theme="vintage-typewriter"] body::before { display: none; }
 
-/* ── Typewriter key button system ───────────────────────────────────────── */
+[data-ui-theme="vintage-typewriter"] body::after { display: none; }
+[data-ui-theme="vintage-typewriter"] :is(button, input, textarea, select) { font-family: var(--type-font); }
+
 [data-ui-theme="vintage-typewriter"] :is(
-  #btn-toggle-sidebar,
-  #btn-toggle-files,
-  .modal-close,
-  .conv-menu-btn,
-  #attach-btn,
-  #mic-btn,
-  #send-btn,
-  #stop-btn,
-  .file-panel-actions button,
-  .file-preview-actions button,
-  .msg-action-btn,
-  .tc-allow,
-  .tc-deny,
-  .btn-primary,
-  .btn-secondary,
-  .btn-danger,
-  .modal-tab,
-  .sidebar-action,
-  #btn-new-chat,
-  #model-badge,
-  .mp-chip,
-  .model-chip,
-  .model-row,
-  .model-refresh-btn,
-  .server-icon-btn,
-  .icon-option,
-  .eye-btn,
-  .code-copy,
-  .tool-icon-btn
+  #btn-toggle-sidebar, #btn-toggle-files, .modal-close, .conv-menu-btn,
+  #attach-btn, #mic-btn, #send-btn, #stop-btn, .file-panel-actions button,
+  .file-preview-actions button, .msg-action-btn, .tc-allow, .tc-deny,
+  .btn-primary, .btn-secondary, .btn-danger, .sidebar-action,
+  #btn-new-chat, #model-badge, .mp-chip, .model-chip, .model-row,
+  .model-refresh-btn, .server-icon-btn, .icon-option, .eye-btn,
+  .code-copy, .tool-icon-btn
 ) {
   border: 1px solid var(--key-edge);
   border-radius: var(--key-radius);
-  background: var(--key-bg);
-  color: #24201b;
-  box-shadow:
-    0 var(--key-press) 0 var(--key-shadow),
-    inset 0 1px 0 var(--key-inset);
+  background: var(--key-face);
+  color: var(--key-ink);
+  box-shadow: 0 var(--key-drop) 0 var(--key-shadow), inset 0 1px 0 var(--key-glint), inset 0 -1px 0 rgba(0,0,0,.14);
   transform: translateY(0);
-  transition: transform var(--type-transition), box-shadow var(--type-transition), background var(--type-transition), color var(--type-transition), border-color var(--type-transition);
+  transition: transform var(--type-transition), box-shadow var(--type-transition), background var(--type-transition), border-color var(--type-transition), color var(--type-transition), opacity var(--type-transition);
 }
 
 [data-ui-theme="vintage-typewriter"] :is(
-  #btn-toggle-sidebar,
-  #btn-toggle-files,
-  .modal-close,
-  .conv-menu-btn,
-  #attach-btn,
-  #mic-btn,
-  #send-btn,
-  #stop-btn,
-  .file-panel-actions button,
-  .file-preview-actions button,
-  .msg-action-btn,
-  .tc-allow,
-  .tc-deny,
-  .btn-primary,
-  .btn-secondary,
-  .btn-danger,
-  .modal-tab,
-  .sidebar-action,
-  #btn-new-chat,
-  #model-badge,
-  .mp-chip,
-  .model-chip,
-  .model-row,
-  .model-refresh-btn,
-  .server-icon-btn,
-  .icon-option,
-  .eye-btn,
-  .code-copy,
-  .tool-icon-btn
+  #btn-toggle-sidebar, #btn-toggle-files, .modal-close, .conv-menu-btn,
+  #attach-btn, #mic-btn, #send-btn, #stop-btn, .file-panel-actions button,
+  .file-preview-actions button, .msg-action-btn, .tc-allow, .tc-deny,
+  .btn-primary, .btn-secondary, .btn-danger, .sidebar-action,
+  #btn-new-chat, #model-badge, .mp-chip, .model-chip, .model-row,
+  .model-refresh-btn, .server-icon-btn, .icon-option, .eye-btn,
+  .code-copy, .tool-icon-btn
 ):hover {
-  background: var(--key-hover);
   border-color: var(--accent-border-mid);
-  color: #1d1915;
+  background: var(--key-face-hover);
+  color: var(--key-ink);
   transform: translateY(-1px);
-  box-shadow:
-    0 calc(var(--key-press) + 2px) 0 var(--key-shadow),
-    inset 0 1px 0 var(--key-inset);
+  box-shadow: 0 calc(var(--key-drop) + 2px) 0 var(--key-shadow), inset 0 0 0 2px var(--accent-dim), inset 0 1px 0 var(--key-glint);
 }
 
 [data-ui-theme="vintage-typewriter"] :is(
-  #btn-toggle-sidebar,
-  #btn-toggle-files,
-  .modal-close,
-  .conv-menu-btn,
-  #attach-btn,
-  #mic-btn,
-  #send-btn,
-  #stop-btn,
-  .file-panel-actions button,
-  .file-preview-actions button,
-  .msg-action-btn,
-  .tc-allow,
-  .tc-deny,
-  .btn-primary,
-  .btn-secondary,
-  .btn-danger,
-  .modal-tab,
-  .sidebar-action,
-  #btn-new-chat,
-  #model-badge,
-  .mp-chip,
-  .model-chip,
-  .model-row,
-  .model-refresh-btn,
-  .server-icon-btn,
-  .icon-option,
-  .eye-btn,
-  .code-copy,
-  .tool-icon-btn
+  #btn-toggle-sidebar, #btn-toggle-files, .modal-close, .conv-menu-btn,
+  #attach-btn, #mic-btn, #send-btn, #stop-btn, .file-panel-actions button,
+  .file-preview-actions button, .msg-action-btn, .tc-allow, .tc-deny,
+  .btn-primary, .btn-secondary, .btn-danger, .sidebar-action,
+  #btn-new-chat, #model-badge, .mp-chip, .model-chip, .model-row,
+  .model-refresh-btn, .server-icon-btn, .icon-option, .eye-btn,
+  .code-copy, .tool-icon-btn
 ):active {
-  transform: translateY(var(--key-press));
-  box-shadow:
-    0 0 0 var(--key-shadow),
-    inset 0 2px 5px rgba(28, 24, 19, .32);
+  transform: translateY(var(--key-drop));
+  box-shadow: 0 0 0 var(--key-shadow), inset 0 3px 7px rgba(20,16,12,.38);
 }
 
-[data-ui-theme="vintage-typewriter"] :is(#send-btn, .btn-primary, .msg-edit-save) {
+[data-ui-theme="vintage-typewriter"] :is(#attach-btn, #mic-btn, #send-btn, #stop-btn, .msg-action-btn, .code-copy, .modal-close, .icon-btn) {
+  display: grid;
+  place-items: center;
+}
+
+[data-ui-theme="vintage-typewriter"] :is(.icon-btn, .msg-action-btn, .modal-close) svg { display: block; margin: auto; }
+
+[data-ui-theme="vintage-typewriter"] :is(#send-btn, .btn-primary, .msg-edit-save, .tc-allow) {
   background: var(--accent);
-  border-color: rgba(0, 0, 0, .42);
-  color: #fff3db;
-  box-shadow:
-    0 var(--key-press) 0 rgba(82, 21, 17, .55),
-    inset 0 1px 0 rgba(255, 255, 255, .22);
+  border-color: rgba(0,0,0,.55);
+  color: #fff1d0;
+  box-shadow: 0 var(--key-drop) 0 rgba(78,20,14,.68), inset 0 1px 0 rgba(255,255,255,.22);
 }
 
-[data-ui-theme="vintage-typewriter"] :is(#send-btn, .btn-primary, .msg-edit-save):hover {
-  background: #c64b3d;
-  color: #fff8ea;
-  box-shadow:
-    0 calc(var(--key-press) + 2px) 0 rgba(82, 21, 17, .55),
-    inset 0 1px 0 rgba(255, 255, 255, .25);
-}
+[data-ui-theme="vintage-typewriter"] :is(#send-btn, .btn-primary, .msg-edit-save, .tc-allow):hover { background: #ad493d; color: #fff7e8; }
+[data-ui-theme="vintage-typewriter"] :is(#stop-btn, .btn-danger, .tc-deny) { color: var(--red); border-color: color-mix(in srgb, var(--red) 56%, var(--key-edge)); }
 
-[data-ui-theme="vintage-typewriter"] :is(#stop-btn, .btn-danger) {
-  background: rgba(181, 65, 53, .14);
-  border-color: rgba(181, 65, 53, .50);
-  color: var(--red);
-}
-
-/* ── Inputs and forms ───────────────────────────────────────────────────── */
-[data-ui-theme="vintage-typewriter"] :is(#conv-search, .field input, .field select, .field textarea, #mcp-config-editor, .msg-edit-textarea, #cust-accent-hex) {
+[data-ui-theme="vintage-typewriter"] :is(#conv-search, #user-input, .field input, .field select, .field textarea, #mcp-config-editor, .msg-edit-textarea, #cust-accent-hex, #chat-title-input) {
   border: 1px solid var(--border2);
-  border-radius: 5px;
-  background: var(--paper);
+  border-radius: 6px;
+  background: var(--paper-bg);
+  background-size: var(--paper-bg-size);
   color: var(--ink);
-  box-shadow: inset 0 2px 0 rgba(0, 0, 0, .08);
+  box-shadow: inset 0 2px 0 rgba(0,0,0,.10);
 }
 
-[data-ui-theme="vintage-typewriter"] :is(#conv-search, .field input, .field select, .field textarea, #mcp-config-editor, .msg-edit-textarea, #cust-accent-hex):focus {
-  border-color: var(--accent-border-mid);
+[data-ui-theme="vintage-typewriter"] :is(#conv-search, #user-input, .field input, .field select, .field textarea, #mcp-config-editor, .msg-edit-textarea, #cust-accent-hex, #chat-title-input):focus {
   outline: none;
-  box-shadow: 0 0 0 3px var(--accent-dim), inset 0 2px 0 rgba(0, 0, 0, .08);
+  border-color: var(--accent-border-mid);
+  box-shadow: 0 0 0 3px var(--accent-dim), inset 0 2px 0 rgba(0,0,0,.10);
 }
 
-[data-ui-theme="vintage-typewriter"] :is(#conv-search, #user-input, .field input, .field textarea)::placeholder {
-  color: var(--text3);
-}
+[data-ui-theme="vintage-typewriter"] :is(#conv-search, #user-input, .field input, .field textarea, #chat-title-input)::placeholder { color: var(--text3); }
 
-/* ── Sidebar: typewriter body ───────────────────────────────────────────── */
+/* Sidebar: black enamel body with paper conversation slips. */
 [data-ui-theme="vintage-typewriter"] #sidebar {
   background: var(--machine);
   border-right: 2px solid var(--machine3);
-  box-shadow: inset -1px 0 0 rgba(255,255,255,.08), 8px 0 28px rgba(0,0,0,.28);
+  box-shadow: inset -1px 0 0 rgba(255,255,255,.06), 10px 0 28px rgba(0,0,0,.28);
 }
 
-[data-ui-theme="vintage-typewriter"] #sidebar::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto;
-  height: 5px;
-  background: var(--accent);
-  pointer-events: none;
-}
+[data-ui-theme="vintage-typewriter"] #sidebar::before { display: none; }
+[data-ui-theme="vintage-typewriter"] #sidebar-header { padding: 18px 12px 10px; }
+[data-ui-theme="vintage-typewriter"] .logo { gap: 10px; }
 
-[data-ui-theme="vintage-typewriter"] #sidebar-header {
-  padding: 18px 12px 10px;
-}
-
-[data-ui-theme="vintage-typewriter"] .logo {
-  gap: 10px;
-}
-
-[data-ui-theme="vintage-typewriter"] .logo-mark {
-  width: 36px;
-  height: 36px;
+[data-ui-theme="vintage-typewriter"] :is(.logo-mark, .msg-avatar, .file-row-icon, .group-body > .thinking-block .thinking-icon, .group-body > .tool-strip .tool-icon) {
   border: 1px solid var(--key-edge);
   border-radius: 50%;
-  background: var(--key-bg);
-  color: #211d18;
-  box-shadow: 0 4px 0 var(--key-shadow), inset 0 1px 0 var(--key-inset);
+  background: var(--key-face);
+  color: var(--key-ink);
+  box-shadow: 0 3px 0 var(--key-shadow), inset 0 1px 0 var(--key-glint);
 }
 
-[data-ui-theme="vintage-typewriter"] .logo-mark svg {
-  width: 19px;
-  height: 19px;
-}
-
+[data-ui-theme="vintage-typewriter"] .logo-mark { width: 38px; height: 38px; }
+[data-ui-theme="vintage-typewriter"] .logo-mark svg { width: 20px; height: 20px; }
 [data-ui-theme="vintage-typewriter"] .logo-name {
   color: var(--machine-fg);
   font-family: var(--type-font);
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: .04em;
+  font-size: 1.02rem;
+  font-weight: 900;
+  letter-spacing: .05em;
   text-transform: uppercase;
 }
 
-[data-ui-theme="vintage-typewriter"] .logo-name em {
-  color: var(--accent);
-  font-style: normal;
-}
-
-[data-ui-theme="vintage-typewriter"] #sidebar-search {
-  padding: 7px 12px 12px;
-}
-
-[data-ui-theme="vintage-typewriter"] .sidebar-search-icon {
-  color: #4b453c;
-}
-
-[data-ui-theme="vintage-typewriter"] #conv-search {
-  height: 39px;
-  border-color: #141311;
-  background: var(--paper);
-  color: #211d18;
-}
-
-[data-ui-theme="vintage-typewriter"] #conv-list {
-  padding: 8px 10px 12px;
-}
+[data-ui-theme="vintage-typewriter"] :is(.logo-name em, .es-logo em) { color: var(--accent); font-style: normal; }
+[data-ui-theme="vintage-typewriter"] #sidebar-search { padding: 7px 12px 12px; }
+[data-ui-theme="vintage-typewriter"] .sidebar-search-icon { color: #5b5244; }
+[data-ui-theme="vintage-typewriter"] #conv-search { height: 38px; padding-left: 34px; border-color: var(--machine3); }
+[data-ui-theme="vintage-typewriter"] #conv-list { padding: 8px 10px 12px; }
 
 [data-ui-theme="vintage-typewriter"] .conv-section-label {
-  color: var(--accent);
+  color: color-mix(in srgb, var(--machine-fg) 68%, var(--accent));
   font-family: var(--type-font);
   font-size: .62rem;
-  font-weight: 700;
-  letter-spacing: .14em;
+  font-weight: 900;
+  letter-spacing: .15em;
 }
 
 [data-ui-theme="vintage-typewriter"] .conv-item {
+  min-height: 44px;
   border: 1px solid transparent;
   border-radius: 7px;
-  color: rgba(244, 236, 216, .76);
+  background: transparent;
+  color: rgba(239,225,193,.78);
   font-family: var(--type-font);
 }
 
-[data-ui-theme="vintage-typewriter"] .conv-item:hover {
-  background: var(--machine2);
-  border-color: rgba(244, 236, 216, .18);
-  color: var(--machine-fg);
-}
-
+[data-ui-theme="vintage-typewriter"] .conv-item:hover { background: var(--machine2); border-color: rgba(239,225,193,.18); color: var(--machine-fg); }
 [data-ui-theme="vintage-typewriter"] .conv-item.active {
-  border-color: #141311;
-  background: var(--paper);
-  color: #211d18;
-  box-shadow: 0 4px 0 rgba(0,0,0,.26), inset 4px 0 0 var(--accent);
+  border-color: var(--machine3);
+  background: var(--paper-bg);
+  background-size: var(--paper-bg-size);
+  color: var(--ink);
+  box-shadow: 0 4px 0 rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.18);
 }
 
-[data-ui-theme="vintage-typewriter"] .conv-menu {
-  border: 1px solid var(--border2);
-  border-radius: 7px;
-  background: var(--paper);
+[data-ui-theme="vintage-typewriter"] .conv-menu,
+[data-ui-theme="vintage-typewriter"] #model-popover {
+  border: 2px solid var(--machine3);
+  border-radius: 9px;
+  background: var(--paper-bg);
+  background-size: var(--paper-bg-size);
+  color: var(--ink);
   box-shadow: var(--shadow);
 }
 
-[data-ui-theme="vintage-typewriter"] #sidebar-footer {
-  border-top: 1px solid rgba(244, 236, 216, .16);
-  padding: 12px;
-}
+[data-ui-theme="vintage-typewriter"] #sidebar-footer { border-top: 1px solid rgba(239,225,193,.14); padding: 12px; }
+[data-ui-theme="vintage-typewriter"] :is(.sidebar-action, #btn-new-chat) { min-height: 39px; width: 100%; justify-content: center; font-weight: 900; }
 
-[data-ui-theme="vintage-typewriter"] :is(.sidebar-action, #btn-new-chat) {
-  min-height: 39px;
-  width: 100%;
-  justify-content: center;
-  font-weight: 700;
-  letter-spacing: .02em;
-}
-
-/* ── Main header and paper stage ────────────────────────────────────────── */
-[data-ui-theme="vintage-typewriter"] #main {
-  background: var(--surface);
-}
-
-[data-ui-theme="vintage-typewriter"] #chat-header {
+/* Stage, header and empty state. */
+[data-ui-theme="vintage-typewriter"] :is(#main, #messages, #file-panel) { background: var(--surface); }
+[data-ui-theme="vintage-typewriter"] :is(#chat-header, .file-panel-header, .file-preview-header) {
   background: var(--machine);
-  border-bottom: 3px solid var(--accent);
-  box-shadow: 0 6px 18px rgba(0,0,0,.18);
+  border-bottom: 2px solid var(--machine3);
+  box-shadow: 0 7px 22px rgba(0,0,0,.20);
 }
 
-[data-ui-theme="vintage-typewriter"] #chat-title-input {
-  min-height: 34px;
-  padding: 6px 11px;
-  border: 1px solid var(--key-edge);
-  border-radius: 5px;
-  background: var(--paper);
-  color: #211d18;
-  font-family: var(--type-font);
-  font-size: .86rem;
-  font-weight: 700;
-  letter-spacing: .02em;
-  box-shadow: inset 0 2px 0 rgba(0,0,0,.08);
+[data-ui-theme="vintage-typewriter"] #chat-header::after,
+[data-ui-theme="vintage-typewriter"] .file-panel-header::after,
+[data-ui-theme="vintage-typewriter"] .file-preview-header::after {
+  content: '';
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: -5px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--machine2);
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,.35);
+  pointer-events: none;
 }
 
-[data-ui-theme="vintage-typewriter"] #chat-title-input::placeholder {
-  color: #7c725f;
-}
+[data-ui-theme="vintage-typewriter"] #chat-header,
+[data-ui-theme="vintage-typewriter"] .file-panel-header,
+[data-ui-theme="vintage-typewriter"] .file-preview-header { position: relative; }
 
-[data-ui-theme="vintage-typewriter"] #messages {
-  background: var(--surface);
-}
+[data-ui-theme="vintage-typewriter"] #chat-title-input { min-height: 34px; padding: 6px 11px; font-family: var(--type-font); font-size: .86rem; font-weight: 900; }
+[data-ui-theme="vintage-typewriter"] :is(.header-actions button, #btn-toggle-sidebar, #btn-toggle-files) { min-width: 34px; min-height: 34px; }
+[data-ui-theme="vintage-typewriter"] .modal-overlay { z-index: 300; }
+[data-ui-theme="vintage-typewriter"] #composer-area { z-index: 30; }
+[data-ui-theme="vintage-typewriter"] #main.is-empty #composer-area { width: min(var(--dock-w), 100%); }
 
-/* ── Empty state ─────────────────────────────────────────────────────────── */
 [data-ui-theme="vintage-typewriter"] #empty-state::before {
-  content: 'TYPE';
+  content: 'LUMEN';
   display: grid;
   place-items: center;
-  width: 122px;
-  height: 56px;
+  width: 136px;
+  height: 58px;
   margin-bottom: 18px;
   border: 2px solid var(--key-edge);
-  border-radius: 8px;
-  background: var(--paper);
-  color: #211d18;
-  font-family: var(--type-font);
-  font-size: .88rem;
-  font-weight: 800;
+  border-radius: 9px;
+  background: var(--key-face);
+  color: var(--key-ink);
+  font: 900 .84rem/1 var(--type-font);
   letter-spacing: .24em;
-  box-shadow: 0 5px 0 var(--key-shadow), inset 0 1px 0 var(--key-inset);
+  box-shadow: 0 6px 0 var(--key-shadow), inset 0 1px 0 var(--key-glint);
 }
 
-[data-ui-theme="vintage-typewriter"] .es-logo {
-  color: var(--text);
-  font-family: var(--type-font);
-  font-size: clamp(2.2rem, 5vw, 4.2rem);
-  font-weight: 800;
-  opacity: 1;
-  letter-spacing: .02em;
-  text-transform: uppercase;
-}
+[data-ui-theme="vintage-typewriter"] .es-logo { color: var(--text); font-family: var(--type-font); font-size: clamp(2.2rem, 5vw, 4.1rem); font-weight: 900; letter-spacing: .02em; text-transform: uppercase; }
+[data-ui-theme="vintage-typewriter"] .es-sub { color: var(--text3); font-family: var(--type-font); font-size: .72rem; }
 
-[data-ui-theme="vintage-typewriter"] .es-logo em {
-  color: var(--accent);
-  font-style: normal;
-}
-
-[data-ui-theme="vintage-typewriter"] .es-sub {
-  color: var(--text3);
-  font-family: var(--type-font);
-  font-size: .72rem;
-}
-
-/* ── Composer: typewriter carriage ──────────────────────────────────────── */
+/* Composer: carriage, platen and paper feed. */
 [data-ui-theme="vintage-typewriter"] #composer-input-panel {
-  border: 2px solid var(--machine3);
-  border-radius: 13px;
-  background: var(--machine);
-  box-shadow: 0 18px 36px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.08);
-  filter: none;
+  position: relative;
   overflow: visible;
+  border: 2px solid var(--machine3);
+  border-radius: 14px;
+  background: var(--machine);
+  filter: none;
+  box-shadow: 0 20px 42px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.08);
 }
 
 [data-ui-theme="vintage-typewriter"] #composer-input-panel::before {
   content: '';
   position: absolute;
   left: 18px;
-  right: 18px;
-  top: -8px;
-  height: 12px;
+  right: 48px;
+  top: -10px;
+  height: 14px;
   border: 1px solid var(--machine3);
   border-radius: 999px;
   background: var(--machine2);
-  box-shadow: inset 0 -2px 0 rgba(0,0,0,.24);
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,.28);
   pointer-events: none;
-}
-
-[data-ui-theme="vintage-typewriter"] #user-input {
-  width: calc(100% - 20px);
-  min-height: 74px;
-  margin: 10px 10px 0;
-  padding: 15px 16px;
-  border: 1px solid var(--key-edge);
-  border-radius: 6px;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--type-font);
-  line-height: 1.68;
-  box-shadow: inset 0 2px 0 rgba(0,0,0,.08);
-}
-
-[data-ui-theme="vintage-typewriter"] #user-input::placeholder {
-  color: var(--text3);
-  font-style: normal;
-}
-
-[data-ui-theme="vintage-typewriter"] .input-toolbar {
-  padding: 9px 10px 11px;
-  border-top: 1px solid rgba(255,255,255,.08);
-  background: var(--machine2);
-  border-radius: 0 0 11px 11px;
-}
-
-[data-ui-theme="vintage-typewriter"] .input-hint,
-[data-ui-theme="vintage-typewriter"] .char-count,
-[data-ui-theme="vintage-typewriter"] #model-badge {
-  font-family: var(--type-font);
-}
-
-[data-ui-theme="vintage-typewriter"] .input-hint,
-[data-ui-theme="vintage-typewriter"] .char-count {
-  color: rgba(244, 236, 216, .65);
-}
-
-[data-ui-theme="vintage-typewriter"] #model-popover {
-  border: 2px solid var(--machine3);
-  border-radius: 9px;
-  background: var(--machine);
-  box-shadow: var(--shadow);
-}
-
-[data-ui-theme="vintage-typewriter"] .mp-header {
-  border-bottom: 1px solid rgba(244, 236, 216, .14);
-  color: var(--accent);
-  font-family: var(--type-font);
-  font-weight: 800;
-}
-
-[data-ui-theme="vintage-typewriter"] #mp-model-list {
-  background: var(--machine);
-}
-
-/* ── Messages: typed paper cards ────────────────────────────────────────── */
-[data-ui-theme="vintage-typewriter"] .msg-row {
-  max-width: var(--content-w);
-  padding-top: 26px;
-}
-
-[data-ui-theme="vintage-typewriter"] .msg-meta {
-  margin-bottom: 8px;
-}
-
-[data-ui-theme="vintage-typewriter"] .msg-avatar {
-  width: 30px;
-  height: 30px;
-  border: 1px solid var(--key-edge);
-  border-radius: 50%;
-  background: var(--key-bg);
-  color: #211d18;
-  box-shadow: 0 3px 0 var(--key-shadow), inset 0 1px 0 var(--key-inset);
-}
-
-[data-ui-theme="vintage-typewriter"] .msg-role-label {
-  color: var(--accent);
-  font-family: var(--type-font);
-  font-size: .64rem;
-  font-weight: 800;
-  letter-spacing: .16em;
-}
-
-[data-ui-theme="vintage-typewriter"] .user-row .msg-role-label {
-  color: var(--text3);
-}
-
-[data-ui-theme="vintage-typewriter"] .msg-content {
-  font-family: var(--type-font);
-  color: var(--text);
-  line-height: 1.72;
-}
-
-[data-ui-theme="vintage-typewriter"] .msg-row:not(.user-row) .msg-content:not(.msg-status) {
-  padding: 16px 18px;
-  border: 1px solid var(--border2);
-  border-left: 5px solid var(--accent);
-  border-radius: 5px;
-  background: var(--paper);
-  color: var(--ink);
-  box-shadow: 0 4px 0 rgba(34, 30, 23, .12), inset 0 2px 0 rgba(0,0,0,.05);
-}
-
-[data-ui-theme="vintage-typewriter"] .user-row .msg-content {
-  border: 1px solid var(--border2);
-  border-radius: 5px;
-  background: var(--paper2);
-  color: var(--ink);
-  box-shadow: 0 4px 0 rgba(34, 30, 23, .14), inset 0 2px 0 rgba(0,0,0,.05);
-}
-
-[data-ui-theme="vintage-typewriter"] .msg-content :is(h1, h2, h3, h4) {
-  font-family: var(--type-font);
-  color: inherit;
-  font-weight: 800;
-  letter-spacing: .01em;
-}
-
-[data-ui-theme="vintage-typewriter"] .msg-content blockquote {
-  padding: 10px 12px;
-  border-left: 4px solid var(--accent);
-  background: var(--accent-dim);
-  color: var(--muted-ink);
-  font-style: normal;
-}
-
-[data-ui-theme="vintage-typewriter"] .msg-content code:not(pre code) {
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  background: var(--code-bg);
-  color: var(--accent);
-  font-family: var(--type-font);
-}
-
-[data-ui-theme="vintage-typewriter"] .msg-content pre {
-  border: 1px solid var(--border2);
-  border-radius: 5px;
-  background: var(--code-bg);
-  box-shadow: 0 4px 0 rgba(34, 30, 23, .16);
-}
-
-[data-ui-theme="vintage-typewriter"] .msg-content table {
-  border: 1px solid var(--border2);
-  background: var(--paper);
-}
-
-[data-ui-theme="vintage-typewriter"] .msg-content th {
-  background: var(--paper3);
-  color: var(--ink);
-  font-family: var(--type-font);
-}
-
-/* ── Thinking and tool blocks ───────────────────────────────────────────── */
-[data-ui-theme="vintage-typewriter"] :is(.thinking-header, .tc-item-header, .tr-summary, .group-header) {
-  padding: 6px 9px;
-  border: 1px solid var(--border2);
-  border-radius: 6px;
-  background: var(--paper2);
-  color: var(--muted-ink);
-  font-family: var(--type-font);
-  font-weight: 700;
-  box-shadow: 0 3px 0 rgba(34, 30, 23, .14);
-}
-
-[data-ui-theme="vintage-typewriter"] :is(.thinking-header, .tc-item-header, .tr-summary, .group-header):hover {
-  background: var(--paper);
-  color: var(--ink);
-  transform: translateY(-1px);
-}
-
-[data-ui-theme="vintage-typewriter"] :is(.thinking-body, .tc-item-args, .tr-body) {
-  border: 1px solid var(--border2);
-  border-radius: 5px;
-  background: var(--code-bg);
-  color: var(--muted-ink);
-}
-
-[data-ui-theme="vintage-typewriter"] .group-body > :is(.thinking-block, .tool-strip)::before {
-  width: 2px;
-  background: var(--accent-border-dim);
-}
-
-[data-ui-theme="vintage-typewriter"] .group-body > :is(.thinking-block .thinking-icon, .tool-strip .tool-icon) {
-  border: 1px solid var(--border2);
-  border-radius: 50%;
-  background: var(--key-bg);
-  color: #211d18;
-}
-
-[data-ui-theme="vintage-typewriter"] :is(.tool-strip-using .tui-name, .tool-strip-running .tui-name, .thinking-block.thinking-streaming .thinking-label, .block-group.group-active .group-label) {
-  background: none;
-  -webkit-text-fill-color: currentColor;
-  color: var(--accent);
-}
-
-/* ── Settings modal: machine lid + paper forms ──────────────────────────── */
-[data-ui-theme="vintage-typewriter"] .modal-overlay {
-  background: rgba(12, 11, 10, .72);
-  backdrop-filter: blur(2px);
-}
-
-[data-ui-theme="vintage-typewriter"] .modal {
-  max-width: 640px;
-  border: 2px solid var(--machine3);
-  border-radius: 12px;
-  background: var(--surface);
-  box-shadow: 0 32px 90px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.08);
-  overflow: hidden;
-}
-
-[data-ui-theme="vintage-typewriter"] .modal-header {
-  padding: 14px 16px 12px;
-  border-bottom: 3px solid var(--accent);
-  background: var(--machine);
-  gap: 10px;
-}
-
-[data-ui-theme="vintage-typewriter"] .modal-tabs {
-  gap: 7px;
-  overflow-y: visible;
-}
-
-[data-ui-theme="vintage-typewriter"] .modal-tab {
-  padding: 7px 11px;
-  font-family: var(--type-font);
-  font-size: .78rem;
-  font-weight: 800;
-}
-
-[data-ui-theme="vintage-typewriter"] .modal-tab.active {
-  background: var(--accent);
-  color: #fff3db;
-  border-color: rgba(0,0,0,.5);
-}
-
-[data-ui-theme="vintage-typewriter"] .modal-close {
-  color: #24201b;
-  flex-shrink: 0;
-}
-
-[data-ui-theme="vintage-typewriter"] .modal-body {
-  padding: 18px;
-  background: var(--surface);
-}
-
-[data-ui-theme="vintage-typewriter"] .modal-footer {
-  padding: 14px 18px;
-  border-top: 1px solid var(--border2);
-  background: var(--machine2);
-}
-
-[data-ui-theme="vintage-typewriter"] .settings-section {
-  padding: 14px;
-  border: 1px solid var(--border2);
-  border-radius: 8px;
-  background: var(--paper);
-  color: var(--ink);
-  box-shadow: 0 4px 0 rgba(34,30,23,.12), inset 0 2px 0 rgba(0,0,0,.05);
-}
-
-[data-ui-theme="vintage-typewriter"] .section-title {
-  margin-bottom: 14px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
-  color: var(--accent);
-  font-family: var(--type-font);
-  font-size: .86rem;
-  font-weight: 800;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-}
-
-[data-ui-theme="vintage-typewriter"] .section-sep {
-  height: 12px;
-  margin: 8px 0;
-  background: transparent;
-}
-
-[data-ui-theme="vintage-typewriter"] .field label,
-[data-ui-theme="vintage-typewriter"] .cust-label {
-  color: var(--ink);
-  font-family: var(--type-font);
-  font-weight: 800;
-}
-
-[data-ui-theme="vintage-typewriter"] .field-note,
-[data-ui-theme="vintage-typewriter"] .cust-hint {
-  color: var(--text3);
-  font-family: var(--type-font);
-}
-
-[data-ui-theme="vintage-typewriter"] .cust-row {
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-[data-ui-theme="vintage-typewriter"] .cust-toggle-track {
-  border: 1px solid var(--key-edge);
-  background: var(--machine2);
-  box-shadow: inset 0 2px 5px rgba(0,0,0,.28);
-}
-
-[data-ui-theme="vintage-typewriter"] .cust-toggle-thumb {
-  background: var(--key-bg);
-  box-shadow: 0 2px 0 rgba(0,0,0,.32);
-}
-
-[data-ui-theme="vintage-typewriter"] .cust-toggle input:checked + .cust-toggle-track {
-  background: var(--accent);
-  border-color: rgba(0,0,0,.45);
-}
-
-[data-ui-theme="vintage-typewriter"] .cust-toggle input:checked + .cust-toggle-track .cust-toggle-thumb {
-  background: #fff3db;
-}
-
-[data-ui-theme="vintage-typewriter"] .cust-swatch {
-  border: 2px solid var(--paper);
-  outline: 1px solid var(--key-edge);
-  box-shadow: 0 3px 0 rgba(34,30,23,.24);
-}
-
-[data-ui-theme="vintage-typewriter"] .cust-swatch:hover {
-  transform: translateY(-1px) scale(1.08);
-  outline-color: var(--accent-border-mid);
-}
-
-[data-ui-theme="vintage-typewriter"] .cust-swatch.active {
-  outline: 2px solid var(--accent);
-  transform: translateY(-1px) scale(1.08);
-}
-
-[data-ui-theme="vintage-typewriter"] :is(.theme-card-preview, .attachment-card) {
-  border: 1px solid var(--border2);
-  border-radius: 6px;
-  background: var(--paper);
-  box-shadow: 0 3px 0 rgba(34,30,23,.14);
-}
-
-[data-ui-theme="vintage-typewriter"] .theme-card:has(input:checked) .theme-card-preview {
-  border-color: var(--accent-border-mid);
-  box-shadow: 0 0 0 2px var(--accent-dim), 0 3px 0 rgba(34,30,23,.14);
-}
-
-[data-ui-theme="vintage-typewriter"] .range-slider {
-  height: 8px;
-  border: 1px solid var(--key-edge);
-  background: var(--machine2);
-  box-shadow: inset 0 2px 4px rgba(0,0,0,.28);
-}
-
-[data-ui-theme="vintage-typewriter"] .range-slider::-webkit-slider-thumb {
-  border: 1px solid var(--key-edge);
-  background: var(--key-bg);
-  box-shadow: 0 3px 0 var(--key-shadow), inset 0 1px 0 var(--key-inset);
-}
-
-[data-ui-theme="vintage-typewriter"] :is(.model-box, .server-group, .tool-card, .danger-zone) {
-  border: 1px solid var(--border2);
-  border-radius: 7px;
-  background: var(--paper2);
-}
-
-[data-ui-theme="vintage-typewriter"] :is(.model-box-header, .server-group-header, .tool-list-header) {
-  border-bottom: 1px solid var(--border2);
-  background: var(--paper3);
-  color: var(--muted-ink);
-}
-
-[data-ui-theme="vintage-typewriter"] .model-row.selected {
-  border-color: var(--accent-border-mid);
-  background: var(--accent-dim);
-  color: var(--ink);
-}
-
-/* ── Workspace panel ────────────────────────────────────────────────────── */
-[data-ui-theme="vintage-typewriter"] #file-panel {
-  background: var(--surface);
-  border-left: 2px solid var(--machine3);
-  box-shadow: -8px 0 28px rgba(0,0,0,.22);
-}
-
-[data-ui-theme="vintage-typewriter"] .file-panel-header,
-[data-ui-theme="vintage-typewriter"] .file-preview-header {
-  border-bottom: 3px solid var(--accent);
-  background: var(--machine);
-  color: var(--machine-fg);
-}
-
-[data-ui-theme="vintage-typewriter"] .file-panel-title,
-[data-ui-theme="vintage-typewriter"] #file-preview-title {
-  color: var(--machine-fg);
-  font-family: var(--type-font);
-  font-size: .86rem;
-  font-weight: 800;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-}
-
-[data-ui-theme="vintage-typewriter"] #file-panel-path {
-  color: rgba(244, 236, 216, .68);
-}
-
-[data-ui-theme="vintage-typewriter"] #file-panel-list {
-  padding: 14px;
-}
-
-[data-ui-theme="vintage-typewriter"] #file-panel-list:has(.file-panel-empty) {
-  display: grid;
-  place-items: center;
-}
-
-[data-ui-theme="vintage-typewriter"] .file-panel-empty {
-  width: min(270px, 100%);
-  padding: 28px 18px;
-  border: 1px solid var(--border2);
-  border-radius: 8px;
-  background: var(--paper);
-  color: var(--muted-ink);
-  font-family: var(--type-font);
-  font-size: .72rem;
-  line-height: 1.55;
-  box-shadow: 0 5px 0 rgba(34,30,23,.16), inset 0 2px 0 rgba(0,0,0,.05);
-}
-
-[data-ui-theme="vintage-typewriter"] .file-panel-empty::before {
-  content: 'NO FILES';
-  display: block;
-  margin-bottom: 10px;
-  color: var(--accent);
-  font-weight: 800;
-  letter-spacing: .18em;
-}
-
-[data-ui-theme="vintage-typewriter"] .file-row {
-  border: 1px solid var(--border2);
-  border-radius: 7px;
-  background: var(--paper);
-  color: var(--ink);
-  box-shadow: 0 3px 0 rgba(34,30,23,.14);
-}
-
-[data-ui-theme="vintage-typewriter"] .file-row:hover,
-[data-ui-theme="vintage-typewriter"] .file-row.active {
-  border-color: var(--accent-border-mid);
-  background: var(--paper2);
-  transform: translateY(-1px);
-}
-
-[data-ui-theme="vintage-typewriter"] .file-row-icon {
-  border-color: var(--border2);
-  background: var(--key-bg);
-  color: #211d18;
-  box-shadow: 0 3px 0 var(--key-shadow), inset 0 1px 0 var(--key-inset);
-}
-
-[data-ui-theme="vintage-typewriter"] .attachment-card-remove {
-  border: 1px solid rgba(0,0,0,.42);
-  background: var(--accent);
-  color: #fff3db;
-}
-
-/* Desktop title bar and startup page */
-[data-ui-theme="vintage-typewriter"] #lumen-desktop-titlebar {
-  --desktop-titlebar-bg: var(--machine);
-  --desktop-titlebar-fg: var(--machine-fg);
-  border-bottom: 2px solid var(--accent);
-  font-family: var(--type-font);
-}
-
-[data-ui-theme="vintage-typewriter"] .setup-main h1 {
-  font-family: var(--type-font);
-  font-weight: 800;
-  letter-spacing: .03em;
-}
-
-[data-ui-theme="vintage-typewriter"] .setup-card {
-  border: 2px solid var(--machine3);
-  background: var(--paper);
-}
-
-[data-ui-theme="vintage-typewriter"] .setup-kicker { color: var(--accent); }
-
-[data-ui-theme="vintage-typewriter"] #details {
-  border: 1px solid var(--border2);
-  border-radius: 5px;
-  background: var(--code-bg);
-}
-
-@media (max-width: 768px) {
-  [data-ui-theme="vintage-typewriter"] #user-input {
-    min-height: 66px;
-  }
-
-  [data-ui-theme="vintage-typewriter"] .modal-body,
-  [data-ui-theme="vintage-typewriter"] #file-panel-list {
-    padding: 12px;
-  }
-}
-
-/* Screenshot feedback pass: better contrast, stronger typewriter identity,
-   still no texture or random background lines. */
-[data-ui-theme="vintage-typewriter"][data-theme="light"] {
-  --bg: #c7bead;
-  --surface: #d8d0c0;
-  --surface2: #eee4cf;
-  --surface3: #cfc3af;
-  --paper: #fff4df;
-  --paper2: #f3e6cc;
-  --paper3: #dfd0b6;
-}
-
-[data-ui-theme="vintage-typewriter"][data-theme="dark"] {
-  --surface: #171615;
-  --surface2: #24221f;
-  --surface3: #302d27;
-  --paper: #282620;
-  --paper2: #343028;
-  --paper3: #423b30;
-}
-
-/* Fix dark-mode hardcoded ink issues from the first pass. */
-[data-ui-theme="vintage-typewriter"] #chat-title-input,
-[data-ui-theme="vintage-typewriter"] #conv-search,
-[data-ui-theme="vintage-typewriter"] .conv-item.active,
-[data-ui-theme="vintage-typewriter"] .msg-row:not(.user-row) .msg-content:not(.msg-status),
-[data-ui-theme="vintage-typewriter"] .user-row .msg-content,
-[data-ui-theme="vintage-typewriter"] .file-row,
-[data-ui-theme="vintage-typewriter"] .file-panel-empty {
-  color: var(--ink);
-}
-
-[data-ui-theme="vintage-typewriter"][data-theme="dark"] #chat-title-input,
-[data-ui-theme="vintage-typewriter"][data-theme="dark"] #conv-search {
-  background: var(--paper2);
-  color: var(--text);
-  border-color: var(--border2);
-}
-
-[data-ui-theme="vintage-typewriter"][data-theme="dark"] #chat-title-input::placeholder,
-[data-ui-theme="vintage-typewriter"][data-theme="dark"] #conv-search::placeholder {
-  color: var(--text3);
-}
-
-[data-ui-theme="vintage-typewriter"][data-theme="dark"] .conv-item.active {
-  background: var(--surface2);
-  color: var(--text);
-  border-color: var(--border2);
-}
-
-/* Make the main stage feel intentional, not like plain empty grey. */
-[data-ui-theme="vintage-typewriter"] #main,
-[data-ui-theme="vintage-typewriter"] #messages,
-[data-ui-theme="vintage-typewriter"] #file-panel {
-  background: var(--surface);
-}
-
-[data-ui-theme="vintage-typewriter"] #chat-header {
-  box-shadow:
-    0 1px 0 rgba(255,255,255,.08),
-    0 8px 24px rgba(0,0,0,.18);
-}
-
-[data-ui-theme="vintage-typewriter"] #chat-title-input {
-  max-width: 100%;
-  box-shadow:
-    inset 0 2px 0 rgba(0,0,0,.10),
-    0 2px 0 rgba(0,0,0,.20);
-}
-
-[data-ui-theme="vintage-typewriter"] .header-actions button,
-[data-ui-theme="vintage-typewriter"] #btn-toggle-sidebar {
-  min-width: 34px;
-  min-height: 34px;
-}
-
-/* Stronger, clearer key interactions. */
-[data-ui-theme="vintage-typewriter"] :is(
-  #btn-toggle-sidebar,
-  #btn-toggle-files,
-  .modal-close,
-  .conv-menu-btn,
-  #attach-btn,
-  #mic-btn,
-  .file-panel-actions button,
-  .file-preview-actions button,
-  .msg-action-btn,
-  .tc-allow,
-  .tc-deny,
-  .btn-secondary,
-  .btn-danger,
-  .modal-tab,
-  .sidebar-action,
-  #btn-new-chat,
-  #model-badge,
-  .mp-chip,
-  .model-chip,
-  .model-row,
-  .model-refresh-btn,
-  .server-icon-btn,
-  .icon-option,
-  .eye-btn,
-  .code-copy,
-  .tool-icon-btn
-):hover {
-  border-color: var(--accent);
-  box-shadow:
-    0 calc(var(--key-press) + 2px) 0 var(--key-shadow),
-    inset 0 0 0 2px var(--accent-dim),
-    inset 0 1px 0 var(--key-inset);
-}
-
-[data-ui-theme="vintage-typewriter"] :is(
-  #btn-toggle-sidebar,
-  #btn-toggle-files,
-  .modal-close,
-  .conv-menu-btn,
-  #attach-btn,
-  #mic-btn,
-  .file-panel-actions button,
-  .file-preview-actions button,
-  .msg-action-btn,
-  .tc-allow,
-  .tc-deny,
-  .btn-secondary,
-  .btn-danger,
-  .modal-tab,
-  .sidebar-action,
-  #btn-new-chat,
-  #model-badge,
-  .mp-chip,
-  .model-chip,
-  .model-row,
-  .model-refresh-btn,
-  .server-icon-btn,
-  .icon-option,
-  .eye-btn,
-  .code-copy,
-  .tool-icon-btn
-):active {
-  border-color: var(--accent);
-  box-shadow:
-    0 0 0 var(--key-shadow),
-    inset 0 3px 7px rgba(28, 24, 19, .38);
-}
-
-/* Give the active conversation more of a paper-card feel. */
-[data-ui-theme="vintage-typewriter"] .conv-item.active {
-  border-left: 5px solid var(--accent);
-}
-
-[data-ui-theme="vintage-typewriter"] .conv-menu-btn {
-  box-shadow: none;
-}
-
-[data-ui-theme="vintage-typewriter"] .conv-item.active .conv-menu-btn {
-  background: var(--key-bg);
-  border-color: var(--key-edge);
-  color: #24201b;
-  box-shadow: 0 2px 0 var(--key-shadow), inset 0 1px 0 var(--key-inset);
-}
-
-/* Typewriter carriage details: platen + side knob, not decorative noise. */
-[data-ui-theme="vintage-typewriter"] #composer-input-panel::before {
-  height: 13px;
-  top: -9px;
 }
 
 [data-ui-theme="vintage-typewriter"] #composer-input-panel::after {
   content: '';
   position: absolute;
-  right: 20px;
-  top: -15px;
-  width: 24px;
-  height: 24px;
+  right: 18px;
+  top: -16px;
+  width: 26px;
+  height: 26px;
   border: 2px solid var(--machine3);
   border-radius: 50%;
-  background: var(--key-bg);
-  box-shadow: 0 3px 0 var(--key-shadow), inset 0 1px 0 var(--key-inset);
+  background: var(--key-face);
+  box-shadow: 0 3px 0 var(--key-shadow), inset 0 1px 0 var(--key-glint);
   pointer-events: none;
 }
 
-[data-ui-theme="vintage-typewriter"] #composer-input-panel {
-  border-width: 2px;
+[data-ui-theme="vintage-typewriter"] #user-input { width: calc(100% - 20px); min-height: 78px; margin: 10px 10px 0; padding: 15px 16px; border-width: 2px; font-family: var(--type-font); line-height: 1.72; }
+[data-ui-theme="vintage-typewriter"] .input-toolbar { padding: 9px 10px 11px; border-top: 1px solid rgba(255,255,255,.08); border-radius: 0 0 12px 12px; background: var(--machine2); }
+[data-ui-theme="vintage-typewriter"] :is(.input-hint, .char-count) { color: rgba(239,225,193,.68); }
+[data-ui-theme="vintage-typewriter"] :is(.input-hint, .char-count, #model-badge, .mp-header, .model-row, .model-chip) { font-family: var(--type-font); }
+[data-ui-theme="vintage-typewriter"] #model-popover { bottom: calc(100% + 12px); z-index: 240; }
+[data-ui-theme="vintage-typewriter"] .mp-header { border-bottom: 1px solid var(--border2); background: var(--paper3); color: var(--accent); font-weight: 900; letter-spacing: .12em; }
+[data-ui-theme="vintage-typewriter"] #mp-model-list { background: transparent; }
+[data-ui-theme="vintage-typewriter"] #model-badge-label { max-width: 150px; }
+
+/* Messages: typed sheets. */
+[data-ui-theme="vintage-typewriter"] .msg-row { max-width: var(--content-w); padding-top: 26px; }
+[data-ui-theme="vintage-typewriter"] .msg-meta { margin-bottom: 8px; }
+[data-ui-theme="vintage-typewriter"] .msg-avatar { width: 31px; height: 31px; }
+[data-ui-theme="vintage-typewriter"] .msg-role-label { color: var(--accent); font-family: var(--type-font); font-size: .64rem; font-weight: 900; letter-spacing: .16em; }
+[data-ui-theme="vintage-typewriter"] .user-row .msg-role-label { color: var(--text3); }
+[data-ui-theme="vintage-typewriter"] .msg-content { color: var(--text); font-family: var(--type-font); line-height: 1.75; }
+
+[data-ui-theme="vintage-typewriter"] :is(.msg-row:not(.user-row) .msg-content:not(.msg-status), .user-row .msg-content, .file-row, .file-panel-empty, .attachment-card, .settings-section, .model-box, .server-group, .tool-card, .danger-zone, .theme-card-preview) {
+  border: 2px solid var(--border2);
+  border-radius: 7px;
+  background: var(--paper-bg);
+  background-size: var(--paper-bg-size);
+  color: var(--ink);
+  box-shadow: 0 5px 0 rgba(22,18,13,.16), inset 0 2px 0 rgba(255,255,255,.04);
 }
 
-[data-ui-theme="vintage-typewriter"] #user-input {
-  border-width: 2px;
-}
+[data-ui-theme="vintage-typewriter"] .msg-row:not(.user-row) .msg-content:not(.msg-status) { padding: 16px 18px; }
+[data-ui-theme="vintage-typewriter"] .user-row .msg-content { background: var(--paper-bg-hover); background-size: var(--paper-bg-size); }
+[data-ui-theme="vintage-typewriter"] .msg-content :is(h1, h2, h3, h4) { color: inherit; font-family: var(--type-font); font-weight: 900; letter-spacing: .01em; }
+[data-ui-theme="vintage-typewriter"] .msg-content blockquote { padding: 10px 12px; border-left: 4px solid var(--accent); background: var(--accent-dim); color: var(--muted-ink); font-style: normal; }
+[data-ui-theme="vintage-typewriter"] .msg-content a,
+[data-ui-theme="vintage-typewriter"] .assistant-file-link { color: var(--accent); text-decoration-color: var(--accent-border-mid); }
 
-/* Message cards need warmer paper contrast in light mode and readable dark mode. */
-[data-ui-theme="vintage-typewriter"] .msg-row:not(.user-row) .msg-content:not(.msg-status),
-[data-ui-theme="vintage-typewriter"] .user-row .msg-content {
-  border-width: 2px;
-}
-
-[data-ui-theme="vintage-typewriter"][data-theme="light"] .msg-row:not(.user-row) .msg-content:not(.msg-status) {
-  background: var(--paper);
-}
-
-[data-ui-theme="vintage-typewriter"][data-theme="light"] .user-row .msg-content {
-  background: var(--paper2);
-}
-
-[data-ui-theme="vintage-typewriter"][data-theme="dark"] .msg-row:not(.user-row) .msg-content:not(.msg-status),
-[data-ui-theme="vintage-typewriter"][data-theme="dark"] .user-row .msg-content {
-  background: var(--paper2);
-  color: var(--text);
-  border-color: var(--border2);
-}
-
-[data-ui-theme="vintage-typewriter"][data-theme="dark"] .msg-content code:not(pre code) {
+[data-ui-theme="vintage-typewriter"] :is(.msg-content code:not(pre code), #details, .thinking-body, .tc-item-args, .tr-body) {
+  border: 1px solid var(--border2);
+  border-radius: 5px;
   background: var(--code-bg);
-  color: #d6aa60;
+  color: var(--code-text);
+  font-family: var(--type-font);
 }
 
-/* Workspace empty state was too plain; make it look like a typed file card. */
-[data-ui-theme="vintage-typewriter"] .file-panel-empty {
-  border-width: 2px;
-  min-height: 132px;
-  display: grid;
-  align-content: center;
+[data-ui-theme="vintage-typewriter"] :is(.msg-content pre, .msg-content table, .file-preview-content pre) {
+  border: 2px solid var(--border2);
+  border-radius: 7px;
+  background: var(--code-bg);
+  color: var(--code-text);
+  box-shadow: 0 4px 0 rgba(22,18,13,.18);
 }
 
-[data-ui-theme="vintage-typewriter"][data-theme="dark"] .file-panel-empty {
-  background: var(--paper2);
-  color: var(--text2);
-  border-color: var(--border2);
+[data-ui-theme="vintage-typewriter"] .msg-content pre code { color: var(--code-text); }
+[data-ui-theme="vintage-typewriter"] .msg-content th { background: var(--paper3); color: var(--ink); font-family: var(--type-font); }
+
+/* Thinking and tools as typed status slips. */
+[data-ui-theme="vintage-typewriter"] :is(.thinking-header, .tc-item-header, .tr-summary, .group-header) {
+  padding: 7px 10px;
+  border: 2px solid var(--border2);
+  border-radius: 7px;
+  background: var(--paper-bg-hover);
+  background-size: var(--paper-bg-size);
+  color: var(--muted-ink);
+  font-family: var(--type-font);
+  font-weight: 900;
+  box-shadow: 0 4px 0 rgba(22,18,13,.15);
 }
 
-/* Settings modal contrast pass. */
-[data-ui-theme="vintage-typewriter"] .settings-section {
-  border-width: 2px;
-}
+[data-ui-theme="vintage-typewriter"] :is(.thinking-header, .tc-item-header, .tr-summary, .group-header):hover { background: var(--paper-bg); background-size: var(--paper-bg-size); color: var(--ink); transform: translateY(-1px); }
+[data-ui-theme="vintage-typewriter"] .group-body > :is(.thinking-block, .tool-strip)::before { width: 2px; background: var(--accent-border-dim); }
+[data-ui-theme="vintage-typewriter"] :is(.tool-strip-using .tui-name, .tool-strip-running .tui-name, .thinking-block.thinking-streaming .thinking-label, .block-group.group-active .group-label) { background: none; -webkit-text-fill-color: currentColor; color: var(--accent); }
+[data-ui-theme="vintage-typewriter"] .msg-footer { gap: 5px; }
+[data-ui-theme="vintage-typewriter"] .msg-action-btn { min-width: 27px; height: 25px; }
 
-[data-ui-theme="vintage-typewriter"][data-theme="dark"] .settings-section,
-[data-ui-theme="vintage-typewriter"][data-theme="dark"] :is(.model-box, .server-group, .tool-card, .danger-zone) {
-  background: var(--paper2);
-  color: var(--text);
-  border-color: var(--border2);
+/* Settings and modal forms. */
+[data-ui-theme="vintage-typewriter"] .modal-overlay { background: rgba(8, 7, 5, .74); backdrop-filter: blur(2px); }
+[data-ui-theme="vintage-typewriter"] .modal { max-width: 650px; border: 2px solid var(--machine3); border-radius: 13px; background: var(--surface); box-shadow: 0 34px 92px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.08); overflow: hidden; }
+[data-ui-theme="vintage-typewriter"] .modal-header,
+[data-ui-theme="vintage-typewriter"] .modal-footer { background: var(--machine2); border-color: var(--machine3); color: var(--machine-fg); }
+[data-ui-theme="vintage-typewriter"] .modal-header { min-height: 60px; padding: 0 14px 0 20px; align-items: stretch; gap: 12px; }
+[data-ui-theme="vintage-typewriter"] #settings-modal .modal-tabs { height: 100%; align-items: flex-end; gap: 6px; padding: 12px 0 0; border-bottom: none; background: transparent; }
+[data-ui-theme="vintage-typewriter"] #settings-modal .modal-tab {
+  min-height: 34px;
+  margin-bottom: -1px;
+  padding: 8px 12px 9px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--key-edge);
+  border-bottom-color: var(--machine3);
+  border-radius: 8px 8px 0 0;
+  background: var(--machine);
+  color: var(--machine-fg);
+  font: 900 .68rem/1 var(--type-font);
+  letter-spacing: .05em;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+  transform: none;
 }
+[data-ui-theme="vintage-typewriter"] #settings-modal .modal-tab:hover { background: var(--paper3); color: var(--ink); border-color: var(--border2); transform: none; }
+[data-ui-theme="vintage-typewriter"] #settings-modal .modal-tab.active { background: var(--paper); color: var(--ink); border-color: var(--border2); border-bottom-color: var(--paper); box-shadow: 0 3px 0 var(--paper), inset 0 1px 0 rgba(255,255,255,.14); }
+[data-ui-theme="vintage-typewriter"] #settings-modal .modal-close { align-self: center; flex: 0 0 auto; }
+[data-ui-theme="vintage-typewriter"] .modal-body { background: var(--surface); color: var(--text); }
+[data-ui-theme="vintage-typewriter"] .settings-section { padding: 14px; }
+[data-ui-theme="vintage-typewriter"] .section-title { margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); color: var(--accent); font-family: var(--type-font); font-size: .86rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+[data-ui-theme="vintage-typewriter"] .section-sep { height: 12px; margin: 8px 0; background: transparent; }
+[data-ui-theme="vintage-typewriter"] :is(.field label, .cust-label) { color: var(--ink); font-family: var(--type-font); font-weight: 900; }
+[data-ui-theme="vintage-typewriter"] :is(.field-note, .cust-hint, .danger-zone-desc, .tool-card-desc) { color: var(--muted-ink); font-family: var(--type-font); }
+[data-ui-theme="vintage-typewriter"] .cust-row { padding: 12px 0; border-bottom: 1px solid var(--border); }
+[data-ui-theme="vintage-typewriter"] :is(.cust-toggle-track, .range-slider) { border: 1px solid var(--key-edge); background: var(--machine2); box-shadow: inset 0 2px 5px rgba(0,0,0,.28); }
+[data-ui-theme="vintage-typewriter"] .cust-toggle-thumb { border: 1px solid var(--key-edge); background: var(--key-face); box-shadow: 0 3px 0 var(--key-shadow), inset 0 1px 0 var(--key-glint); }
+[data-ui-theme="vintage-typewriter"] .range-slider::-webkit-slider-thumb { border: 1px solid var(--key-edge); background: var(--key-face); box-shadow: 0 3px 0 var(--key-shadow), inset 0 1px 0 var(--key-glint); }
+[data-ui-theme="vintage-typewriter"] .cust-toggle input:checked + .cust-toggle-track { background: var(--accent); border-color: rgba(0,0,0,.45); }
+[data-ui-theme="vintage-typewriter"] .cust-swatch { border: 2px solid var(--paper); outline: 1px solid var(--key-edge); box-shadow: 0 3px 0 rgba(22,18,13,.24); }
+[data-ui-theme="vintage-typewriter"] :is(.cust-swatch:hover, .cust-swatch.active) { transform: translateY(-1px) scale(1.08); outline-color: var(--accent-border-mid); }
+[data-ui-theme="vintage-typewriter"] .theme-card:has(input:checked) .theme-card-preview,
+[data-ui-theme="vintage-typewriter"] .model-row.selected { border-color: var(--accent-border-mid); background: var(--accent-dim); color: var(--ink); box-shadow: 0 0 0 2px var(--accent-dim), 0 3px 0 rgba(22,18,13,.14); }
+[data-ui-theme="vintage-typewriter"] :is(.model-box-header, .server-group-header, .tool-list-header) { border-bottom: 1px solid var(--border2); background: var(--paper3); color: var(--muted-ink); }
+[data-ui-theme="vintage-typewriter"] .danger-zone { border-color: color-mix(in srgb, var(--red) 50%, var(--border2)); }
+[data-ui-theme="vintage-typewriter"] .danger-zone .section-title { color: var(--red); }
 
-[data-ui-theme="vintage-typewriter"][data-theme="dark"] .field label,
-[data-ui-theme="vintage-typewriter"][data-theme="dark"] .cust-label {
-  color: var(--text);
-}
+/* Workspace files and attachments: real paper slips, no hover washout. */
+[data-ui-theme="vintage-typewriter"] #file-panel { border-left: 2px solid var(--machine3); box-shadow: -8px 0 28px rgba(0,0,0,.22); }
+[data-ui-theme="vintage-typewriter"] :is(.file-panel-title, #file-preview-title) { color: var(--machine-fg); font-family: var(--type-font); font-size: .86rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+[data-ui-theme="vintage-typewriter"] #file-panel-path { color: rgba(239,225,193,.68); }
+[data-ui-theme="vintage-typewriter"] #file-panel-list { padding: 14px; }
+[data-ui-theme="vintage-typewriter"] #file-panel-list:has(.file-panel-empty) { display: grid; place-items: center; }
+[data-ui-theme="vintage-typewriter"] .file-panel-empty { width: min(280px, 100%); min-height: 132px; padding: 28px 18px; display: grid; align-content: center; color: var(--muted-ink); font-family: var(--type-font); font-size: .72rem; line-height: 1.55; }
+[data-ui-theme="vintage-typewriter"] .file-panel-empty::before { content: 'NO FILES'; display: block; margin-bottom: 10px; color: var(--accent); font-weight: 900; letter-spacing: .18em; }
+[data-ui-theme="vintage-typewriter"] .file-row { color: var(--ink); }
+[data-ui-theme="vintage-typewriter"] :is(.file-row:hover, .file-row.active, .attachment-card:hover) { border-color: var(--accent-border-mid); background: var(--paper-bg-hover); background-size: var(--paper-bg-size); transform: translateY(-1px); }
 
-[data-ui-theme="vintage-typewriter"][data-theme="dark"] .field-note,
-[data-ui-theme="vintage-typewriter"][data-theme="dark"] .cust-hint {
-  color: var(--text3);
-}
+[data-ui-theme="vintage-typewriter"] .attachment-card--file { flex-basis: min(220px, calc(100vw - 56px)); width: min(220px, calc(100vw - 56px)); min-height: 76px; aspect-ratio: auto; border-radius: 6px; }
+[data-ui-theme="vintage-typewriter"] .attachment-card--file::before { content: ''; position: absolute; top: -2px; right: -2px; width: 24px; height: 24px; border-left: 2px solid var(--border2); border-bottom: 2px solid var(--border2); border-radius: 0 6px 0 5px; background: var(--paper3); clip-path: polygon(0 0, 100% 100%, 100% 0); pointer-events: none; }
+[data-ui-theme="vintage-typewriter"] .attachment-card--file .attachment-card-body { padding: 12px 34px 10px 12px; }
+[data-ui-theme="vintage-typewriter"] .attachment-card--file .attachment-card-name { color: var(--ink); font-family: var(--type-font); font-size: .72rem; font-weight: 900; letter-spacing: .01em; }
+[data-ui-theme="vintage-typewriter"] .attachment-card--file .attachment-card-footer { padding-top: 7px; border-top: 1px dashed var(--border); }
+[data-ui-theme="vintage-typewriter"] .attachment-card-badge { border-color: var(--border2); background: var(--paper3); color: var(--ink); font-family: var(--type-font); font-weight: 900; letter-spacing: .08em; }
+[data-ui-theme="vintage-typewriter"] .attachment-card-size { color: var(--muted-ink); font-family: var(--type-font); }
+[data-ui-theme="vintage-typewriter"] .attachment-card--image { padding: 6px; background: var(--paper-bg); background-size: var(--paper-bg-size); }
+[data-ui-theme="vintage-typewriter"] .attachment-card--image .attachment-card-thumb { inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); border: 1px solid var(--border2); border-radius: 4px; }
+[data-ui-theme="vintage-typewriter"] .attachment-card-overlay { left: 6px; right: 6px; bottom: 6px; padding: 18px 7px 7px; border-radius: 0 0 4px 4px; background: rgba(16, 12, 8, .70); }
+[data-ui-theme="vintage-typewriter"] .attachment-card-remove { border: 1px solid rgba(0,0,0,.45); background: var(--accent); color: #fff1d0; }
 
-/* User feedback: remove colored sidebar stripes from conversation items. */
-[data-ui-theme="vintage-typewriter"] .conv-item.active {
-  border-left-width: 1px;
-  border-left-color: #141311;
-  box-shadow:
-    0 4px 0 rgba(0,0,0,.26),
-    inset 0 1px 0 rgba(255,255,255,.18);
-}
+/* Startup, desktop shell and mobile trims. */
+[data-ui-theme="vintage-typewriter"] #lumen-desktop-titlebar { --desktop-titlebar-bg: var(--machine); --desktop-titlebar-fg: var(--machine-fg); border-bottom: 2px solid var(--machine3); font-family: var(--type-font); }
+[data-ui-theme="vintage-typewriter"] .setup-main h1 { font-family: var(--type-font); font-weight: 900; letter-spacing: .03em; }
+[data-ui-theme="vintage-typewriter"] .setup-card { border: 2px solid var(--machine3); background: var(--paper-bg); background-size: var(--paper-bg-size); color: var(--ink); }
+[data-ui-theme="vintage-typewriter"] .setup-kicker { color: var(--accent); }
 
-[data-ui-theme="vintage-typewriter"] .conv-item:hover {
-  border-left-color: rgba(244, 236, 216, .18);
-}
+[data-ui-theme="vintage-typewriter"][data-theme="dark"] :is(.msg-content code:not(pre code), #details, .thinking-body, .tc-item-args, .tr-body) { background: #23170d; color: #f0d5a6; }
+[data-ui-theme="vintage-typewriter"][data-theme="dark"] :is(.msg-content pre, .msg-content table, .file-preview-content pre) { background: #1b120a; color: #ecd4a7; }
+[data-ui-theme="vintage-typewriter"][data-theme="dark"] .msg-content pre code { color: #ecd4a7; }
 
-[data-ui-theme="vintage-typewriter"] .conv-section-label {
-  color: var(--text3);
+[data-ui-theme="vintage-typewriter"][data-theme="dark"] :is(
+  .msg-row:not(.user-row) .msg-content:not(.msg-status), .user-row .msg-content,
+  .file-row, .file-panel-empty, .attachment-card, .settings-section,
+  .model-box, .server-group, .tool-card, .danger-zone, .theme-card-preview,
+  .conv-item.active, .conv-menu, #model-popover, #conv-search, #user-input,
+  #chat-title-input, .field input, .field select, .field textarea, #mcp-config-editor,
+  .msg-edit-textarea, #cust-accent-hex, .setup-card
+) { color: var(--ink); }
+
+[data-ui-theme="vintage-typewriter"][data-theme="dark"] :is(
+  .msg-content:not(.msg-status) p, .msg-content:not(.msg-status) li,
+  .msg-content:not(.msg-status) td, .msg-content:not(.msg-status) th,
+  .msg-content:not(.msg-status) blockquote, .file-row-name,
+  .attachment-card--file .attachment-card-name, .attachment-card-badge,
+  .field label, .cust-label, .theme-card span
+) { color: var(--ink); }
+
+[data-ui-theme="vintage-typewriter"][data-theme="dark"] :is(
+  .field-note, .cust-hint, .danger-zone-desc, .tool-card-desc,
+  .attachment-card-size, .file-row-sub, .file-panel-empty span
+) { color: var(--muted-ink); }
+
+[data-ui-theme="vintage-typewriter"][data-theme="dark"] :is(#conv-search, #user-input, #chat-title-input, .field input, .field textarea)::placeholder { color: color-mix(in srgb, var(--ink) 58%, var(--paper3)); }
+
+@media (max-width: 768px) {
+  [data-ui-theme="vintage-typewriter"] #user-input { min-height: 68px; }
+  [data-ui-theme="vintage-typewriter"] :is(.modal-body, #file-panel-list) { padding: 12px; }
+  [data-ui-theme="vintage-typewriter"] #composer-input-panel::after { right: 12px; }
 }
