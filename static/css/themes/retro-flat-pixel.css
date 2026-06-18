@@ -314,6 +314,7 @@ body::before {
   border-radius: 9px;
   background: var(--message-ai);
   box-shadow: var(--pixel-shadow-md);
+  padding: 14px 16px;
 }
 .user-row .msg-content { background: var(--message-user); color: var(--on-accent); }
 .user-row .msg-content :is(a, code:not(pre code)) { color: var(--on-accent); }
