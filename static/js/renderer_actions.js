@@ -67,7 +67,9 @@ export function addAssistantFooter(row, getText, logIndex, branch = null) {
 
   if (logIndex >= 0) {
     actions.push(createMessageAction(ICONS.refresh, () => {
-      row.dispatchEvent(new CustomEvent('chat:regenerate', { bubbles: true, detail: { logIndex } }));
+      const currentLogIndex = Number(row.dataset.logIndex);
+      const targetLogIndex = Number.isInteger(currentLogIndex) ? currentLogIndex : logIndex;
+      row.dispatchEvent(new CustomEvent('chat:regenerate', { bubbles: true, detail: { logIndex: targetLogIndex } }));
     }));
   }
 

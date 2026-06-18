@@ -4,6 +4,7 @@ import { state } from './state.js';
 import { appendMessage, renderAllMessages } from './renderer.js';
 import { refreshMessageFooter } from './renderer_actions.js';
 import { attachAssistantBranch, attachUserBranch, captureSuffix, logIndexToMessagesIndex, syncVisibleBranches } from './chat_branches.js';
+import { assistantFooterHostIndex } from './chat_log_utils.js';
 
 // ── Edit & Resend ─────────────────────────────────────────────────────────────
 
@@ -14,6 +15,27 @@ import { attachAssistantBranch, attachUserBranch, captureSuffix, logIndexToMessa
 function imageUrlToRef(url) {
   const match = url && url.match(/\/api\/images\/([^/?#]+)/);
   return match ? match[1] : null;
+}
+
+
+function isAssistantTurnEntry(entry) {
+  return entry?.role === 'assistant' ||
+    entry?.type === 'thinking' ||
+    entry?.type === 'tool_result' ||
+    entry?.type === 'status';
+}
+
+function resolveRegenerateLogIndex(logIndex) {
+  const displayLog = state.displayLog || [];
+  const requested = Number.isInteger(logIndex) ? logIndex : -1;
+
+  if (isAssistantTurnEntry(displayLog[requested])) return requested;
+
+  for (let i = Math.min(requested, displayLog.length - 1); i >= 0; i--) {
+    if (isAssistantTurnEntry(displayLog[i])) return i;
+  }
+
+  return assistantFooterHostIndex(displayLog);
 }
 
 export async function editAndResend(logIndex, newText, imageUrls = [], files = [], attachments = null, deps) {
@@ -82,15 +104,23 @@ export async function regenerateFrom(logIndex, deps) {
 
   syncVisibleBranches();
 
+  logIndex = resolveRegenerateLogIndex(logIndex);
+  if (logIndex < 0) return;
+
   // Walk back to find the index right after the last user message — that's
   // where the whole assistant turn (thinking + tool calls + responses) begins.
-  let turnStart = 0;
+  let turnStart = -1;
   for (let i = logIndex - 1; i >= 0; i--) {
     const entry = state.displayLog[i];
+    if (!entry) continue;
     if (entry.type === 'message' && entry.role === 'user') {
       turnStart = i + 1;
       break;
     }
+  }
+  if (turnStart < 0) {
+    console.warn('[Lumen] Cannot regenerate: no user message found before assistant turn.', { logIndex, displayLog: state.displayLog });
+    return;
   }
 
   const existingBranch = state.displayLog[logIndex]?.branch?.kind === 'assistant' ? state.displayLog[logIndex].branch : null;

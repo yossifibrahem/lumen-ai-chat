@@ -2,8 +2,11 @@
 
 import { state } from './state.js';
 import { renderAllMessages } from './renderer.js';
-import { assistantTurnStartIndex, branchHostIndex, logIndexToMessagesIndex } from './chat_log_utils.js';
-export { logIndexToMessagesIndex } from './chat_log_utils.js';
+import { assistantTurnStartIndex, branchHostIndex, logIndexToMessagesIndex as rawLogIndexToMessagesIndex } from './chat_log_utils.js';
+
+export function logIndexToMessagesIndex(logIndex, displayLog = state.displayLog) {
+  return rawLogIndexToMessagesIndex(logIndex, displayLog);
+}
 
 function clone(value) {
   if (value === undefined) return undefined;

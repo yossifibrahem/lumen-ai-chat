@@ -578,6 +578,8 @@ async function processSSEEvent(raw, ctx) {
   return true;
 }
 
+
+
 // ── SSE loop ──────────────────────────────────────────────────────────────────
 
 async function runChatLoop(turn) {
@@ -594,7 +596,7 @@ async function runChatLoop(turn) {
   try {
     turnAbortController = new AbortController();
 
-    const resp = await api.stream('/api/chat/stream', {
+    const payload = {
       model:     state.model || 'gpt-4o',
       temperature:  state.temperature ?? 0.7,
       messages:              await buildApiMessages(turn.messages),
@@ -606,7 +608,9 @@ async function runChatLoop(turn) {
       stream_id:             streamId,
       conv_id:               turn.convId,
       auto_generate_titles:  state.autoGenerateTitles ?? true,
-    }, { signal: turnAbortController.signal });
+    };
+
+    const resp = await api.stream('/api/chat/stream', payload, { signal: turnAbortController.signal });
 
     if (!resp.ok) throw new Error(await readResponseError(resp));
 
