@@ -411,7 +411,7 @@ body::before {
 .section-title { color: var(--accent); letter-spacing: .02em; text-transform: uppercase; }
 .section-sep { border-top: 2px dashed var(--border); }
 :is(.field label, .cust-label, .model-box-header, .file-panel-title, .file-preview-heading, .setup-kicker) { color: var(--text); font-weight: 800; }
-:is(.field-note, .cust-hint, .status-msg, #file-panel-path, #file-preview-meta) { color: var(--text3); }
+:is(.field-note, .cust-hint, .status-msg, #file-panel-path) { color: var(--text3); }
 .cust-toggle-track { border: var(--pixel-border-strong); background: var(--surface3); border-radius: 4px; }
 .cust-toggle-thumb { border-radius: 3px; }
 .cust-toggle input:checked + .cust-toggle-track { background: var(--accent); }

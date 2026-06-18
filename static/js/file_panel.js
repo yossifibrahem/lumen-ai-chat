@@ -247,7 +247,6 @@ function resetPreview() {
   currentFileData = null;
   renderMode = 'render';
   els.title.textContent = 'Preview';
-  els.meta.textContent = '';
   els.body.innerHTML = '';
   els.copy.disabled = true;
   els.copy.removeAttribute('data-content');
@@ -359,7 +358,6 @@ async function loadFilePreview(path) {
   }
 
   els.title.textContent = data.name || 'File';
-  els.meta.textContent = [formatBytes(data.size), formatDate(data.modified)].filter(Boolean).join(' · ');
   els.download.disabled = false;
   els.download.dataset.path = data.path;
 
@@ -445,7 +443,6 @@ export function initFilePanel() {
     path:          document.getElementById('file-panel-path'),
     list:          document.getElementById('file-panel-list'),
     title:         document.getElementById('file-preview-title'),
-    meta:          document.getElementById('file-preview-meta'),
     body:          document.getElementById('file-preview-body'),
     copy:          document.getElementById('btn-copy-file'),
     download:      document.getElementById('btn-download-file'),

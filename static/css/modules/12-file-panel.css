@@ -69,7 +69,6 @@ body.file-panel-resizing { cursor: col-resize; user-select: none; }
   font-weight: 500;
 }
 #file-panel-path,
-#file-preview-meta,
 .file-row-sub,
 .file-panel-empty,
 .file-panel-note {
@@ -174,7 +173,6 @@ body.file-panel-resizing { cursor: col-resize; user-select: none; }
   font-size: .76rem;
   font-weight: 500;
 }
-#file-preview-meta { margin-top: 2px; font-size: .6rem; }
 #file-preview-body {
   flex: 1;
   min-height: 0;
