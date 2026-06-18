@@ -42,9 +42,9 @@ body.lumen-desktop-chrome #file-panel.open {
   display: grid;
   grid-template-columns: minmax(88px, 1fr) auto minmax(124px, 1fr);
   align-items: center;
-  background: var(--desktop-titlebar-bg, var(--accent, #cc785c));
+  background: var(--desktop-titlebar-bg, var(--accent));
   border-bottom: 1px solid var(--desktop-titlebar-border, rgba(0, 0, 0, .18));
-  color: var(--desktop-titlebar-fg, #1f1f1e);
+  color: var(--desktop-titlebar-fg, var(--on-accent));
   user-select: none;
   -webkit-app-region: drag;
 }
@@ -138,7 +138,7 @@ body.lumen-desktop-chrome #file-panel.open {
 .lumen-titlebar-button:hover,
 .lumen-titlebar-button:focus-visible {
   background: var(--desktop-titlebar-button-hover, rgba(255, 255, 255, .14));
-  color: var(--desktop-titlebar-fg, #1f1f1e);
+  color: var(--desktop-titlebar-fg, var(--on-accent));
   opacity: 1;
 }
 

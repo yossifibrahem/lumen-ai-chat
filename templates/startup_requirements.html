@@ -29,14 +29,22 @@
       if (link) link.disabled = uiTheme !== themeKey;
     });
 
-    var hex = prefs.customAccentColor || prefs.accentColor;
+    var hex = prefs.customAccentColor || prefs.accentColor || '#b85f45';
     if (/^#[0-9a-f]{6}$/i.test(hex || '')) {
       var n = parseInt(hex.slice(1), 16);
-      var rgb = ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
+      var rr = (n >> 16) & 255, gg = (n >> 8) & 255, bb = n & 255;
+      var rgb = rr + ',' + gg + ',' + bb;
+      var lin = function(v){ v = v / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+      var lum = 0.2126 * lin(rr) + 0.7152 * lin(gg) + 0.0722 * lin(bb);
       root.style.setProperty('--accent', hex);
+      root.style.setProperty('--accent-rgb', rgb);
+      root.style.setProperty('--on-accent', lum > 0.46 ? '#201711' : '#fff7ea');
       root.style.setProperty('--accent-dim', 'rgba(' + rgb + ',0.12)');
       root.style.setProperty('--accent-hover', 'rgba(' + rgb + ',0.20)');
+      root.style.setProperty('--accent-glow', 'rgba(' + rgb + ',0.06)');
       root.style.setProperty('--accent-border', 'rgba(' + rgb + ',0.4)');
+      root.style.setProperty('--accent-border-dim', 'rgba(' + rgb + ',0.25)');
+      root.style.setProperty('--accent-border-mid', 'rgba(' + rgb + ',0.50)');
     }
     var theme = prefs.theme || 'auto';
     if (theme === 'auto') theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';

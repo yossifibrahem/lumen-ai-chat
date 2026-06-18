@@ -199,7 +199,7 @@
   height: 32px;
   border-radius: 9px;
 }
-#send-btn { background: var(--accent); color: var(--bg); }
+#send-btn { background: var(--accent); color: var(--on-accent); }
 #send-btn:hover { opacity: .88; transform: scale(1.05); }
 #send-btn:disabled { opacity: .3; transform: none; }
 #send-btn svg, #stop-btn svg { width: 13px; height: 13px; }

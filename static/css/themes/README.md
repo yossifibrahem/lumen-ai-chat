@@ -9,6 +9,8 @@ Selectable visual skins live here. To add a new theme:
 
 The base app styles stay in `static/css/modules`. Theme files should only override visuals.
 
+Accent colours are system-level Appearance tokens. Theme CSS should consume `--accent`, `--accent-dim`, `--accent-hover`, `--accent-border`, `--accent-border-dim`, `--accent-border-mid`, `--accent-solid-hover`, and `--on-accent`, but it should not redefine them.
+
 Theme-specific icons are optional. Default/global icons live in `static/js/icons/default.js`.
 To override only the icons a theme needs, add a small override file in
 `static/js/icons/themes/` and register it in `static/js/icons/themes/index.js`.

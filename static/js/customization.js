@@ -84,13 +84,19 @@ function _applyFontFamily(family) {
 function _applyAccent(hex) {
   const rgb = hexToRgb(hex);
   if (!rgb) return;
-  document.documentElement.style.setProperty('--accent',            hex);
-  document.documentElement.style.setProperty('--accent-dim',        `rgba(${rgb},0.12)`);
-  document.documentElement.style.setProperty('--accent-hover',      `rgba(${rgb},0.20)`);
-  document.documentElement.style.setProperty('--accent-glow',       `rgba(${rgb},0.06)`);
-  document.documentElement.style.setProperty('--accent-border',     `rgba(${rgb},0.4)`);
-  document.documentElement.style.setProperty('--accent-border-dim', `rgba(${rgb},0.25)`);
-  document.documentElement.style.setProperty('--accent-border-mid', `rgba(${rgb},0.50)`);
+
+  const root = document.documentElement;
+  const accentText = readableTextForRgb(rgb);
+
+  root.style.setProperty('--accent',            hex);
+  root.style.setProperty('--accent-rgb',        rgb);
+  root.style.setProperty('--on-accent',         accentText);
+  root.style.setProperty('--accent-dim',        `rgba(${rgb},0.12)`);
+  root.style.setProperty('--accent-hover',      `rgba(${rgb},0.20)`);
+  root.style.setProperty('--accent-glow',       `rgba(${rgb},0.06)`);
+  root.style.setProperty('--accent-border',     `rgba(${rgb},0.4)`);
+  root.style.setProperty('--accent-border-dim', `rgba(${rgb},0.25)`);
+  root.style.setProperty('--accent-border-mid', `rgba(${rgb},0.50)`);
 }
 
 // ── Load ──────────────────────────────────────────────────────────────────────
@@ -250,4 +256,13 @@ function _setCheckbox(id, value) {
 function hexToRgb(hex) {
   const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return m ? `${parseInt(m[1],16)},${parseInt(m[2],16)},${parseInt(m[3],16)}` : null;
+}
+
+function readableTextForRgb(rgbString) {
+  const [r, g, b] = rgbString.split(',').map(Number).map(v => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luminance > 0.46 ? '#201711' : '#fff7ea';
 }

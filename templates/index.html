@@ -47,11 +47,16 @@
     });
 
     // Accent color
-    var hex = prefs.customAccentColor || prefs.accentColor;
+    var hex = prefs.customAccentColor || prefs.accentColor || '#b85f45';
     if (hex && /^#[0-9a-f]{6}$/i.test(hex)) {
       var m = /^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-      var rgb = parseInt(m[1],16)+','+parseInt(m[2],16)+','+parseInt(m[3],16);
+      var rr = parseInt(m[1],16), gg = parseInt(m[2],16), bb = parseInt(m[3],16);
+      var rgb = rr+','+gg+','+bb;
+      var lin = function(v){ v = v / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+      var lum = 0.2126 * lin(rr) + 0.7152 * lin(gg) + 0.0722 * lin(bb);
       r.style.setProperty('--accent',            hex);
+      r.style.setProperty('--accent-rgb',        rgb);
+      r.style.setProperty('--on-accent',         lum > 0.46 ? '#201711' : '#fff7ea');
       r.style.setProperty('--accent-dim',        'rgba('+rgb+',0.12)');
       r.style.setProperty('--accent-hover',      'rgba('+rgb+',0.20)');
       r.style.setProperty('--accent-glow',       'rgba('+rgb+',0.06)');
@@ -461,14 +466,20 @@
         <div class="settings-section">
           <div class="section-title">Accent Color</div>
           <div class="cust-swatches">
-            <button class="cust-swatch" data-color="#d96c4b" title="Terracotta" style="--sw: #d96c4b;"></button>
-            <button class="cust-swatch" data-color="#6fa3c9" title="Blue"   style="--sw: #6fa3c9;"></button>
-            <button class="cust-swatch" data-color="#6db87a" title="Green"  style="--sw: #6db87a;"></button>
-            <button class="cust-swatch" data-color="#c96e9a" title="Pink"   style="--sw: #c96e9a;"></button>
-            <button class="cust-swatch" data-color="#9a6ec9" title="Purple" style="--sw: #9a6ec9;"></button>
-            <button class="cust-swatch" data-color="#c97a6e" title="Coral"  style="--sw: #c97a6e;"></button>
-            <button class="cust-swatch" data-color="#6ec9be" title="Teal"   style="--sw: #6ec9be;"></button>
-            <button class="cust-swatch" data-color="#c9a96e" title="Honey"  style="--sw: #c9a96e;"></button>
+            <button class="cust-swatch" data-color="#b85f45" title="Burnt Clay" style="--sw: #b85f45;"></button>
+            <button class="cust-swatch" data-color="#c2873c" title="Brass" style="--sw: #c2873c;"></button>
+            <button class="cust-swatch" data-color="#b1a352" title="Olive Gold" style="--sw: #b1a352;"></button>
+            <button class="cust-swatch" data-color="#6f8f62" title="Sage" style="--sw: #6f8f62;"></button>
+            <button class="cust-swatch" data-color="#4f8f76" title="Sea Green" style="--sw: #4f8f76;"></button>
+            <button class="cust-swatch" data-color="#3f8f9e" title="Teal Blue" style="--sw: #3f8f9e;"></button>
+            <button class="cust-swatch" data-color="#5d82b3" title="Slate Blue" style="--sw: #5d82b3;"></button>
+            <button class="cust-swatch" data-color="#7b68b4" title="Violet" style="--sw: #7b68b4;"></button>
+            <button class="cust-swatch" data-color="#a45f92" title="Orchid" style="--sw: #a45f92;"></button>
+            <button class="cust-swatch" data-color="#c45f7d" title="Rose" style="--sw: #c45f7d;"></button>
+            <button class="cust-swatch" data-color="#9a6046" title="Cocoa" style="--sw: #9a6046;"></button>
+            <button class="cust-swatch" data-color="#8d7357" title="Walnut" style="--sw: #8d7357;"></button>
+            <button class="cust-swatch" data-color="#4f5f9f" title="Indigo" style="--sw: #4f5f9f;"></button>
+            <button class="cust-swatch" data-color="#8f4f68" title="Mulberry" style="--sw: #8f4f68;"></button>
           </div>
           <div class="custom-color-row">
             <label class="custom-color-label">Custom color</label>

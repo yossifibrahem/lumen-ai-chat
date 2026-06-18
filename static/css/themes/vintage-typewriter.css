@@ -6,12 +6,6 @@
   --font-tiempos: 'Instrument Serif', Georgia, serif;
   --type-font: var(--font-roman);
 
-  --accent: #9e3f33;
-  --accent-2: #6d2d26;
-  --accent-dim: rgba(158, 63, 51, .14);
-  --accent-hover: rgba(158, 63, 51, .22);
-  --accent-border-dim: rgba(158, 63, 51, .30);
-  --accent-border-mid: rgba(158, 63, 51, .56);
   --green: #65794f;
   --red: #a94338;
   --blue: #536e74;
@@ -75,12 +69,6 @@
 }
 
 [data-ui-theme="vintage-typewriter"][data-theme="dark"] {
-  --accent: #9a3d32;
-  --accent-2: #642920;
-  --accent-dim: rgba(154, 61, 50, .16);
-  --accent-hover: rgba(154, 61, 50, .25);
-  --accent-border-dim: rgba(154, 61, 50, .36);
-  --accent-border-mid: rgba(154, 61, 50, .62);
 
   --bg: #1a1009;
   --surface: #332419;
@@ -177,11 +165,11 @@
 [data-ui-theme="vintage-typewriter"] :is(#send-btn, .btn-primary, .msg-edit-save, .tc-allow) {
   background: var(--accent);
   border-color: rgba(0,0,0,.55);
-  color: #fff1d0;
-  box-shadow: 0 var(--key-drop) 0 rgba(78,20,14,.68), inset 0 1px 0 rgba(255,255,255,.22);
+  color: var(--on-accent);
+  box-shadow: 0 var(--key-drop) 0 color-mix(in srgb, var(--accent) 58%, #000 42%), inset 0 1px 0 rgba(255,255,255,.22);
 }
 
-[data-ui-theme="vintage-typewriter"] :is(#send-btn, .btn-primary, .msg-edit-save, .tc-allow):hover { background: #ad493d; color: #fff7e8; }
+[data-ui-theme="vintage-typewriter"] :is(#send-btn, .btn-primary, .msg-edit-save, .tc-allow):hover { background: var(--accent-solid-hover); color: var(--on-accent); }
 [data-ui-theme="vintage-typewriter"] :is(#stop-btn, .btn-danger, .tc-deny) { color: var(--red); border-color: color-mix(in srgb, var(--red) 56%, var(--key-edge)); }
 
 [data-ui-theme="vintage-typewriter"] :is(#conv-search, #user-input, .field input, .field select, .field textarea, #mcp-config-editor, .msg-edit-textarea, #cust-accent-hex, #chat-title-input) {
@@ -545,7 +533,7 @@
 [data-ui-theme="vintage-typewriter"] .attachment-card--image .attachment-card-thumb { inset: 7px 7px 24px; width: calc(100% - 14px); height: calc(100% - 31px); border: 1px solid var(--border2); border-radius: 3px; }
 [data-ui-theme="vintage-typewriter"] .attachment-card-overlay { left: 7px; right: 7px; bottom: 5px; height: 16px; padding: 0; display: flex; align-items: center; background: transparent; }
 [data-ui-theme="vintage-typewriter"] .attachment-card-overlay .attachment-card-name { color: var(--muted-ink); font-family: var(--type-font); font-size: .56rem; font-weight: 900; letter-spacing: .05em; }
-[data-ui-theme="vintage-typewriter"] .attachment-card-remove { top: -7px; right: -7px; border: 1px solid rgba(0,0,0,.45); background: var(--accent); color: #fff1d0; box-shadow: 0 2px 0 rgba(22,18,13,.28); }
+[data-ui-theme="vintage-typewriter"] .attachment-card-remove { top: -7px; right: -7px; border: 1px solid rgba(0,0,0,.45); background: var(--accent); color: var(--on-accent); box-shadow: 0 2px 0 rgba(22,18,13,.28); }
 
 /* Startup, desktop shell and mobile trims. */
 [data-ui-theme="vintage-typewriter"] #lumen-desktop-titlebar { --desktop-titlebar-bg: var(--machine); --desktop-titlebar-fg: var(--machine-fg); border-bottom: 2px solid var(--machine3); font-family: var(--type-font); }

@@ -32,7 +32,7 @@
 .btn-row { gap: 8px; margin-bottom: 4px; }
 .mcp-actions-row { margin-top: 10px; }
 .btn-primary, .btn-secondary, .btn-danger { min-height: 34px; padding: 8px 16px; border: none; border-radius: var(--radius-md); font-size: .73rem; font-weight: 500; letter-spacing: .3px; cursor: pointer; }
-.btn-primary { background: var(--accent); color: var(--bg); }
+.btn-primary { background: var(--accent); color: var(--on-accent); }
 .btn-primary:hover { opacity: .9; transform: translateY(-1px); }
 .btn-secondary { border: 1px solid var(--border); background: var(--surface2); color: var(--text2); }
 .btn-secondary:hover { border-color: var(--border2); background: var(--surface); color: var(--text); }

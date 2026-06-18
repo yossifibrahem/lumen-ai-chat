@@ -67,14 +67,14 @@
 
   function updateAccentTitlebarColors() {
     const styles = getComputedStyle(document.documentElement);
-    const accent = styles.getPropertyValue('--accent').trim() || '#cc785c';
+    const accent = styles.getPropertyValue('--accent').trim();
     const accentRgb = parseRgb(accent);
     if (!accentRgb) {
       return;
     }
 
     const useDarkInk = relativeLuminance(accentRgb) > 0.46;
-    const ink = useDarkInk ? { r: 31, g: 31, b: 30 } : { r: 255, g: 255, b: 255 };
+    const ink = useDarkInk ? { r: 32, g: 23, b: 17 } : { r: 255, g: 247, b: 234 };
 
     titlebar.style.setProperty('--desktop-titlebar-bg', accent);
     titlebar.style.setProperty('--desktop-titlebar-fg', `rgb(${ink.r}, ${ink.g}, ${ink.b})`);

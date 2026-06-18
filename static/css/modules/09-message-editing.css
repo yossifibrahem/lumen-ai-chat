@@ -6,7 +6,7 @@
 .msg-edit-textarea:focus { box-shadow: 0 0 0 3px var(--accent-dim); }
 .msg-edit-actions { display: flex; justify-content: flex-end; gap: 6px; }
 .msg-edit-save, .msg-edit-cancel { min-height: 30px; padding: 6px 12px; border: 1px solid transparent; border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: .7rem; cursor: pointer; transition: color var(--fast), background var(--fast), border-color var(--fast), opacity var(--fast), transform var(--fast); }
-.msg-edit-save { background: var(--accent); color: var(--bg); }
+.msg-edit-save { background: var(--accent); color: var(--on-accent); }
 .msg-edit-save:hover { opacity: .9; transform: translateY(-1px); }
 .msg-edit-cancel { border-color: var(--border); background: var(--surface2); color: var(--text2); }
 .msg-edit-cancel:hover { border-color: var(--border2); background: var(--surface); color: var(--text); }

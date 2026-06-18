@@ -99,13 +99,13 @@
 .dark-preview  { background: #111210; }
 .dark-preview  .tp-bar  { background: #1f201d; }
 .dark-preview  .tp-ai   { background: #272825; }
-.dark-preview  .tp-user { background: rgba(201,169,110,.25); }
+.dark-preview  .tp-user { background: var(--accent-dim); }
 
 /* Light preview */
 .light-preview { background: #f5f4f1; }
 .light-preview .tp-bar  { background: #e8e6e1; }
 .light-preview .tp-ai   { background: #fff; }
-.light-preview .tp-user { background: rgba(201,169,110,.35); }
+.light-preview .tp-user { background: var(--accent-hover); }
 
 /* Auto preview — split diagonally */
 .auto-preview {
@@ -113,7 +113,7 @@
 }
 .auto-preview .tp-bar  { background: rgba(150,150,140,.3); }
 .auto-preview .tp-ai   { background: rgba(150,150,140,.2); }
-.auto-preview .tp-user { background: rgba(201,169,110,.3); }
+.auto-preview .tp-user { background: var(--accent-dim); }
 
 .theme-card span {
   font-size: .76rem; color: var(--text2);
@@ -152,14 +152,9 @@
    Theme-specific surface / text / border colours are in [data-theme="…"] below.
    ─────────────────────────────────────────────────────────────────────────── */
 :root {
-  /* Accent */
-  --accent: #cc785c;
-  --accent-dim: rgba(204, 120, 92, .12);
-  --accent-hover: rgba(204, 120, 92, .18);
-  --accent-glow: rgba(204, 120, 92, .08);
-  --accent-border: rgba(204, 120, 92, .42);
-  --accent-border-dim: rgba(204, 120, 92, .24);
-  --accent-border-mid: rgba(204, 120, 92, .50);
+  /* Accent tokens are runtime values from the Appearance system.
+     CSS consumes them, but themes must not choose them. */
+  --accent-solid-hover: color-mix(in srgb, var(--accent) 86%, var(--on-accent) 14%);
 
   /* Semantic colour — same across themes */
   --green: #4f8f5f;

@@ -5,12 +5,6 @@
   --font-pixel: 'Pixelify Sans', 'JetBrains Mono', monospace;
   --font-mono: 'JetBrains Mono', 'Cascadia Code', monospace;
 
-  --accent: #d96c4b;
-  --accent-dim: rgba(217, 108, 75, .14);
-  --accent-glow: rgba(217, 108, 75, .08);
-  --accent-border: rgba(217, 108, 75, .48);
-  --accent-border-dim: rgba(217, 108, 75, .26);
-  --accent-border-mid: rgba(217, 108, 75, .62);
   --green: #6aa85f;
   --red: #c84f42;
 
@@ -37,7 +31,6 @@
   --code-bg: #11100c;
   --message-ai: #27241a;
   --message-user: var(--accent);
-  --on-accent: #20110c;
   --pixel-shadow: rgba(0, 0, 0, .36);
   --soft-shadow: 6px 6px 0 rgba(0, 0, 0, .26);
   --shadow: 8px 8px 0 rgba(0, 0, 0, .28), 0 0 0 2px var(--border);
@@ -57,7 +50,6 @@
   --code-bg: #fffdf2;
   --message-ai: #fff8e6;
   --message-user: var(--accent);
-  --on-accent: #25150f;
   --pixel-shadow: rgba(47, 36, 24, .24);
   --soft-shadow: 5px 5px 0 rgba(111, 82, 47, .20);
   --shadow: 8px 8px 0 rgba(111, 82, 47, .20), 0 0 0 2px var(--border2);
