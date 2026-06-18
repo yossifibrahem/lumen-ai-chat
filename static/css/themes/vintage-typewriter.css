@@ -56,8 +56,8 @@
   --text: #2b2115;
   --text2: #513c25;
   --text3: #7a6040;
-  --code-bg: #2a2118;
-  --code-text: #f0dfbd;
+  --code-bg: #d2bd91;
+  --code-text: #2a1f13;
   --shadow: 0 24px 60px rgba(37, 28, 17, .25);
 
   --machine: #201e1a;
@@ -81,10 +81,10 @@
   --accent-border-dim: rgba(154, 61, 50, .36);
   --accent-border-mid: rgba(154, 61, 50, .62);
 
-  --bg: #120b07;
-  --surface: #20140c;
-  --surface2: #2b1a10;
-  --surface3: #3a2516;
+  --bg: #1a1009;
+  --surface: #3C2A1E;
+  --surface2: #4a2f1d;
+  --surface3: #5b3a24;
   --border: #4a3d29;
   --border2: #765e3d;
   --text: #ead9b7;
@@ -446,7 +446,7 @@
   box-shadow: 0 4px 0 rgba(22,18,13,.15);
 }
 
-[data-ui-theme="vintage-typewriter"] :is(.thinking-header, .tc-item-header, .tr-summary, .group-header):hover { background: var(--paper-bg); background-size: var(--paper-bg-size); color: var(--ink); transform: translateY(-1px); }
+[data-ui-theme="vintage-typewriter"] :is(.thinking-header, .tc-item-header, .tr-summary, .group-header):hover { background: var(--paper-bg); background-size: var(--paper-bg-size); color: var(--ink); }
 [data-ui-theme="vintage-typewriter"] .group-body > :is(.thinking-block, .tool-strip)::before { width: 2px; background: var(--accent-border-dim); }
 [data-ui-theme="vintage-typewriter"] :is(.tool-strip-using .tui-name, .tool-strip-running .tui-name, .thinking-block.thinking-streaming .thinking-label, .block-group.group-active .group-label) { background: none; -webkit-text-fill-color: currentColor; color: var(--accent); }
 [data-ui-theme="vintage-typewriter"] .msg-footer { gap: 5px; }
