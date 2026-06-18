@@ -80,7 +80,6 @@ body::before {
     linear-gradient(to right, rgba(160,100,0,.055) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(160,100,0,.045) 1px, transparent 1px);
 }
-::selection { background: var(--accent); color: var(--on-accent); }
 /* Keep press effects scoped so collapsible thinking/tool headers do not jump. */
 :is(.sidebar-action, #btn-new-chat, #send-btn, #stop-btn, #attach-btn, #mic-btn, #model-badge, .suggestion-chip, .msg-action-btn, .btn-primary, .btn-secondary, .msg-edit-save, .msg-edit-cancel, .file-row, .modal-tab, .cust-swatch):active {
   transform: translate(1px, 1px);
