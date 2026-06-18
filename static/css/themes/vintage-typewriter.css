@@ -476,6 +476,7 @@
 [data-ui-theme="vintage-typewriter"] .range-slider::-webkit-slider-thumb { border: 1px solid var(--key-edge); background: var(--key-face); box-shadow: 0 3px 0 var(--key-shadow), inset 0 1px 0 var(--key-glint); }
 [data-ui-theme="vintage-typewriter"] .cust-toggle input:checked + .cust-toggle-track { background: var(--accent); border-color: rgba(0,0,0,.45); }
 [data-ui-theme="vintage-typewriter"] .cust-swatch { border: 2px solid var(--paper); outline: 1px solid var(--key-edge); box-shadow: 0 3px 0 rgba(22,18,13,.24); }
+[data-ui-theme="vintage-typewriter"] .cust-swatch-group-label { color: var(--ink); font-family: var(--type-font); font-weight: 900; letter-spacing: .12em; }
 [data-ui-theme="vintage-typewriter"] :is(.cust-swatch:hover, .cust-swatch.active) { transform: translateY(-1px) scale(1.08); outline-color: var(--accent-border-mid); }
 [data-ui-theme="vintage-typewriter"] .model-row.selected { border-color: var(--accent-border-mid); background: var(--accent-dim); color: var(--ink); box-shadow: 0 0 0 2px var(--accent-dim), 0 3px 0 rgba(22,18,13,.14); }
 [data-ui-theme="vintage-typewriter"] .theme-card:has(input:checked) .theme-card-preview {

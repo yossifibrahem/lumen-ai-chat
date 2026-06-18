@@ -29,7 +29,7 @@
       if (link) link.disabled = uiTheme !== themeKey;
     });
 
-    var hex = prefs.customAccentColor || prefs.accentColor || '#b85f45';
+    var hex = prefs.customAccentColor || prefs.accentColor || '#7e2f3a';
     if (/^#[0-9a-f]{6}$/i.test(hex || '')) {
       var n = parseInt(hex.slice(1), 16);
       var rr = (n >> 16) & 255, gg = (n >> 8) & 255, bb = n & 255;

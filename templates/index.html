@@ -47,7 +47,7 @@
     });
 
     // Accent color
-    var hex = prefs.customAccentColor || prefs.accentColor || '#b85f45';
+    var hex = prefs.customAccentColor || prefs.accentColor || '#7e2f3a';
     if (hex && /^#[0-9a-f]{6}$/i.test(hex)) {
       var m = /^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
       var rr = parseInt(m[1],16), gg = parseInt(m[2],16), bb = parseInt(m[3],16);
@@ -466,20 +466,26 @@
         <div class="settings-section">
           <div class="section-title">Accent Color</div>
           <div class="cust-swatches">
-            <button class="cust-swatch" data-color="#b85f45" title="Burnt Clay" style="--sw: #b85f45;"></button>
-            <button class="cust-swatch" data-color="#c2873c" title="Brass" style="--sw: #c2873c;"></button>
-            <button class="cust-swatch" data-color="#b1a352" title="Olive Gold" style="--sw: #b1a352;"></button>
-            <button class="cust-swatch" data-color="#6f8f62" title="Sage" style="--sw: #6f8f62;"></button>
-            <button class="cust-swatch" data-color="#4f8f76" title="Sea Green" style="--sw: #4f8f76;"></button>
-            <button class="cust-swatch" data-color="#3f8f9e" title="Teal Blue" style="--sw: #3f8f9e;"></button>
-            <button class="cust-swatch" data-color="#5d82b3" title="Slate Blue" style="--sw: #5d82b3;"></button>
-            <button class="cust-swatch" data-color="#7b68b4" title="Violet" style="--sw: #7b68b4;"></button>
-            <button class="cust-swatch" data-color="#a45f92" title="Orchid" style="--sw: #a45f92;"></button>
-            <button class="cust-swatch" data-color="#c45f7d" title="Rose" style="--sw: #c45f7d;"></button>
-            <button class="cust-swatch" data-color="#9a6046" title="Cocoa" style="--sw: #9a6046;"></button>
-            <button class="cust-swatch" data-color="#8d7357" title="Walnut" style="--sw: #8d7357;"></button>
-            <button class="cust-swatch" data-color="#4f5f9f" title="Indigo" style="--sw: #4f5f9f;"></button>
-            <button class="cust-swatch" data-color="#8f4f68" title="Mulberry" style="--sw: #8f4f68;"></button>
+            <div class="cust-swatch-set" aria-label="Dark accent colors">
+              <span class="cust-swatch-group-label">Dark</span>
+              <button class="cust-swatch" data-color="#7e2f3a" title="Dark Oxblood" style="--sw: #7e2f3a;"></button>
+              <button class="cust-swatch" data-color="#6f4e37" title="Dark Espresso" style="--sw: #6f4e37;"></button>
+              <button class="cust-swatch" data-color="#2f6f55" title="Dark Forest" style="--sw: #2f6f55;"></button>
+              <button class="cust-swatch" data-color="#286f78" title="Dark Teal" style="--sw: #286f78;"></button>
+              <button class="cust-swatch" data-color="#3e557e" title="Dark Midnight" style="--sw: #3e557e;"></button>
+              <button class="cust-swatch" data-color="#6e467d" title="Dark Aubergine" style="--sw: #6e467d;"></button>
+              <button class="cust-swatch" data-color="#48505f" title="Dark Slate" style="--sw: #48505f;"></button>
+            </div>
+            <div class="cust-swatch-set" aria-label="Light accent colors">
+              <span class="cust-swatch-group-label">Light</span>
+              <button class="cust-swatch" data-color="#f0a875" title="Light Apricot" style="--sw: #f0a875;"></button>
+              <button class="cust-swatch" data-color="#e0b85a" title="Light Honey" style="--sw: #e0b85a;"></button>
+              <button class="cust-swatch" data-color="#a7c97a" title="Light Matcha" style="--sw: #a7c97a;"></button>
+              <button class="cust-swatch" data-color="#7fd1b9" title="Light Mint" style="--sw: #7fd1b9;"></button>
+              <button class="cust-swatch" data-color="#7fb7df" title="Light Sky" style="--sw: #7fb7df;"></button>
+              <button class="cust-swatch" data-color="#b59add" title="Light Lavender" style="--sw: #b59add;"></button>
+              <button class="cust-swatch" data-color="#e795b3" title="Light Rosewater" style="--sw: #e795b3;"></button>
+            </div>
           </div>
           <div class="custom-color-row">
             <label class="custom-color-label">Custom color</label>

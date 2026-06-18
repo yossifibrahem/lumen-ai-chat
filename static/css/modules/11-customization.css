@@ -83,10 +83,25 @@ html.hide-suggestion-chips #suggestions-bar { display: none !important; }
 
 /* ── Colour swatches ── */
 .cust-swatches {
+  display: grid;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.cust-swatch-set {
   display: flex;
+  align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  padding: 4px 0;
+}
+
+.cust-swatch-group-label {
+  width: 42px;
+  color: var(--text3);
+  font-family: var(--font-mono);
+  font-size: .62rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
 }
 
 .cust-swatch {

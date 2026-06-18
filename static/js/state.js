@@ -21,7 +21,7 @@ export const CUSTOMIZATION_DEFAULTS = {
   fontFamily:            'typewriter', // 'space' | 'pixel' | 'typewriter' | 'sora' | 'tiempos' | 'mono' | 'system'
   theme:                 'auto',      // 'dark' | 'light' | 'auto'
   uiTheme:              'vintage-typewriter', // 'default' | 'retro-pixel' | 'vintage-typewriter'
-  accentColor:           '#b85f45',   // preset swatch
+  accentColor:           '#7e2f3a',   // preset swatch
   customAccentColor:     '',          // user custom hex
 };
 
