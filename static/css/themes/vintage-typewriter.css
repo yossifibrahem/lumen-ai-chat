@@ -47,15 +47,15 @@
 }
 
 [data-ui-theme="vintage-typewriter"][data-theme="light"] {
-  --bg: #b9ae99;
-  --surface: #c8bba3;
-  --surface2: #d6c8ad;
-  --surface3: #aa9b82;
-  --border: #8e816d;
-  --border2: #514736;
-  --text: #292319;
-  --text2: #4d4333;
-  --text3: #776a55;
+  --bg: #b89f78;
+  --surface: #c6a977;
+  --surface2: #d5bd8e;
+  --surface3: #9f7f55;
+  --border: #8a6b43;
+  --border2: #5d4329;
+  --text: #2b2115;
+  --text2: #513c25;
+  --text3: #7a6040;
   --code-bg: #2a2118;
   --code-text: #f0dfbd;
   --shadow: 0 24px 60px rgba(37, 28, 17, .25);
@@ -81,10 +81,10 @@
   --accent-border-dim: rgba(154, 61, 50, .36);
   --accent-border-mid: rgba(154, 61, 50, .62);
 
-  --bg: #0b0907;
-  --surface: #12100d;
-  --surface2: #1b1711;
-  --surface3: #272016;
+  --bg: #120b07;
+  --surface: #20140c;
+  --surface2: #2b1a10;
+  --surface3: #3a2516;
   --border: #4a3d29;
   --border2: #765e3d;
   --text: #ead9b7;
@@ -530,17 +530,25 @@
 [data-ui-theme="vintage-typewriter"] .file-row { color: var(--ink); }
 [data-ui-theme="vintage-typewriter"] :is(.file-row:hover, .file-row.active, .attachment-card:hover) { border-color: var(--accent-border-mid); background: var(--paper-bg-hover); background-size: var(--paper-bg-size); transform: translateY(-1px); }
 
-[data-ui-theme="vintage-typewriter"] .attachment-card--file { flex-basis: min(220px, calc(100vw - 56px)); width: min(220px, calc(100vw - 56px)); min-height: 76px; aspect-ratio: auto; border-radius: 6px; }
-[data-ui-theme="vintage-typewriter"] .attachment-card--file::before { content: ''; position: absolute; top: -2px; right: -2px; width: 24px; height: 24px; border-left: 2px solid var(--border2); border-bottom: 2px solid var(--border2); border-radius: 0 6px 0 5px; background: var(--paper3); clip-path: polygon(0 0, 100% 100%, 100% 0); pointer-events: none; }
-[data-ui-theme="vintage-typewriter"] .attachment-card--file .attachment-card-body { padding: 12px 34px 10px 12px; }
-[data-ui-theme="vintage-typewriter"] .attachment-card--file .attachment-card-name { color: var(--ink); font-family: var(--type-font); font-size: .72rem; font-weight: 900; letter-spacing: .01em; }
-[data-ui-theme="vintage-typewriter"] .attachment-card--file .attachment-card-footer { padding-top: 7px; border-top: 1px dashed var(--border); }
-[data-ui-theme="vintage-typewriter"] .attachment-card-badge { border-color: var(--border2); background: var(--paper3); color: var(--ink); font-family: var(--type-font); font-weight: 900; letter-spacing: .08em; }
+[data-ui-theme="vintage-typewriter"] .attachment-card { border-radius: 5px; box-shadow: 0 5px 0 rgba(22,18,13,.16), inset 0 1px 0 rgba(255,255,255,.08); isolation: isolate; }
+[data-ui-theme="vintage-typewriter"] .attachment-card--file {
+  flex-basis: min(170px, calc(50vw - 44px)); width: min(170px, calc(50vw - 44px)); min-height: 108px;
+  aspect-ratio: auto; border-radius: 4px; background: var(--paper-bg); background-size: var(--paper-bg-size);
+}
+[data-ui-theme="vintage-typewriter"] .attachment-card--file::after {
+  content: ''; position: absolute; left: 14px; right: 14px; top: 46px; height: 1px;
+  background: var(--paper-line); box-shadow: 0 9px 0 var(--paper-line), 0 18px 0 var(--paper-line); pointer-events: none;
+}
+[data-ui-theme="vintage-typewriter"] .attachment-card--file .attachment-card-body { position: relative; z-index: 1; padding: 13px 14px 11px; }
+[data-ui-theme="vintage-typewriter"] .attachment-card--file .attachment-card-name { color: var(--ink); font-family: var(--type-font); font-size: .7rem; font-weight: 900; letter-spacing: .01em; -webkit-line-clamp: 3; }
+[data-ui-theme="vintage-typewriter"] .attachment-card--file .attachment-card-footer { padding-top: 8px; border-top: 1px solid var(--paper-line); }
+[data-ui-theme="vintage-typewriter"] .attachment-card-badge { min-height: 18px; padding: 0 5px; border-color: var(--border); background: transparent; color: var(--ink); font-family: var(--type-font); font-weight: 900; letter-spacing: .08em; box-shadow: none; }
 [data-ui-theme="vintage-typewriter"] .attachment-card-size { color: var(--muted-ink); font-family: var(--type-font); }
-[data-ui-theme="vintage-typewriter"] .attachment-card--image { padding: 6px; background: var(--paper-bg); background-size: var(--paper-bg-size); }
-[data-ui-theme="vintage-typewriter"] .attachment-card--image .attachment-card-thumb { inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); border: 1px solid var(--border2); border-radius: 4px; }
-[data-ui-theme="vintage-typewriter"] .attachment-card-overlay { left: 6px; right: 6px; bottom: 6px; padding: 18px 7px 7px; border-radius: 0 0 4px 4px; background: rgba(16, 12, 8, .70); }
-[data-ui-theme="vintage-typewriter"] .attachment-card-remove { border: 1px solid rgba(0,0,0,.45); background: var(--accent); color: #fff1d0; }
+[data-ui-theme="vintage-typewriter"] .attachment-card--image { padding: 7px 7px 24px; border-radius: 5px; background: var(--paper-bg); background-size: var(--paper-bg-size); }
+[data-ui-theme="vintage-typewriter"] .attachment-card--image .attachment-card-thumb { inset: 7px 7px 24px; width: calc(100% - 14px); height: calc(100% - 31px); border: 1px solid var(--border2); border-radius: 3px; }
+[data-ui-theme="vintage-typewriter"] .attachment-card-overlay { left: 7px; right: 7px; bottom: 5px; height: 16px; padding: 0; display: flex; align-items: center; background: transparent; }
+[data-ui-theme="vintage-typewriter"] .attachment-card-overlay .attachment-card-name { color: var(--muted-ink); font-family: var(--type-font); font-size: .56rem; font-weight: 900; letter-spacing: .05em; }
+[data-ui-theme="vintage-typewriter"] .attachment-card-remove { top: -7px; right: -7px; border: 1px solid rgba(0,0,0,.45); background: var(--accent); color: #fff1d0; box-shadow: 0 2px 0 rgba(22,18,13,.28); }
 
 /* Startup, desktop shell and mobile trims. */
 [data-ui-theme="vintage-typewriter"] #lumen-desktop-titlebar { --desktop-titlebar-bg: var(--machine); --desktop-titlebar-fg: var(--machine-fg); border-bottom: 2px solid var(--machine3); font-family: var(--type-font); }
