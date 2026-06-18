@@ -19,6 +19,7 @@
   margin-right: calc(-1 * var(--file-panel-w));
   transition: transform .28s var(--ease), margin-right .28s var(--ease), width .12s linear;
   position: relative;
+  overflow-x: hidden;
   z-index: 20;
 }
 #file-panel.open { transform: translateX(0); margin-right: 0; }
@@ -177,7 +178,8 @@ body.file-panel-resizing { cursor: col-resize; user-select: none; }
 #file-preview-body {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 10px;
   display: flex;
   flex-direction: column;
@@ -186,25 +188,120 @@ body.file-panel-resizing { cursor: col-resize; user-select: none; }
   padding: 8px;
   overflow: hidden;
 }
+#file-preview-body:has(.file-preview-code) {
+  padding: 0;
+  background: var(--code-bg);
+}
 .file-preview-content.msg-content {
+  flex: 1 0 auto;
   width: 100%;
-  max-width: none;
+  max-width: 100%;
+  min-width: 0;
   min-height: 100%;
+  overflow-wrap: anywhere;
 }
-.file-preview-code.msg-content { width: 100%; }
-.file-preview-code.msg-content pre {
+#file-preview .file-preview-content.msg-content {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+#file-preview .file-preview-code.msg-content { background: var(--code-bg); }
+.file-preview-content.msg-content pre {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+.file-preview-content.msg-content pre code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.file-preview-content.msg-content :is(img, picture, video, canvas, svg) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.file-preview-content.msg-content img {
+  object-fit: contain;
+  margin: .75em 0;
+}
+.file-preview-content.msg-content a:has(> img) {
+  display: inline-block;
+  max-width: 100%;
+}
+.file-preview-code.msg-content {
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  background: var(--code-bg);
+}
+.file-preview-code.msg-content .file-preview-code-block {
+  --line-number-gutter-w: calc(var(--line-number-ch, 2ch) + 14px);
+  --file-preview-line-height: 1.55;
+  position: relative;
+  flex: 1 0 auto;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 100%;
   margin: 0;
-  min-height: 100%;
   overflow: visible;
-}
-.file-preview-code.msg-content pre code {
-  min-height: calc(100% - 24px);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   box-sizing: border-box;
-  white-space: pre;
   color: var(--text2);
+  font-family: var(--font-mono);
   font-size: .72rem;
-  line-height: 1.55;
+  line-height: var(--file-preview-line-height);
 }
+.file-preview-code.msg-content .file-preview-code-block::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 var(--line-number-gutter-w);
+  border-left: 1px solid var(--border);
+  pointer-events: none;
+}
+.file-preview-code.msg-content .file-preview-code-line {
+  display: grid;
+  grid-template-columns: var(--line-number-gutter-w) minmax(0, 1fr);
+  align-items: start;
+  min-width: 0;
+  min-height: calc(1em * var(--file-preview-line-height));
+}
+.file-preview-code.msg-content .file-preview-line-number {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  min-height: inherit;
+  padding: 0 8px 0 6px;
+  background: var(--code-bg);
+  color: var(--text3);
+  text-align: right;
+  line-height: inherit;
+  user-select: none;
+}
+.file-preview-code.msg-content .file-preview-code-line code {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  min-height: inherit;
+  padding: 0 12px;
+  box-sizing: border-box;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.file-preview-code.msg-content .file-preview-code-line:first-child { padding-top: 12px; }
+.file-preview-code.msg-content .file-preview-code-line:last-child { padding-bottom: 12px; }
 
 /* ─── HTML iframe preview ──────────────────────────────────────────────────── */
 .file-preview-iframe {

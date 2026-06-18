@@ -4,7 +4,7 @@ import { api } from './api.js';
 import { STORAGE_KEYS, state } from './state.js';
 import { ICONS } from './icons.js';
 
-import { applyMarkdown, codeFenceFor } from './markdown.js';
+import { applyMarkdown } from './markdown.js';
 import { showToast } from './ui.js';
 import { storage } from './storage.js';
 import { escapeHtml, formatBytes, fileExtension as ext } from './format.js';
@@ -71,6 +71,41 @@ function isHtml(name = '') {
 
 function isRenderable(name = '') {
   return isMarkdown(name) || isHtml(name);
+}
+
+function sourceLines(content = '') {
+  const text = String(content ?? '').replace(/\r\n?/g, '\n');
+  const displayText = text.endsWith('\n') ? text.slice(0, -1) : text;
+  return displayText.split('\n');
+}
+
+function renderCodePreview(root, content = '', language = '') {
+  const lines = sourceLines(content);
+  const lineDigits = Math.max(2, String(lines.length).length);
+  const safeLanguage = String(language || '').replace(/[^\w#+.-]/g, '');
+  const pre = document.createElement('pre');
+  pre.className = 'file-preview-code-block';
+  pre.style.setProperty('--line-number-ch', `${lineDigits}ch`);
+
+  lines.forEach((line, index) => {
+    const row = document.createElement('span');
+    row.className = 'file-preview-code-line';
+
+    const number = document.createElement('span');
+    number.className = 'file-preview-line-number';
+    number.setAttribute('aria-hidden', 'true');
+    number.textContent = String(index + 1);
+
+    const code = document.createElement('code');
+    if (safeLanguage) code.className = `language-${safeLanguage}`;
+    code.textContent = line || '​';
+
+    row.append(number, code);
+    pre.appendChild(row);
+  });
+
+  root.appendChild(pre);
+  pre.querySelectorAll('code').forEach(block => window.hljs?.highlightElement(block));
 }
 
 function isMissingWorkspacePath(error = '') {
@@ -186,22 +221,23 @@ function renderContent(data, mode) {
       const preview = document.createElement('div');
       preview.className = 'file-preview-content msg-content file-preview-code';
       els.body.appendChild(preview);
-      applyMarkdown(preview, codeFenceFor(data.content || '', 'html'), { copyCodeButtons: false });
+      renderCodePreview(preview, data.content || '', 'html');
     }
   } else if (isMarkdown(data.name)) {
     const preview = document.createElement('div');
     preview.className = `file-preview-content msg-content${mode === 'render' ? '' : ' file-preview-code'}`;
     els.body.appendChild(preview);
-    const content = mode === 'render'
-      ? (data.content || '')
-      : codeFenceFor(data.content || '', 'markdown');
-    applyMarkdown(preview, content, { copyCodeButtons: false });
+    if (mode === 'render') {
+      applyMarkdown(preview, data.content || '', { copyCodeButtons: false });
+    } else {
+      renderCodePreview(preview, data.content || '', 'markdown');
+    }
   } else {
     const language = languageFromName(data.name);
     const preview = document.createElement('div');
     preview.className = 'file-preview-content msg-content file-preview-code';
     els.body.appendChild(preview);
-    applyMarkdown(preview, codeFenceFor(data.content || '', language), { copyCodeButtons: false });
+    renderCodePreview(preview, data.content || '', language);
   }
 }
 
