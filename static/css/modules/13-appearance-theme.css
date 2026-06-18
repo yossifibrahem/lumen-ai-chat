@@ -25,6 +25,24 @@
 }
 .eye-btn:hover { color: var(--text); background: var(--surface); }
 
+/* Compact API key visibility button. Kept global so default and theme skins share the same sizing. */
+#settings-modal #tab-api .input-with-eye input { padding-right: 40px; }
+#settings-modal #tab-api .input-with-eye .eye-btn {
+  right: 6px;
+  top: 50%;
+  bottom: auto;
+  width: 25px;
+  height: 24px;
+  min-width: 25px;
+  min-height: 24px;
+  padding: 0;
+  border-radius: 6px;
+  transform: translateY(-50%);
+}
+#settings-modal #tab-api .input-with-eye .eye-btn:hover,
+#settings-modal #tab-api .input-with-eye .eye-btn:active { transform: translateY(-50%); }
+#settings-modal #tab-api .input-with-eye .eye-btn svg { width: 12px; height: 12px; }
+
 /* Range slider */
 .range-slider {
   -webkit-appearance: none; appearance: none;
