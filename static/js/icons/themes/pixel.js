@@ -1,5 +1,5 @@
-// Pixel Terminal icon pack.
-// Every default key is overridden so the skin never mixes rounded and pixel art.
+// 16-Bit Console icon pack.
+// Every default key is overridden so the skin keeps a cohesive retro-game look.
 
 import { pixelIcon, pixelSmallIcon } from '../svg.js';
 

@@ -44,7 +44,7 @@ export function clearMessages() {
   messages.innerHTML = `
     <div id="empty-state">
       <div class="es-logo"><span>Lu</span><em>men</em></div>
-      <div class="es-sub">A clean little console for big thoughts.</div>
+      <div class="es-sub">A playful little space for big thoughts.</div>
     </div>`;
 
   if (composer) messages.appendChild(composer);
