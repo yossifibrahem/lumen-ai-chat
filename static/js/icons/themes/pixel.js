@@ -57,7 +57,7 @@ export const PIXEL_THEME_ICONS = Object.freeze({
   eyeHide: ps('<path d="M1 8l3-4h8l3 4-3 4H4L1 8zM2 2l12 12"/>'),
   syncIcon: ps('<path d="M14 6V2h-4M14 2a6 6 0 0 0-10 2M2 10v4h4M2 14a6 6 0 0 0 10-2"/>'),
 
-  mcpWebSearch: p('<path d="M3 3h18v18H3zM3 12h18M12 3v18M7 3v18M17 3v18"/>'),
+  mcpWebSearch: p('<path d="M8 3h8v2h3v3h2v8h-2v3h-3v2H8v-2H5v-3H3V8h2V5h3V3zM3 12h18M12 3v18M8 5v14M16 5v14"/>'),
   mcpBash: p('<path d="M3 4h18v16H3zM7 9l4 3-4 3M13 16h5"/>'),
   mcpFileSystem: p('<path d="M3 6h7l2 3h9v11H3zM3 6V4h7l2 2"/>'),
   mcpMemory: p('<path d="M6 6h12v12H6zM9 9h6v6H9zM9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M18 9h4M2 15h4M18 15h4"/>'),

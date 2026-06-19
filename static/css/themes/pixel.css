@@ -325,9 +325,15 @@ html[data-ui-theme="pixel"] .cust-toggle input:checked + .cust-toggle-track .cus
 }
 
 html[data-ui-theme="pixel"] .range-slider,
-html[data-ui-theme="pixel"] .range-slider::-webkit-slider-thumb,
-html[data-ui-theme="pixel"] .range-slider::-moz-range-thumb,
 html[data-ui-theme="pixel"] .cust-swatch {
+  border-radius: 0;
+}
+
+html[data-ui-theme="pixel"] .range-slider::-webkit-slider-thumb {
+  border-radius: 0;
+}
+
+html[data-ui-theme="pixel"] .range-slider::-moz-range-thumb {
   border-radius: 0;
 }
 
