@@ -126,15 +126,6 @@ html[data-ui-theme="pixel"] .conv-item.active {
   box-shadow: 3px 3px 0 var(--pixel-shadow);
 }
 
-html[data-ui-theme="pixel"] .conv-item.active::before {
-  content: '';
-  width: 4px;
-  height: 16px;
-  flex: 0 0 4px;
-  background: var(--accent);
-  box-shadow: 2px 0 0 var(--accent-border);
-}
-
 html[data-ui-theme="pixel"] #chat-header {
   border-bottom: 2px solid var(--border);
   background: color-mix(in srgb, var(--bg) 94%, transparent);
@@ -272,9 +263,32 @@ html[data-ui-theme="pixel"] .modal-footer {
 }
 
 html[data-ui-theme="pixel"] .modal-tab.active {
-  color: var(--on-accent);
-  background: var(--accent);
-  box-shadow: 3px 3px 0 var(--accent-border);
+  color: var(--text);
+  background: var(--surface2);
+  border: 2px solid var(--border2);
+  padding: 4px 12px;
+  box-shadow:
+    inset 2px 2px 0 color-mix(in srgb, var(--text) 18%, transparent),
+    inset -2px -2px 0 color-mix(in srgb, var(--border) 75%, transparent),
+    3px 3px 0 var(--pixel-shadow);
+  font-weight: 700;
+  transform: translate(-1px, -1px);
+}
+
+html[data-ui-theme="pixel"] .modal-tab.active:hover {
+  color: var(--text);
+  background: var(--surface2);
+}
+
+html[data-ui-theme="pixel"] .modal-tab.active svg {
+  color: var(--text);
+}
+
+html[data-ui-theme="pixel"] .modal-tab.active::before,
+html[data-ui-theme="pixel"] .modal-tab.active::after,
+html[data-ui-theme="pixel"] .conv-item.active::before,
+html[data-ui-theme="pixel"] .conv-item.active::after {
+  content: none;
 }
 
 html[data-ui-theme="pixel"] :is(.btn-primary, .btn-secondary, .btn-danger) {
