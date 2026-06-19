@@ -18,6 +18,10 @@ function normalizeUiTheme(theme) {
   return Object.prototype.hasOwnProperty.call(UI_THEME_STYLESHEETS, theme) ? theme : 'default';
 }
 
+function normalizeFontFamily(family) {
+  return ['space', 'pixel', 'system'].includes(family) ? family : 'space';
+}
+
 export function applyCustomization() {
   // Theme (light/dark/auto)
   _applyTheme(state.theme || CUSTOMIZATION_DEFAULTS.theme);
@@ -33,7 +37,7 @@ export function applyCustomization() {
   document.documentElement.style.setProperty('--font-size-base', sizes[state.fontSize] || sizes.medium);
 
   // Font family
-  _applyFontFamily(state.fontFamily || 'sora');
+  _applyFontFamily(state.fontFamily || CUSTOMIZATION_DEFAULTS.fontFamily);
 
   // Accent color — custom hex overrides swatch if set
   const accent = (state.customAccentColor && /^#[0-9a-f]{6}$/i.test(state.customAccentColor))
@@ -72,13 +76,9 @@ function _applyFontFamily(family) {
   const map = {
     space:   "'Space Grotesk', sans-serif",
     pixel:   "'Pixelify Sans', 'JetBrains Mono', monospace",
-    typewriter: "'Special Elite', 'Courier New', monospace",
-    sora:    "'Sora', sans-serif",
-    tiempos: "'Instrument Serif', Georgia, serif",
-    mono:    "'JetBrains Mono', monospace",
     system:  "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   };
-  document.documentElement.style.setProperty('--font-roman', map[family] || map.space);
+  document.documentElement.style.setProperty('--font-roman', map[normalizeFontFamily(family)]);
 }
 
 function _applyAccent(hex) {
@@ -117,6 +117,7 @@ function rgbToHex(rgb) {
 export function loadCustomization() {
   const saved = storage.get(STORAGE_KEYS.customization, {});
   Object.assign(state, { ...CUSTOMIZATION_DEFAULTS, ...saved });
+  state.fontFamily = normalizeFontFamily(state.fontFamily);
   applyCustomization();
   syncCustomizationUI();
 
@@ -209,7 +210,7 @@ export function syncCustomizationUI() {
   if (fs) fs.value = state.fontSize;
 
   const ff = document.getElementById('cust-font-family');
-  if (ff) ff.value = state.fontFamily;
+  if (ff) ff.value = normalizeFontFamily(state.fontFamily);
 
   const uiTheme = document.getElementById('cust-ui-theme');
   if (uiTheme) uiTheme.value = normalizeUiTheme(state.uiTheme || CUSTOMIZATION_DEFAULTS.uiTheme);
@@ -241,7 +242,7 @@ function _readControlsIntoState() {
   state.hideThinkingTokens    = document.getElementById('cust-hide-thinking')?.checked     ?? state.hideThinkingTokens;
   state.groupSequentialBlocks = document.getElementById('cust-group-seq-blocks')?.checked  ?? state.groupSequentialBlocks;
   state.fontSize              = document.getElementById('cust-font-size')?.value           ?? state.fontSize;
-  state.fontFamily            = document.getElementById('cust-font-family')?.value         ?? state.fontFamily;
+  state.fontFamily            = normalizeFontFamily(document.getElementById('cust-font-family')?.value ?? state.fontFamily);
   state.uiTheme               = normalizeUiTheme(document.getElementById('cust-ui-theme')?.value ?? state.uiTheme);
 
   const themeRadio = document.querySelector('input[name="cust-theme"]:checked');

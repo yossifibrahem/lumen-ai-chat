@@ -9,7 +9,7 @@
 
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600&family=Pixelify+Sans:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&family=Special+Elite&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600&family=Pixelify+Sans:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
 <!-- Rendering libraries -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -92,10 +92,9 @@
     }
 
     // Font family
-    var fontMap = { space: "'Space Grotesk', sans-serif", pixel: "'Pixelify Sans', 'JetBrains Mono', monospace", typewriter: "'Special Elite', 'Courier New', monospace", sora: "'Sora', sans-serif", tiempos: "'Instrument Serif', Georgia, serif", mono: "'JetBrains Mono', monospace", system: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" };
-    if (prefs.fontFamily && fontMap[prefs.fontFamily]) {
-      r.style.setProperty('--font-roman', fontMap[prefs.fontFamily]);
-    }
+    var fontMap = { space: "'Space Grotesk', sans-serif", pixel: "'Pixelify Sans', 'JetBrains Mono', monospace", system: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" };
+    var fontFamily = fontMap[prefs.fontFamily] ? prefs.fontFamily : 'space';
+    r.style.setProperty('--font-roman', fontMap[fontFamily]);
 
     // Suppress all transitions during initial paint so nothing animates in
     r.classList.add('no-transition');
@@ -445,12 +444,8 @@
             <div class="field">
               <label>Font family</label>
               <select id="cust-font-family">
-                <option value="space">Space Grotesk (modern)</option>
-                <option value="pixel">Pixelify Sans (pixel)</option>
-                <option value="typewriter">Special Elite (typewriter)</option>
-                <option value="sora">Sora (sans-serif)</option>
-                <option value="tiempos">Instrument Serif (vintage)</option>
-                <option value="mono">JetBrains Mono</option>
+                <option value="space">Standard — Space Grotesk</option>
+                <option value="pixel">Pixel — Pixelify Sans</option>
                 <option value="system">System default</option>
               </select>
             </div>
