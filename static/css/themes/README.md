@@ -18,4 +18,4 @@ Any icon key not listed by the theme automatically uses the default icon.
 
 Installed skins:
 
-- `pixel` — 16-Bit Console, with a complete matching retro-game icon pack.
+- `pixel` — Pixel Terminal, with a complete matching icon pack.
