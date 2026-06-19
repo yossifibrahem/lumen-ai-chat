@@ -3,7 +3,7 @@
 Default/global icons live in `static/js/icons/default.js`.
 
 Theme icon packs live beside this file and are registered in `index.js` with the
-same key used by `data-ui-theme`, for example `retro-pixel`.
+same key used by `data-ui-theme`, for example `my-theme`.
 
 A theme pack can be either:
 

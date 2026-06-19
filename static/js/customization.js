@@ -10,12 +10,9 @@ import { refreshIcons } from './icons.js';
 let autoThemeListenerAttached = false;
 
 const UI_THEME_STYLESHEETS = {
-  'retro-pixel': 'ui-theme-retro-pixel',
-  'vintage-typewriter': 'ui-theme-vintage-typewriter',
 };
 
 function normalizeUiTheme(theme) {
-  if (theme === 'vintage-ledger') return 'vintage-typewriter';
   return Object.prototype.hasOwnProperty.call(UI_THEME_STYLESHEETS, theme) ? theme : 'default';
 }
 

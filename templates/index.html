@@ -22,8 +22,6 @@
 
 <!-- App styles -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
-<link id="ui-theme-retro-pixel" rel="stylesheet" href="{{ url_for('static', filename='css/themes/retro-flat-pixel.css') }}" disabled />
-<link id="ui-theme-vintage-typewriter" rel="stylesheet" href="{{ url_for('static', filename='css/themes/vintage-typewriter.css') }}" disabled />
 
 <!-- Apply saved customization before first paint to prevent flash of defaults -->
 <script>
@@ -32,19 +30,8 @@
     var prefs = JSON.parse(localStorage.getItem('lumen_customization') || '{}');
     var r = document.documentElement;
 
-    // Visual style / UI theme. Default to the typewriter skin for this build.
-    var uiTheme = prefs.uiTheme || 'vintage-typewriter';
-    if (uiTheme === 'vintage-ledger') uiTheme = 'vintage-typewriter';
-    var uiThemeLinks = {
-      'retro-pixel': 'ui-theme-retro-pixel',
-      'vintage-typewriter': 'ui-theme-vintage-typewriter'
-    };
-    if (!Object.prototype.hasOwnProperty.call(uiThemeLinks, uiTheme)) uiTheme = 'default';
-    r.setAttribute('data-ui-theme', uiTheme);
-    Object.keys(uiThemeLinks).forEach(function (themeKey) {
-      var link = document.getElementById(uiThemeLinks[themeKey]);
-      if (link) link.disabled = uiTheme !== themeKey;
-    });
+    // Only the base UI theme is currently installed.
+    r.setAttribute('data-ui-theme', 'default');
 
     // Accent color
     var hex = prefs.customAccentColor || prefs.accentColor || '#7e2f3a';
@@ -426,10 +413,8 @@
             <label>UI theme</label>
             <select id="cust-ui-theme">
               <option value="default">Default Classic</option>
-              <option value="retro-pixel">Retro Pixel</option>
-              <option value="vintage-typewriter">Vintage Typewriter</option>
             </select>
-            <div class="field-note">Changes the whole app skin. Light/dark mode, fonts, and accent color still work separately.</div>
+            <div class="field-note">Additional app skins can be added later. Light/dark mode, fonts, and accent color work separately.</div>
           </div>
         </div>
 
