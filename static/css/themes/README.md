@@ -16,4 +16,6 @@ To override only the icons a theme needs, add a small override file in
 `static/js/icons/themes/` and register it in `static/js/icons/themes/index.js`.
 Any icon key not listed by the theme automatically uses the default icon.
 
-No optional skins are currently installed; the app uses the base/default styles.
+Installed skins:
+
+- `pixel` — Pixel Terminal, with a complete matching icon pack.

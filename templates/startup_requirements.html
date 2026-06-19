@@ -9,12 +9,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600&family=Pixelify+Sans:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&family=Special+Elite&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+<link id="ui-theme-pixel" rel="stylesheet" href="{{ url_for('static', filename='css/themes/pixel.css') }}" disabled />
 <script>
 (function () {
   try {
     var prefs = JSON.parse(localStorage.getItem('lumen_customization') || '{}');
     var root = document.documentElement;
-    root.setAttribute('data-ui-theme', 'default');
+    var uiTheme = prefs.uiTheme === 'pixel' ? 'pixel' : 'default';
+    root.setAttribute('data-ui-theme', uiTheme);
+    var pixelThemeLink = document.getElementById('ui-theme-pixel');
+    if (pixelThemeLink) pixelThemeLink.disabled = uiTheme !== 'pixel';
 
     var hex = prefs.customAccentColor || prefs.accentColor || '#5b9bd5';
     if (/^#[0-9a-f]{6}$/i.test(hex || '')) {

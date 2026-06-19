@@ -22,6 +22,7 @@
 
 <!-- App styles -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+<link id="ui-theme-pixel" rel="stylesheet" href="{{ url_for('static', filename='css/themes/pixel.css') }}" disabled />
 
 <!-- Apply saved customization before first paint to prevent flash of defaults -->
 <script>
@@ -30,8 +31,11 @@
     var prefs = JSON.parse(localStorage.getItem('lumen_customization') || '{}');
     var r = document.documentElement;
 
-    // Only the base UI theme is currently installed.
-    r.setAttribute('data-ui-theme', 'default');
+    // Apply the saved visual skin before first paint.
+    var uiTheme = prefs.uiTheme === 'pixel' ? 'pixel' : 'default';
+    r.setAttribute('data-ui-theme', uiTheme);
+    var pixelThemeLink = document.getElementById('ui-theme-pixel');
+    if (pixelThemeLink) pixelThemeLink.disabled = uiTheme !== 'pixel';
 
     // Accent color
     var hex = prefs.customAccentColor || prefs.accentColor || '#5b9bd5';
@@ -413,8 +417,9 @@
             <label>UI theme</label>
             <select id="cust-ui-theme">
               <option value="default">Default Classic</option>
+              <option value="pixel">Pixel Terminal</option>
             </select>
-            <div class="field-note">Additional app skins can be added later. Light/dark mode, fonts, and accent color work separately.</div>
+            <div class="field-note">Skins change the UI shape and icon style. Light/dark mode, fonts, and accent color still work separately.</div>
           </div>
         </div>
 

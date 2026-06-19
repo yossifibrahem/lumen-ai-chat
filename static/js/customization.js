@@ -10,6 +10,7 @@ import { refreshIcons } from './icons.js';
 let autoThemeListenerAttached = false;
 
 const UI_THEME_STYLESHEETS = {
+  pixel: 'ui-theme-pixel',
 };
 
 function normalizeUiTheme(theme) {
