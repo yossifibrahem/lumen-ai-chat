@@ -20,7 +20,7 @@
     var pixelThemeLink = document.getElementById('ui-theme-pixel');
     if (pixelThemeLink) pixelThemeLink.disabled = uiTheme !== 'pixel';
 
-    var hex = prefs.customAccentColor || prefs.accentColor || '#4DA6FF';
+    var hex = prefs.customAccentColor || prefs.accentColor || '#5B8DEF';
     if (/^#[0-9a-f]{6}$/i.test(hex || '')) {
       var n = parseInt(hex.slice(1), 16);
       var rr = (n >> 16) & 255, gg = (n >> 8) & 255, bb = n & 255;
