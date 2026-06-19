@@ -34,7 +34,7 @@
     r.setAttribute('data-ui-theme', 'default');
 
     // Accent color
-    var hex = prefs.customAccentColor || prefs.accentColor || '#7e2f3a';
+    var hex = prefs.customAccentColor || prefs.accentColor || '#5b9bd5';
     if (hex && /^#[0-9a-f]{6}$/i.test(hex)) {
       var m = /^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
       var rr = parseInt(m[1],16), gg = parseInt(m[2],16), bb = parseInt(m[3],16);
@@ -43,7 +43,7 @@
       var lum = 0.2126 * lin(rr) + 0.7152 * lin(gg) + 0.0722 * lin(bb);
       r.style.setProperty('--accent',            hex);
       r.style.setProperty('--accent-rgb',        rgb);
-      r.style.setProperty('--on-accent',         lum > 0.46 ? '#201711' : '#fff7ea');
+      r.style.setProperty('--on-accent',         lum > 0.20 ? '#201711' : '#fff7ea');
       r.style.setProperty('--accent-dim',        'rgba('+rgb+',0.12)');
       r.style.setProperty('--accent-hover',      'rgba('+rgb+',0.20)');
       r.style.setProperty('--accent-glow',       'rgba('+rgb+',0.06)');
@@ -450,27 +450,15 @@
 
         <div class="settings-section">
           <div class="section-title">Accent Color</div>
-          <div class="cust-swatches">
-            <div class="cust-swatch-set" aria-label="Dark accent colors">
-              <span class="cust-swatch-group-label">Dark</span>
-              <button class="cust-swatch" data-color="#7e2f3a" title="Dark Oxblood" style="--sw: #7e2f3a;"></button>
-              <button class="cust-swatch" data-color="#6f4e37" title="Dark Espresso" style="--sw: #6f4e37;"></button>
-              <button class="cust-swatch" data-color="#2f6f55" title="Dark Forest" style="--sw: #2f6f55;"></button>
-              <button class="cust-swatch" data-color="#286f78" title="Dark Teal" style="--sw: #286f78;"></button>
-              <button class="cust-swatch" data-color="#3e557e" title="Dark Midnight" style="--sw: #3e557e;"></button>
-              <button class="cust-swatch" data-color="#6e467d" title="Dark Aubergine" style="--sw: #6e467d;"></button>
-              <button class="cust-swatch" data-color="#48505f" title="Dark Slate" style="--sw: #48505f;"></button>
-            </div>
-            <div class="cust-swatch-set" aria-label="Light accent colors">
-              <span class="cust-swatch-group-label">Light</span>
-              <button class="cust-swatch" data-color="#f0a875" title="Light Apricot" style="--sw: #f0a875;"></button>
-              <button class="cust-swatch" data-color="#e0b85a" title="Light Honey" style="--sw: #e0b85a;"></button>
-              <button class="cust-swatch" data-color="#a7c97a" title="Light Matcha" style="--sw: #a7c97a;"></button>
-              <button class="cust-swatch" data-color="#7fd1b9" title="Light Mint" style="--sw: #7fd1b9;"></button>
-              <button class="cust-swatch" data-color="#7fb7df" title="Light Sky" style="--sw: #7fb7df;"></button>
-              <button class="cust-swatch" data-color="#b59add" title="Light Lavender" style="--sw: #b59add;"></button>
-              <button class="cust-swatch" data-color="#e795b3" title="Light Rosewater" style="--sw: #e795b3;"></button>
-            </div>
+          <div class="cust-swatches" role="group" aria-label="Accent colors">
+            <button class="cust-swatch" data-color="#5b9bd5" title="Coral Blue" aria-label="Coral blue accent" style="--sw: #5b9bd5;"></button>
+            <button class="cust-swatch" data-color="#4ecdc4" title="Mint Green" aria-label="Mint green accent" style="--sw: #4ecdc4;"></button>
+            <button class="cust-swatch" data-color="#a78bfa" title="Soft Violet" aria-label="Soft violet accent" style="--sw: #a78bfa;"></button>
+            <button class="cust-swatch" data-color="#ffb347" title="Sunny Amber" aria-label="Sunny amber accent" style="--sw: #ffb347;"></button>
+            <button class="cust-swatch" data-color="#ff8fa3" title="Rose Pink" aria-label="Rose pink accent" style="--sw: #ff8fa3;"></button>
+            <button class="cust-swatch" data-color="#5ec8b8" title="Sage Teal" aria-label="Sage teal accent" style="--sw: #5ec8b8;"></button>
+            <button class="cust-swatch" data-color="#8c9eff" title="Periwinkle" aria-label="Periwinkle accent" style="--sw: #8c9eff;"></button>
+            <button class="cust-swatch" data-color="#ff7e6b" title="Coral Red" aria-label="Coral red accent" style="--sw: #ff7e6b;"></button>
           </div>
           <div class="custom-color-row">
             <label class="custom-color-label">Custom color</label>
