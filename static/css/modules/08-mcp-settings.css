@@ -1,8 +1,20 @@
 /* MCP server settings — server groups, per-tool rows, toggles, icon picker. */
 
 /* ─── Section container ───────────────────────────────────────────────────── */
-#mcp-status { margin-top: -6px; margin-bottom: 10px; }
-#tool-list { display: flex; flex-direction: column; gap: 8px; }
+.mcp-tools-box { margin-top: 0; }
+.mcp-tools-header .status-msg { max-width: 300px; }
+#tool-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 62px;
+  padding: 8px;
+}
+#tool-list > .no-tools-label {
+  display: grid;
+  min-height: 46px;
+  place-items: center;
+}
 
 /* ─── Server card ─────────────────────────────────────────────────────────── */
 .server-group {
@@ -53,8 +65,7 @@
 .server-toggle-label {
   display: flex;
   align-items: center;
-  gap: 5px;
-  cursor: pointer;
+  gap: 7px;
   user-select: none;
 }
 .toggle-label-text {
@@ -64,37 +75,7 @@
   white-space: nowrap;
 }
 
-/* ─── Mini toggle (used at both server and tool level) ────────────────────── */
-.mcp-mini-toggle {
-  position: relative;
-  width: 30px;
-  height: 17px;
-  padding: 0;
-  border: none;
-  appearance: none;
-  -webkit-appearance: none;
-  border-radius: 9px;
-  outline: 1px solid var(--border);
-  background: var(--surface);
-  cursor: pointer;
-  transition: background .15s, outline-color .15s;
-  flex-shrink: 0;
-}
-.mcp-mini-toggle:hover { outline-color: var(--accent); }
-.mcp-mini-toggle.on { background: var(--accent); outline-color: transparent; }
-.mcp-mini-thumb {
-  position: absolute;
-  top: 50%;
-  left: 2px;
-  transform: translateY(-50%);
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: var(--text3);
-  pointer-events: none;
-  transition: left .15s, background .15s;
-}
-.mcp-mini-toggle.on .mcp-mini-thumb { left: 17px; background: var(--bg); }
+.mcp-settings-toggle { gap: 0; }
 
 /* ─── Tool list column headers ────────────────────────────────────────────── */
 .server-tools { padding: 0; }
@@ -125,7 +106,7 @@
   color: var(--text3);
   text-transform: uppercase;
   letter-spacing: .05em;
-  width: 30px;
+  width: 40px;
   text-align: center;
 }
 
@@ -188,10 +169,10 @@
   align-items: center;
 }
 /* Dimmed state when inheriting from server */
-.tool-auto-wrap.is-inherited .mcp-mini-toggle {
+.tool-auto-wrap.is-inherited .mcp-settings-toggle {
   opacity: .55;
 }
-.tool-auto-wrap.is-inherited .mcp-mini-toggle:hover {
+.tool-auto-wrap.is-inherited .mcp-settings-toggle:hover {
   opacity: 1;
 }
 /* Small "inherited" badge */

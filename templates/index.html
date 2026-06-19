@@ -532,22 +532,26 @@
         <div class="settings-section">
           <div class="section-title">Server Configuration</div>
           <div class="field">
-            <label>mcp.json</label>
-            <textarea id="mcp-config-editor" spellcheck="false"></textarea>
+            <label for="mcp-config-editor">Configuration JSON</label>
+            <textarea id="mcp-config-editor" spellcheck="false" aria-describedby="mcp-config-note"></textarea>
+            <div class="field-note" id="mcp-config-note">Define MCP servers using the standard <code>mcpServers</code> object. Changes are saved when you apply settings.</div>
           </div>
         </div>
         <div class="section-sep"></div>
         <div class="settings-section">
-          <div class="section-title with-action">
-            <span>Available Tools</span>
-            <button class="model-refresh-btn mcp-refresh-btn" id="btn-reload-tools" title="Reload tools" aria-label="Reload tools">
-              <span data-icon="syncIcon"></span>
-            </button>
-          </div>
-          <div id="mcp-status" class="status-msg"></div>
-          <div id="tool-list">
-            <div class="no-tools-label">No tools loaded</div>
+          <div class="section-title">Available Tools</div>
+          <div class="model-box mcp-tools-box">
+            <div class="model-box-header mcp-tools-header">
+              <span>Connected tools</span>
+              <div id="mcp-status" class="status-msg"></div>
+              <button class="model-refresh-btn mcp-refresh-btn" id="btn-reload-tools" title="Reload tools" aria-label="Reload tools">
+                <span data-icon="syncIcon"></span>
+              </button>
             </div>
+            <div id="tool-list">
+              <div class="no-tools-label">No tools loaded</div>
+            </div>
+          </div>
         </div>
       </div><!-- /#tab-mcp -->
 

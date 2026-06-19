@@ -227,27 +227,27 @@ function openIconDropdown(btn, container) {
 }
 
 
-function buildMiniToggle(dataAttrs, isOn, title) {
+function buildSettingsToggle(dataAttrs, isOn, title) {
   const attrStr = Object.entries(dataAttrs)
     .map(([k, v]) => `data-${k}="${escapeHtml(String(v))}"`)
     .join(' ');
-  return `<button class="mcp-mini-toggle${isOn ? ' on' : ''}" ${attrStr}
-    title="${escapeHtml(title)}" aria-pressed="${isOn}" aria-label="${escapeHtml(title)}">
-    <span class="mcp-mini-thumb"></span>
-  </button>`;
+  return `<label class="cust-toggle mcp-settings-toggle" title="${escapeHtml(title)}">
+    <input type="checkbox" ${attrStr}${isOn ? ' checked' : ''} aria-label="${escapeHtml(title)}" />
+    <span class="cust-toggle-track"><span class="cust-toggle-thumb"></span></span>
+  </label>`;
 }
 
 function buildServerToggleRow(server, settings) {
   return `
     <div class="server-toggle-group">
-      <label class="server-toggle-label">
-        ${buildMiniToggle({ server: server, action: 'enabled', level: 'server' }, settings.enabled, 'Enable server')}
+      <div class="server-toggle-label">
+        ${buildSettingsToggle({ server: server, action: 'enabled', level: 'server' }, settings.enabled, 'Enable server')}
         <span class="toggle-label-text">Enabled</span>
-      </label>
-      <label class="server-toggle-label">
-        ${buildMiniToggle({ server: server, action: 'autoApprove', level: 'server' }, settings.autoApprove, 'Auto-approve all tools')}
+      </div>
+      <div class="server-toggle-label">
+        ${buildSettingsToggle({ server: server, action: 'autoApprove', level: 'server' }, settings.autoApprove, 'Auto-approve all tools')}
         <span class="toggle-label-text">Auto-approve</span>
-      </label>
+      </div>
     </div>`;
 }
 
@@ -341,13 +341,13 @@ function buildToolRowHtml(server, tool, serverSettings) {
         </div>
       </div>
       <div class="tool-row-toggles">
-        ${buildMiniToggle(
+        ${buildSettingsToggle(
           { server: server, tool: toolName, action: 'enabled', level: 'tool' },
           isEnabled,
           'Enable this tool'
         )}
         <span class="tool-auto-wrap${isInherited ? ' is-inherited' : ''}">
-          ${buildMiniToggle(
+          ${buildSettingsToggle(
             { server: server, tool: toolName, action: 'autoApprove', level: 'tool' },
             isAutoApprove,
             isInherited
@@ -419,26 +419,26 @@ function renderToolList() {
     .join('');
 
   // ── Server-level toggles ──────────────────────────────────────────────────
-  container.querySelectorAll('.mcp-mini-toggle[data-level="server"]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const setting = getServerSetting(btn.dataset.server, true);
-      setting[btn.dataset.action] = !setting[btn.dataset.action];
+  container.querySelectorAll('.mcp-settings-toggle input[data-level="server"]').forEach(input => {
+    input.addEventListener('change', () => {
+      const setting = getServerSetting(input.dataset.server, true);
+      setting[input.dataset.action] = input.checked;
       renderToolList();
     });
   });
 
   // ── Tool-level toggles ────────────────────────────────────────────────────
-  container.querySelectorAll('.mcp-mini-toggle[data-level="tool"]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const toolSetting = getToolSetting(btn.dataset.server, btn.dataset.tool, true);
-      const action = btn.dataset.action;
+  container.querySelectorAll('.mcp-settings-toggle input[data-level="tool"]').forEach(input => {
+    input.addEventListener('change', () => {
+      const toolSetting = getToolSetting(input.dataset.server, input.dataset.tool, true);
+      const action = input.dataset.action;
 
       if (action === 'enabled') {
-        toolSetting.enabled = !toolSetting.enabled;
+        toolSetting.enabled = input.checked;
       } else if (action === 'autoApprove') {
         // Cycle: null (inherited) → explicit-opposite → null (inherited)
         if (toolSetting.autoApprove === null || toolSetting.autoApprove === undefined) {
-          const serverAuto = getServerSetting(btn.dataset.server, true).autoApprove;
+          const serverAuto = getServerSetting(input.dataset.server, true).autoApprove;
           toolSetting.autoApprove = !serverAuto;
         } else {
           toolSetting.autoApprove = null; // reset to inherit
