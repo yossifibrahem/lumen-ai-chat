@@ -8,6 +8,7 @@ import { refreshIcons } from './icons.js';
 // Reads from `state` and pushes every setting into the live DOM.
 
 let autoThemeListenerAttached = false;
+let currentAccentHex = null;
 
 const UI_THEME_STYLESHEETS = {
   pixel: 'ui-theme-pixel',
@@ -52,6 +53,7 @@ function _applyTheme(theme) {
     effective = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
   }
   document.documentElement.setAttribute('data-theme', effective);
+  if (currentAccentHex) _applyAccent(currentAccentHex);
 }
 
 function _applyUiTheme(theme) {
@@ -80,13 +82,18 @@ function _applyFontFamily(family) {
 }
 
 function _applyAccent(hex) {
-  const rgb = hexToRgb(hex);
-  if (!rgb) return;
+  const sourceRgb = hexToRgb(hex);
+  if (!sourceRgb) return;
 
   const root = document.documentElement;
+  const rgb = root.getAttribute('data-theme') === 'light'
+    ? darkenRgb(sourceRgb, 0.14)
+    : sourceRgb;
   const accentText = readableTextForRgb(rgb);
+  const accentHex = rgbToHex(rgb);
 
-  root.style.setProperty('--accent',            hex);
+  currentAccentHex = hex;
+  root.style.setProperty('--accent',            accentHex);
   root.style.setProperty('--accent-rgb',        rgb);
   root.style.setProperty('--on-accent',         accentText);
   root.style.setProperty('--accent-dim',        `rgba(${rgb},0.12)`);
@@ -95,6 +102,14 @@ function _applyAccent(hex) {
   root.style.setProperty('--accent-border',     `rgba(${rgb},0.4)`);
   root.style.setProperty('--accent-border-dim', `rgba(${rgb},0.25)`);
   root.style.setProperty('--accent-border-mid', `rgba(${rgb},0.50)`);
+}
+
+function darkenRgb(rgb, amount) {
+  return rgb.split(',').map(channel => Math.round(Number(channel) * (1 - amount))).join(',');
+}
+
+function rgbToHex(rgb) {
+  return `#${rgb.split(',').map(channel => Number(channel).toString(16).padStart(2, '0')).join('')}`;
 }
 
 // ── Load ──────────────────────────────────────────────────────────────────────

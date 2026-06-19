@@ -37,15 +37,30 @@
     var pixelThemeLink = document.getElementById('ui-theme-pixel');
     if (pixelThemeLink) pixelThemeLink.disabled = uiTheme !== 'pixel';
 
-    // Accent color
+    // Theme
+    var theme = prefs.theme || 'auto';
+    if (theme === 'auto') {
+      theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    } else {
+      theme = theme === 'light' ? 'light' : 'dark';
+    }
+    r.setAttribute('data-theme', theme);
+
+    // Accent color. Light mode uses a slightly deeper version for contrast.
     var hex = prefs.customAccentColor || prefs.accentColor || '#5B8DEF';
     if (hex && /^#[0-9a-f]{6}$/i.test(hex)) {
       var m = /^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
       var rr = parseInt(m[1],16), gg = parseInt(m[2],16), bb = parseInt(m[3],16);
+      if (theme === 'light') {
+        rr = Math.round(rr * 0.86);
+        gg = Math.round(gg * 0.86);
+        bb = Math.round(bb * 0.86);
+      }
       var rgb = rr+','+gg+','+bb;
+      var accentHex = '#'+[rr,gg,bb].map(function(v){ return v.toString(16).padStart(2,'0'); }).join('');
       var lin = function(v){ v = v / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
       var lum = 0.2126 * lin(rr) + 0.7152 * lin(gg) + 0.0722 * lin(bb);
-      r.style.setProperty('--accent',            hex);
+      r.style.setProperty('--accent',            accentHex);
       r.style.setProperty('--accent-rgb',        rgb);
       r.style.setProperty('--on-accent',         lum > 0.20 ? '#201711' : '#fff7ea');
       r.style.setProperty('--accent-dim',        'rgba('+rgb+',0.12)');
@@ -75,15 +90,6 @@
     if (!sidebarOpen) {
       r.classList.add('sidebar-init-closed');
     }
-
-    // Theme
-    var theme = prefs.theme || 'auto';
-    if (theme === 'auto') {
-      theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-    } else {
-      theme = theme === 'light' ? 'light' : 'dark';
-    }
-    r.setAttribute('data-theme', theme);
 
     // Font family
     var fontMap = { space: "'Space Grotesk', sans-serif", pixel: "'Pixelify Sans', 'JetBrains Mono', monospace", typewriter: "'Special Elite', 'Courier New', monospace", sora: "'Sora', sans-serif", tiempos: "'Instrument Serif', Georgia, serif", mono: "'JetBrains Mono', monospace", system: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" };
@@ -456,14 +462,14 @@
         <div class="settings-section">
           <div class="section-title">Accent Color</div>
           <div class="cust-swatches" role="group" aria-label="Accent colors">
-            <button class="cust-swatch" data-color="#5B8DEF" title="Cornflower Blue — primary actions, sent bubbles" aria-label="Cornflower blue accent for primary actions and sent bubbles" style="--sw: #5B8DEF;"></button>
-            <button class="cust-swatch" data-color="#3EC9A7" title="Mint Teal — success states, online status" aria-label="Mint teal accent for success states and online status" style="--sw: #3EC9A7;"></button>
-            <button class="cust-swatch" data-color="#FF9466" title="Soft Coral — highlights, notification dots" aria-label="Soft coral accent for highlights and notification dots" style="--sw: #FF9466;"></button>
-            <button class="cust-swatch" data-color="#9B7FE8" title="Periwinkle Violet — AI/bot bubbles, badges" aria-label="Periwinkle violet accent for AI and bot bubbles and badges" style="--sw: #9B7FE8;"></button>
-            <button class="cust-swatch" data-color="#FFC861" title="Warm Amber — alerts, typing indicators" aria-label="Warm amber accent for alerts and typing indicators" style="--sw: #FFC861;"></button>
-            <button class="cust-swatch" data-color="#F178A6" title="Bubblegum Pink — fun/playful accents, mentions" aria-label="Bubblegum pink accent for playful accents and mentions" style="--sw: #F178A6;"></button>
-            <button class="cust-swatch" data-color="#4FC1E9" title="Sky Cyan — links, info tooltips" aria-label="Sky cyan accent for links and information tooltips" style="--sw: #4FC1E9;"></button>
-            <button class="cust-swatch" data-color="#9FD356" title="Spring Lime — progress, completed tasks" aria-label="Spring lime accent for progress and completed tasks" style="--sw: #9FD356;"></button>
+            <button class="cust-swatch" data-color="#5B8DEF" title="Cornflower Blue" aria-label="Cornflower blue accent" style="--sw: #5B8DEF;"></button>
+            <button class="cust-swatch" data-color="#2FA6A0" title="Ocean Teal" aria-label="Ocean teal accent" style="--sw: #2FA6A0;"></button>
+            <button class="cust-swatch" data-color="#45A66B" title="Emerald Green" aria-label="Emerald green accent" style="--sw: #45A66B;"></button>
+            <button class="cust-swatch" data-color="#D6A13D" title="Golden Amber" aria-label="Golden amber accent" style="--sw: #D6A13D;"></button>
+            <button class="cust-swatch" data-color="#DF744A" title="Tangerine Orange" aria-label="Tangerine orange accent" style="--sw: #DF744A;"></button>
+            <button class="cust-swatch" data-color="#D85C60" title="Warm Red" aria-label="Warm red accent" style="--sw: #D85C60;"></button>
+            <button class="cust-swatch" data-color="#D05B91" title="Rose Pink" aria-label="Rose pink accent" style="--sw: #D05B91;"></button>
+            <button class="cust-swatch" data-color="#8C72D8" title="Amethyst Violet" aria-label="Amethyst violet accent" style="--sw: #8C72D8;"></button>
           </div>
           <div class="custom-color-row">
             <label class="custom-color-label">Custom color</label>
