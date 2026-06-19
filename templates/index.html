@@ -38,7 +38,7 @@
     if (pixelThemeLink) pixelThemeLink.disabled = uiTheme !== 'pixel';
 
     // Accent color
-    var hex = prefs.customAccentColor || prefs.accentColor || '#5b9bd5';
+    var hex = prefs.customAccentColor || prefs.accentColor || '#4DA6FF';
     if (hex && /^#[0-9a-f]{6}$/i.test(hex)) {
       var m = /^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
       var rr = parseInt(m[1],16), gg = parseInt(m[2],16), bb = parseInt(m[3],16);
@@ -456,14 +456,14 @@
         <div class="settings-section">
           <div class="section-title">Accent Color</div>
           <div class="cust-swatches" role="group" aria-label="Accent colors">
-            <button class="cust-swatch" data-color="#5b9bd5" title="Coral Blue" aria-label="Coral blue accent" style="--sw: #5b9bd5;"></button>
-            <button class="cust-swatch" data-color="#4ecdc4" title="Mint Green" aria-label="Mint green accent" style="--sw: #4ecdc4;"></button>
-            <button class="cust-swatch" data-color="#a78bfa" title="Soft Violet" aria-label="Soft violet accent" style="--sw: #a78bfa;"></button>
-            <button class="cust-swatch" data-color="#ffb347" title="Sunny Amber" aria-label="Sunny amber accent" style="--sw: #ffb347;"></button>
-            <button class="cust-swatch" data-color="#ff8fa3" title="Rose Pink" aria-label="Rose pink accent" style="--sw: #ff8fa3;"></button>
-            <button class="cust-swatch" data-color="#5ec8b8" title="Sage Teal" aria-label="Sage teal accent" style="--sw: #5ec8b8;"></button>
-            <button class="cust-swatch" data-color="#8c9eff" title="Periwinkle" aria-label="Periwinkle accent" style="--sw: #8c9eff;"></button>
-            <button class="cust-swatch" data-color="#ff7e6b" title="Coral Red" aria-label="Coral red accent" style="--sw: #ff7e6b;"></button>
+            <button class="cust-swatch" data-color="#4DA6FF" title="Sky Blue" aria-label="Sky blue accent" style="--sw: #4DA6FF;"></button>
+            <button class="cust-swatch" data-color="#FF6B6B" title="Coral" aria-label="Coral accent" style="--sw: #FF6B6B;"></button>
+            <button class="cust-swatch" data-color="#4ECDC4" title="Mint Green" aria-label="Mint green accent" style="--sw: #4ECDC4;"></button>
+            <button class="cust-swatch" data-color="#A78BFA" title="Soft Violet" aria-label="Soft violet accent" style="--sw: #A78BFA;"></button>
+            <button class="cust-swatch" data-color="#FFB84D" title="Amber Yellow" aria-label="Amber yellow accent" style="--sw: #FFB84D;"></button>
+            <button class="cust-swatch" data-color="#3BC9DB" title="Teal" aria-label="Teal accent" style="--sw: #3BC9DB;"></button>
+            <button class="cust-swatch" data-color="#FF8FB1" title="Bubblegum Pink" aria-label="Bubblegum pink accent" style="--sw: #FF8FB1;"></button>
+            <button class="cust-swatch" data-color="#9ACD32" title="Lime Green" aria-label="Lime green accent" style="--sw: #9ACD32;"></button>
           </div>
           <div class="custom-color-row">
             <label class="custom-color-label">Custom color</label>
