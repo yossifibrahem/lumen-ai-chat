@@ -9,7 +9,7 @@
 
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600&family=Pixelify+Sans:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600&family=Pixelify+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 
 <!-- Rendering libraries -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -92,8 +92,9 @@
     }
 
     // Font family
-    var fontMap = { space: "'Space Grotesk', sans-serif", pixel: "'Pixelify Sans', 'JetBrains Mono', monospace", system: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" };
-    var fontFamily = fontMap[prefs.fontFamily] ? prefs.fontFamily : 'space';
+    var fontMap = { geist: "'Geist', sans-serif", pixel: "'Pixelify Sans', 'JetBrains Mono', monospace", system: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" };
+    var savedFontFamily = prefs.fontFamily === 'space' ? 'geist' : prefs.fontFamily;
+    var fontFamily = fontMap[savedFontFamily] ? savedFontFamily : 'geist';
     r.style.setProperty('--font-roman', fontMap[fontFamily]);
 
     // Suppress all transitions during initial paint so nothing animates in
@@ -444,7 +445,7 @@
             <div class="field">
               <label>Font family</label>
               <select id="cust-font-family">
-                <option value="space">Standard — Space Grotesk</option>
+                <option value="geist">Standard — Geist</option>
                 <option value="pixel">Pixel — Pixelify Sans</option>
                 <option value="system">System default</option>
               </select>

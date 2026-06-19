@@ -18,7 +18,7 @@ export const CUSTOMIZATION_DEFAULTS = {
   groupSequentialBlocks:  true,
   hideThinkingTokens:     true,
   fontSize:              'medium',    // 'small' | 'medium' | 'large'
-  fontFamily:            'space',     // 'space' | 'pixel' | 'system'
+  fontFamily:            'geist',     // 'geist' | 'pixel' | 'system'
   theme:                 'auto',      // 'dark' | 'light' | 'auto'
   uiTheme:              'default',
   accentColor:           '#5B8DEF',   // preset swatch

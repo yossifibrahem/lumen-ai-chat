@@ -153,6 +153,7 @@ svg { flex-shrink: 0; }
 }
 
 :is(.thinking-icon, .tool-icon, .group-icon) { display: inline-flex; align-items: center; opacity: .7; }
+.tool-icon svg { width: 14px; height: 14px; }
 :is(.thinking-body, .tc-item-args, .tr-body) {
   margin: 8px 0 0;
   padding: 10px 12px;

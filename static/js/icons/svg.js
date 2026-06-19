@@ -5,14 +5,14 @@ export function svgIcon(body, attrs = '', { size = 24, pixel = false, fill = 'no
   const strokeLinecap = pixel ? 'square' : 'round';
   const strokeLinejoin = pixel ? 'miter' : 'round';
   const rendering = pixel ? 'shape-rendering="crispEdges"' : 'shape-rendering="geometricPrecision"';
-  return `<svg viewBox="0 0 ${size} ${size}" fill="${fill}" stroke="currentColor" stroke-width="2" stroke-linecap="${strokeLinecap}" stroke-linejoin="${strokeLinejoin}" ${rendering} ${attrs}>${body}</svg>`;
+  return `<svg ${attrs} viewBox="0 0 ${size} ${size}" fill="${fill}" stroke="currentColor" stroke-width="2" stroke-linecap="${strokeLinecap}" stroke-linejoin="${strokeLinejoin}" ${rendering}>${body}</svg>`;
 }
 
 export function smallSvgIcon(body, attrs = '', { pixel = false, fill = 'none' } = {}) {
   const strokeLinecap = pixel ? 'square' : 'round';
   const strokeLinejoin = pixel ? 'miter' : 'round';
   const rendering = pixel ? 'shape-rendering="crispEdges"' : 'shape-rendering="geometricPrecision"';
-  return `<svg width="12" height="12" viewBox="0 0 16 16" fill="${fill}" stroke="currentColor" stroke-width="1.7" stroke-linecap="${strokeLinecap}" stroke-linejoin="${strokeLinejoin}" ${rendering} ${attrs}>${body}</svg>`;
+  return `<svg ${attrs} width="12" height="12" viewBox="0 0 16 16" fill="${fill}" stroke="currentColor" stroke-width="1.7" stroke-linecap="${strokeLinecap}" stroke-linejoin="${strokeLinejoin}" ${rendering}>${body}</svg>`;
 }
 
 export const icon = (body, attrs = '') => svgIcon(body, attrs);

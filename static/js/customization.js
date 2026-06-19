@@ -19,7 +19,8 @@ function normalizeUiTheme(theme) {
 }
 
 function normalizeFontFamily(family) {
-  return ['space', 'pixel', 'system'].includes(family) ? family : 'space';
+  if (family === 'space') return 'geist';
+  return ['geist', 'pixel', 'system'].includes(family) ? family : 'geist';
 }
 
 export function applyCustomization() {
@@ -74,7 +75,7 @@ function _applyUiTheme(theme) {
 
 function _applyFontFamily(family) {
   const map = {
-    space:   "'Space Grotesk', sans-serif",
+    geist:   "'Geist', sans-serif",
     pixel:   "'Pixelify Sans', 'JetBrains Mono', monospace",
     system:  "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   };

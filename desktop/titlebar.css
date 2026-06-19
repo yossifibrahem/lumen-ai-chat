@@ -90,7 +90,7 @@ body.lumen-desktop-chrome #file-panel.open {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: currentColor;
-  font-family: var(--font-sans, 'Space Grotesk', ui-sans-serif, system-ui, sans-serif);
+  font-family: var(--font-sans, 'Geist', ui-sans-serif, system-ui, sans-serif);
   font-size: .72rem;
   font-weight: 600;
   letter-spacing: .01em;

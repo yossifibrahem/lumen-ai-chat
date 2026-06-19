@@ -69,6 +69,12 @@ html[data-ui-theme="pixel"] :is(button, .file-row, .conv-item, .model-row, .mp-c
   transform: translate(2px, 2px) !important;
 }
 
+/* Keep conversation dropdown hit targets under the pointer until click fires. */
+html[data-ui-theme="pixel"] .conv-item.menu-open:active,
+html[data-ui-theme="pixel"] .conv-menu-item:active {
+  transform: none !important;
+}
+
 html[data-ui-theme="pixel"] #sidebar {
   background: color-mix(in srgb, var(--bg) 94%, transparent);
   border-right: 2px solid var(--border2);
