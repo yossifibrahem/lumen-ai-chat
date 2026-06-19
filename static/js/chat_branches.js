@@ -3,6 +3,7 @@
 import { state } from './state.js';
 import { renderAllMessages } from './renderer.js';
 import { assistantTurnStartIndex, branchHostIndex, logIndexToMessagesIndex as rawLogIndexToMessagesIndex } from './chat_log_utils.js';
+import { createClientId } from './ids.js';
 
 export function logIndexToMessagesIndex(logIndex, displayLog = state.displayLog) {
   return rawLogIndexToMessagesIndex(logIndex, displayLog);
@@ -74,7 +75,7 @@ function makeBranch(kind, oldSegment, newSegment, existingBranch = null) {
   variants.push(clone(newSegment));
 
   return {
-    id: existing?.id || crypto.randomUUID(),
+    id: existing?.id || createClientId('branch'),
     kind,
     active: variants.length - 1,
     variants,

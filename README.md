@@ -83,6 +83,8 @@ python app.py
 
 Open **http://localhost:8080**, then open the settings panel to enter your API key, base URL, and model name.
 
+For LAN testing, the web dev server binds to `0.0.0.0` by default, so another device on the same trusted network can open `http://<your-computer-ip>:8080`. Set `LUMEN_HOST=127.0.0.1` if you want browser access limited to the same machine.
+
 > If Docker is not running or the `lumen-sandbox` image has not been built, the app starts and shows a setup screen with Retry / Build Sandbox Image actions.
 
 ### Built-in supported tools

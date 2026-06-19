@@ -17,6 +17,7 @@ import { readResponseError, readSSEStream } from './stream_consumer.js';
 import { initImageAttachments, hasPendingAttachments } from './chat_attachments.js';
 export { initImageAttachments, hasPendingAttachments } from './chat_attachments.js';
 import { buildApiMessages, buildToolsPayload, buildMcpToolMetaPayload } from './chat_payloads.js';
+import { createClientId } from './ids.js';
 import { sendMessage as sendMessageImpl } from './chat_send.js';
 import { editAndResend as editAndResendImpl, regenerateFrom as regenerateFromImpl } from './chat_edit.js';
 import { assistantFooterHostIndex, lastAssistantMessageIndex } from './chat_log_utils.js';
@@ -584,7 +585,7 @@ async function processSSEEvent(raw, ctx) {
 
 async function runChatLoop(turn) {
   const ctx = createStreamContext(turn);
-  const streamId = crypto.randomUUID();
+  const streamId = createClientId('stream');
 
   activeTurns.set(turn.convId, { turn, ctx, streamId });
   state.streamId = streamId;
