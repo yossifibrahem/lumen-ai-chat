@@ -18,4 +18,4 @@ Any icon key not listed by the theme automatically uses the default icon.
 
 Installed skins:
 
-- `pixel` — Pixel Terminal, with a complete matching icon pack.
+- `pixel` — Retro Pixel Chat, a colorful and restrained 16-bit skin with a complete matching icon pack.

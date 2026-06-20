@@ -1,4 +1,4 @@
-// Pixel Terminal icon pack.
+// Retro Pixel Chat icon pack.
 // Every default key is overridden so the skin never mixes rounded and pixel art.
 
 import { pixelIcon, pixelSmallIcon } from '../svg.js';
