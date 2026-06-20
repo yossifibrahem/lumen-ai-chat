@@ -91,10 +91,6 @@ html[data-ui-theme="pixel"] .conv-menu-item:active {
 
 html[data-ui-theme="pixel"] #sidebar {
   background: var(--pixel-panel-alt);
-  border-right: 2px solid var(--pixel-ink);
-  box-shadow:
-    3px 0 0 var(--border),
-    6px 0 0 color-mix(in srgb, var(--pixel-blue) 18%, transparent);
 }
 
 html[data-ui-theme="pixel"] #sidebar-header {
