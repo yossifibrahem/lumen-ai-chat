@@ -87,6 +87,7 @@ export function appendMessage(role, content, logIndex = -1, entry = null) {
   row.querySelector('.msg-footer')?.remove();
 
   const contentEl = createElement('div', { className: 'msg-content' });
+  if (logIndex >= 0) contentEl.dataset.logIndex = String(logIndex);
 
   if (isUser) {
     const attachmentsEl = createAttachmentsGrid(content, { className: 'msg-attachments-grid--outside' });

@@ -74,8 +74,11 @@ export function assistantFooterHostIndex(displayLog = [], turnStart = terminalAs
 export function branchHostIndex(segment = [], kind) {
   if (kind === 'user') return segment.findIndex(isUserMessage);
 
-  const messageHostIndex = segment.findIndex(hasAssistantMessageContent);
-  if (messageHostIndex >= 0) return messageHostIndex;
-
-  return segment.findIndex(isAssistantArtifact);
+  // Assistant branch controls live in the assistant footer. A single assistant
+  // turn can contain several display entries when tools are used, and history
+  // rendering reuses one assistant row for that whole turn. Hosting the branch
+  // on the first assistant message lets later tool/final-answer entries replace
+  // the footer, so the branch arrows disappear after regenerate. Anchor the
+  // branch to the same entry that owns the footer instead.
+  return assistantFooterHostIndex(segment, 0);
 }
