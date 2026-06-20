@@ -97,12 +97,6 @@
 .msg-content.msg-status { color: var(--text3); font-style: italic; }
 .msg-content.msg-content-empty { display: none; }
 
-#main.is-streaming .msg-row:not(.user-row):last-child .msg-content:not(.msg-status)::after {
-  content: ' ▌';
-  color: var(--accent);
-  animation: thinkPulse 1s steps(2, end) infinite;
-}
-
 .msg-content p { margin-bottom: .65em; }
 .msg-content p:last-child { margin-bottom: 0; }
 .msg-content :is(h1, h2, h3, h4) { margin: 1.1em 0 .4em; color: var(--text); font-family: var(--font-roman); font-weight: 600; }

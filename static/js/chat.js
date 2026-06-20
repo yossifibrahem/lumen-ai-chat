@@ -44,10 +44,7 @@ function setStreaming(active) {
     sendBtn.disabled = active || !(input?.value || '').trim();
   }
   if (stopBtn) stopBtn.hidden = !active;
-
-  document.getElementById('main')?.classList.toggle('is-streaming', active);
 }
-
 
 function isTurnVisible(turn) {
   return state.convId === turn.convId;
