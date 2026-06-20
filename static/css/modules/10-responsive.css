@@ -6,9 +6,19 @@
 
 @media (max-width: 768px) {
   :root { --sidebar-w: 280px; }
-  #sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 100; height: var(--vvh, 100dvh); transform: translateX(calc(-1 * var(--sidebar-w))); transition: transform .28s var(--ease); }
+  /* On mobile, fully slide off-screen instead of icon-rail collapse */
+  #sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 100; height: var(--vvh, 100dvh); width: var(--sidebar-w) !important; min-width: var(--sidebar-w) !important; transition: transform .28s var(--ease); }
   #sidebar:not(.collapsed) { transform: translateX(0); box-shadow: 8px 0 40px rgba(0,0,0,.6); }
-  #sidebar.collapsed { position: fixed; transform: translateX(calc(-1 * var(--sidebar-w))); }
+  #sidebar.collapsed { transform: translateX(calc(-1 * var(--sidebar-w))); }
+  /* Make sure labels are always visible on mobile (no icon-rail state) */
+  #sidebar.collapsed .logo-name,
+  #sidebar.collapsed #sidebar-search,
+  #sidebar.collapsed #conv-list,
+  #sidebar.collapsed .sidebar-label { opacity: 1; pointer-events: auto; width: auto; overflow: visible; }
+  #sidebar.collapsed #sidebar-header { justify-content: flex-start; flex-direction: row; align-items: center; padding: 14px 10px 6px; gap: 4px; }
+  #sidebar.collapsed .logo { flex: 1; padding: 0 2px; gap: 9px; }
+  #sidebar.collapsed #sidebar-footer { padding: 6px 8px 8px; align-items: stretch; }
+  #sidebar.collapsed .sidebar-action { width: 100%; padding: 8px 10px; justify-content: flex-start; gap: 9px; border-radius: 8px; }
   #main { margin-left: 0 !important; }
   #chat-header { height: calc(var(--chat-header-mobile-h, 50px) + env(safe-area-inset-top, 0px)); padding: env(safe-area-inset-top, 0px) 12px 0; gap: 8px; }
   #chat-title-input { font-size: .82rem; }
@@ -49,4 +59,3 @@
   #chat-header { height: calc(46px + env(safe-area-inset-top, 0px)); padding: env(safe-area-inset-top, 0px) 10px 0; gap: 6px; }
   #model-badge-label { max-width: 70px; }
 }
-

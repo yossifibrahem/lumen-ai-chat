@@ -49,6 +49,7 @@ export function toggleSidebar(forceOpen) {
     }
     main.style.marginLeft = '';
   } else {
+    // On desktop: sidebar collapses to icon rail (64px), main shifts accordingly
     main.style.marginLeft = open ? '' : '0';
   }
 

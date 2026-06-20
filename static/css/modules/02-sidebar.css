@@ -7,22 +7,42 @@
 
 #sidebar {
   width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
   display: flex;
   flex-direction: column;
   background: var(--bg);
   border-right: 1px solid var(--border);
   position: relative;
   z-index: 10;
-  min-width: var(--sidebar-w);
   height: 100dvh;
+  overflow: hidden;
+  transition: width .22s var(--ease), min-width .22s var(--ease);
 }
-#sidebar.collapsed { transform: translateX(calc(-1 * var(--sidebar-w))); position: fixed; }
-#sidebar-header { padding: 14px 10px 6px; }
+
+/* ── Collapsed state: shrink to icon-only rail ── */
+#sidebar.collapsed {
+  width: 64px;
+  min-width: 64px;
+}
+
+/* ─── Sidebar Header ──────────────────────────────────────────────────────── */
+#sidebar-header {
+  padding: 14px 10px 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
 
 .logo {
+  display: flex;
+  align-items: center;
   gap: 9px;
   min-height: 32px;
   padding: 0 2px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 .logo-mark {
   width: 28px;
@@ -32,6 +52,7 @@
   color: var(--accent);
   display: grid;
   place-items: center;
+  flex-shrink: 0;
 }
 .logo-mark svg { width: 14px; height: 14px; }
 .logo-name {
@@ -39,13 +60,54 @@
   font-size: 1.18rem;
   color: var(--text);
   letter-spacing: -.3px;
+  white-space: nowrap;
+  transition: opacity .15s var(--ease), width .22s var(--ease);
 }
 .logo-name em, .es-logo em { font-style: italic; color: var(--accent); }
+
+/* Hide text labels when collapsed */
+#sidebar.collapsed .logo-name,
+#sidebar.collapsed #sidebar-search,
+#sidebar.collapsed #conv-list,
+#sidebar.collapsed .sidebar-label {
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* Center the logo-mark when collapsed */
+#sidebar.collapsed #sidebar-header {
+  justify-content: center;
+  padding: 14px 0 6px;
+}
+#sidebar.collapsed .logo {
+  flex: 0 0 auto;
+  padding: 0;
+  gap: 0;
+}
+
+/* Footer buttons become icon-only */
+#sidebar.collapsed #sidebar-footer {
+  padding: 6px 0 8px;
+  align-items: center;
+}
+#sidebar.collapsed .sidebar-action {
+  width: 40px;
+  min-height: 40px;
+  padding: 0;
+  justify-content: center;
+  gap: 0;
+  border-radius: 10px;
+}
 
 /* ─── Sidebar search ──────────────────────────────────────────────────────── */
 #sidebar-search {
   position: relative;
   padding: 5px 10px 8px;
+  flex-shrink: 0;
+  transition: opacity .15s var(--ease);
 }
 .sidebar-search-icon {
   position: absolute;
@@ -78,6 +140,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 6px 8px 10px;
+  transition: opacity .15s var(--ease);
 }
 .conv-section-label {
   padding: 9px 8px 6px;
@@ -186,8 +249,12 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex-shrink: 0;
+  transition: padding .22s var(--ease);
 }
 .sidebar-action {
+  display: flex;
+  align-items: center;
   gap: 9px;
   width: 100%;
   min-height: 36px;
@@ -198,6 +265,7 @@
   background: transparent;
   font-size: .76rem;
   text-align: left;
+  transition: color var(--fast), background var(--fast), width var(--fast), padding var(--fast), border-radius var(--fast);
 }
 .sidebar-action:hover {
   background: var(--surface);
@@ -207,5 +275,10 @@
   width: 15px;
   height: 15px;
   color: var(--text3);
+  flex-shrink: 0;
 }
 .sidebar-action:hover svg { color: var(--text2); }
+.sidebar-label {
+  white-space: nowrap;
+  transition: opacity .15s var(--ease);
+}

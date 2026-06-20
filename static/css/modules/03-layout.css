@@ -14,7 +14,7 @@
   height: var(--vvh, 100dvh);
   overflow: hidden;
   position: relative;
-  transition: margin-left .28s var(--ease);
+  transition: margin-left .22s var(--ease);
 }
 #chat-header {
   height: calc(var(--chat-header-h, 54px) + env(safe-area-inset-top, 0px));
@@ -87,4 +87,3 @@
   font-size: .7rem;
   letter-spacing: .3px;
 }
-

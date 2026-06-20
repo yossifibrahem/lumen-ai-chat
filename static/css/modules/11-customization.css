@@ -10,11 +10,8 @@ html.no-transition *, html.no-transition *::before, html.no-transition *::after 
 
 /* Sidebar pre-collapsed before JS loads — mirrors #sidebar.collapsed exactly */
 html.sidebar-init-closed #sidebar {
-  transform: translateX(calc(-1 * var(--sidebar-w)));
-  position: fixed;
-}
-html.sidebar-init-closed #main {
-  margin-left: 0;
+  width: 64px;
+  min-width: 64px;
 }
 
 /* Base font size variable (set by JS) */
