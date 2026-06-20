@@ -1,7 +1,7 @@
 /* Thinking blocks, tool-call strips, grouped tool blocks, and tool result panels. */
 
 /* ─── Thinking and tool call strips ───────────────────────────────────────── */
-.thinking-block, .tool-strip { margin: 4px 0 6px; }
+.thinking-block, .tool-strip { margin: 10px 0 12px; }
 :is(.thinking-header, .tr-summary, .group-header) { width: 100%; }
 .thinking-label { flex: 1; }
 .thinking-body { max-height: 320px; overflow-y: auto; }
@@ -11,7 +11,7 @@
 .tool-strip-running { display: block; }
 .tool-strip-running-row { gap: 7px; }
 
-.block-group { margin: 4px 0 8px; }
+.block-group { margin: 10px 0 12px; }
 .group-sep { color: var(--text3); }
 .group-desc { color: var(--text3); }
 

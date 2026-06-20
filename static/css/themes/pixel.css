@@ -76,7 +76,10 @@ html[data-ui-theme="pixel"] :is(
   border-radius: var(--radius-sm) !important;
 }
 
-html[data-ui-theme="pixel"] :is(button, .file-row, .conv-item, .model-row, .mp-chip, .suggestion-chip):active {
+html[data-ui-theme="pixel"] :is(
+  button:not(:is(.thinking-header, .tc-item-header, .tr-summary, .group-header)),
+  .file-row, .conv-item, .model-row, .mp-chip, .suggestion-chip
+):active {
   transform: translate(1px, 1px) !important;
 }
 
