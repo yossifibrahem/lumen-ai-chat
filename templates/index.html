@@ -132,6 +132,10 @@
   <div id="conv-list"></div>
 
   <div id="sidebar-footer">
+    <button class="sidebar-action" id="btn-new-folder" title="New folder">
+      <span class="sidebar-action-icon" data-icon="folderPlus"></span>
+      <span class="sidebar-label">New folder</span>
+    </button>
     <button class="sidebar-action" id="btn-new-chat" title="New chat">
       <span data-icon="plus"></span>
       <span class="sidebar-label">New chat</span>
@@ -149,7 +153,11 @@
     <button id="btn-toggle-sidebar" title="Close sidebar" aria-label="Close sidebar" aria-controls="sidebar" aria-expanded="true">
       <span data-icon="menu"></span>
     </button>
-    <input id="chat-title-input" type="text" placeholder="Untitled Conversation" maxlength="80" />
+    <div id="chat-title-wrap">
+      <span id="chat-folder-prefix" hidden></span>
+      <span id="chat-title-separator" hidden>/</span>
+      <input id="chat-title-input" type="text" placeholder="New Conversation" maxlength="80" />
+    </div>
 
     <div class="header-actions">
       <button id="btn-toggle-files" title="Workspace files" aria-label="Workspace files">
@@ -687,6 +695,63 @@
     <div class="modal-footer">
       <button class="btn-secondary" data-close="settings-modal">Close</button>
       <button class="btn-primary btn-apply-settings" id="btn-apply-settings">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create / rename folder modal -->
+<div class="modal-overlay" id="folder-modal" role="dialog" aria-modal="true" aria-labelledby="folder-modal-title">
+  <div class="modal" style="max-width:420px;height:auto;">
+    <div class="modal-header" style="display:flex;">
+      <span id="folder-modal-title" class="section-title" style="margin:0;font-size:.95rem;">New folder</span>
+      <button class="modal-close" data-close="folder-modal" aria-label="Close" style="margin-left:auto;" data-icon="close"></button>
+    </div>
+    <div class="modal-body" style="padding:20px 22px 16px;">
+      <div class="field" style="margin-bottom:0;">
+        <label for="folder-name-input">Name</label>
+        <input id="folder-name-input" type="text" class="input-base" placeholder="Folder name" autocomplete="off" />
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex;">
+      <button class="btn-secondary" data-close="folder-modal">Cancel</button>
+      <button class="btn-primary" id="folder-modal-confirm">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete folder confirm modal -->
+<div class="modal-overlay" id="delete-folder-modal" role="dialog" aria-modal="true" aria-labelledby="delete-folder-title">
+  <div class="modal" style="max-width:400px;height:auto;">
+    <div class="modal-header" style="display:flex;">
+      <span id="delete-folder-title" class="section-title" style="margin:0;font-size:.95rem;">Delete folder?</span>
+      <button class="modal-close" data-close="delete-folder-modal" aria-label="Close" style="margin-left:auto;" data-icon="close"></button>
+    </div>
+    <div class="modal-body" style="padding:16px 22px;">
+      <p style="margin:0;color:var(--text2);font-size:.82rem;line-height:1.55;">Chats will move to Recent. The folder's shared container and workspace files will be permanently removed.</p>
+    </div>
+    <div class="modal-footer" style="display:flex;">
+      <button class="btn-secondary" data-close="delete-folder-modal">Cancel</button>
+      <button class="btn-danger" id="delete-folder-confirm">Delete folder</button>
+    </div>
+  </div>
+</div>
+
+<!-- Move conversation modal -->
+<div class="modal-overlay" id="move-conv-modal" role="dialog" aria-modal="true" aria-labelledby="move-conv-title">
+  <div class="modal" style="max-width:420px;height:auto;">
+    <div class="modal-header" style="display:flex;">
+      <span id="move-conv-title" class="section-title" style="margin:0;font-size:.95rem;">Move conversation</span>
+      <button class="modal-close" data-close="move-conv-modal" aria-label="Close" style="margin-left:auto;" data-icon="close"></button>
+    </div>
+    <div class="modal-body" style="padding:20px 22px 16px;">
+      <div class="field" style="margin-bottom:0;">
+        <label for="move-conv-folder">Folder</label>
+        <select id="move-conv-folder" class="input-base"></select>
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex;">
+      <button class="btn-secondary" data-close="move-conv-modal">Cancel</button>
+      <button class="btn-primary" id="move-conv-confirm">Move</button>
     </div>
   </div>
 </div>

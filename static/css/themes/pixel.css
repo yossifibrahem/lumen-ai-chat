@@ -198,6 +198,31 @@ html[data-ui-theme="pixel"] .conv-item.active::before {
   box-shadow: 0 6px 0 var(--pixel-gold);
 }
 
+html[data-ui-theme="pixel"] .folder-header {
+  min-height: 40px;
+  border-width: 2px;
+  border-radius: var(--radius-sm);
+}
+
+html[data-ui-theme="pixel"] :is(.folder-header:hover, .folder-group.folder-menu-open .folder-header) {
+  border-color: var(--border);
+  background: var(--pixel-panel);
+}
+
+html[data-ui-theme="pixel"] :is(.folder-action, .folder-menu-btn):hover,
+html[data-ui-theme="pixel"] .folder-group.folder-menu-open .folder-menu-btn {
+  outline: 2px solid var(--border2);
+  outline-offset: -2px;
+  background: var(--surface2);
+}
+
+html[data-ui-theme="pixel"] .folder-menu {
+  border-width: 2px;
+  border-color: var(--border2);
+  background: var(--pixel-panel);
+  box-shadow: 3px 3px 0 var(--pixel-shadow);
+}
+
 html[data-ui-theme="pixel"] #sidebar-footer {
   border-top: 2px solid var(--border);
   background: color-mix(in srgb, var(--pixel-panel) 70%, transparent);

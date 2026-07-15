@@ -99,7 +99,7 @@ def _cleanup_stale_containers() -> None:
     """Remove lumen-chat-* Docker containers whose conversation no longer exists."""
     try:
         import store
-        known_ids = [c["id"] for c in store.list_all()]
+        known_ids = list({store.runtime_id(c["id"]) for c in store.list_all()})
         removed = container_service.cleanup_stale(known_ids)
         if removed:
             log.info("[startup] removed %d stale container(s): %s", len(removed), removed)

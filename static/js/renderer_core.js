@@ -41,7 +41,10 @@ export function scrollToBottom(force = false) {
 export function createMessageRow({ avatarClass, avatarIcon, roleLabel, isUser = false }) {
   moveComposerToMain();
   remove('#empty-state');
-  mainEl()?.classList.remove('is-empty');
+  remove('#folder-home-chats');
+  mainEl()?.classList.remove('is-empty', 'folder-home');
+  const input = document.getElementById('user-input');
+  if (input) input.placeholder = 'Ask anything…';
 
   const row = createElement('div', { className: `msg-row${isUser ? ' user-row' : ''}` });
   const metaHtml = isUser

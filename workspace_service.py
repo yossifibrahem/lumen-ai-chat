@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Iterable
 
 import store
+import container_service
 
 _TEXT_EXTENSIONS = {
     ".bash", ".bat", ".c", ".cfg", ".conf", ".cpp", ".cs", ".css", ".csv",
@@ -35,6 +36,10 @@ def workspace_root(conv_id: str) -> Path:
     return store.working_directory(conv_id).resolve()
 
 
+def folder_workspace_root(folder_id: str) -> Path:
+    return container_service.conversation_workspace(f"folder_{folder_id}").resolve()
+
+
 def workspace_relpath(path_value: str | None) -> str:
     raw = (path_value or "").strip().replace("\\", "/")
     if raw in {"", ".", "/", "/workspace"}:
@@ -50,13 +55,20 @@ def workspace_relpath(path_value: str | None) -> str:
     return "/".join(parts)
 
 
-def resolve_workspace_path(conv_id: str, path_value: str | None) -> tuple[Path, str]:
-    root = workspace_root(conv_id)
+def _resolve_workspace_path(root: Path, path_value: str | None) -> tuple[Path, str]:
     rel = workspace_relpath(path_value)
     target = (root / rel).resolve()
     if target != root and root not in target.parents:
         raise ValueError("Path escapes the workspace")
     return target, rel
+
+
+def resolve_workspace_path(conv_id: str, path_value: str | None) -> tuple[Path, str]:
+    return _resolve_workspace_path(workspace_root(conv_id), path_value)
+
+
+def resolve_folder_workspace_path(folder_id: str, path_value: str | None) -> tuple[Path, str]:
+    return _resolve_workspace_path(folder_workspace_root(folder_id), path_value)
 
 
 def workspace_path(rel: str) -> str:
@@ -95,11 +107,9 @@ def _file_entry(path: Path, root: Path) -> dict:
     }
 
 
-def list_dir(conv_id: str, path_value: str | None) -> tuple[dict, int]:
-    if not store.load(conv_id):
-        return {"error": "Conversation not found"}, 404
+def _list_dir(root: Path, path_value: str | None) -> tuple[dict, int]:
     try:
-        target, rel = resolve_workspace_path(conv_id, path_value)
+        target, rel = _resolve_workspace_path(root, path_value)
     except ValueError as exc:
         return {"error": str(exc)}, 400
     if not target.exists():
@@ -107,7 +117,6 @@ def list_dir(conv_id: str, path_value: str | None) -> tuple[dict, int]:
     if not target.is_dir():
         return {"error": "Path is not a directory"}, 400
 
-    root = workspace_root(conv_id)
     children = sorted(target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower()))
     _, max_entries, _ = _file_limits()
     visible_children = children[:max_entries]
@@ -122,11 +131,21 @@ def list_dir(conv_id: str, path_value: str | None) -> tuple[dict, int]:
     }, 200
 
 
-def read_file(conv_id: str, path_value: str | None) -> tuple[dict, int]:
+def list_dir(conv_id: str, path_value: str | None) -> tuple[dict, int]:
     if not store.load(conv_id):
         return {"error": "Conversation not found"}, 404
+    return _list_dir(workspace_root(conv_id), path_value)
+
+
+def list_folder_dir(folder_id: str, path_value: str | None) -> tuple[dict, int]:
+    if not store.get_folder(folder_id):
+        return {"error": "Folder not found"}, 404
+    return _list_dir(folder_workspace_root(folder_id), path_value)
+
+
+def _read_file(root: Path, path_value: str | None) -> tuple[dict, int]:
     try:
-        target, _ = resolve_workspace_path(conv_id, path_value)
+        target, _ = _resolve_workspace_path(root, path_value)
     except ValueError as exc:
         return {"error": str(exc)}, 400
     if not target.exists():
@@ -139,7 +158,7 @@ def read_file(conv_id: str, path_value: str | None) -> tuple[dict, int]:
     previewable = _is_text_file(target) and stat.st_size <= max_preview
     mime, _ = mimetypes.guess_type(target.name)
     data = {
-        **_file_entry(target, workspace_root(conv_id)),
+        **_file_entry(target, root),
         "mime_type": mime or "application/octet-stream",
     }
     if not previewable:
@@ -151,6 +170,18 @@ def read_file(conv_id: str, path_value: str | None) -> tuple[dict, int]:
     except UnicodeDecodeError:
         content = raw.decode("utf-8", errors="replace")
     return {**data, "previewable": True, "content": content}, 200
+
+
+def read_file(conv_id: str, path_value: str | None) -> tuple[dict, int]:
+    if not store.load(conv_id):
+        return {"error": "Conversation not found"}, 404
+    return _read_file(workspace_root(conv_id), path_value)
+
+
+def read_folder_file(folder_id: str, path_value: str | None) -> tuple[dict, int]:
+    if not store.get_folder(folder_id):
+        return {"error": "Folder not found"}, 404
+    return _read_file(folder_workspace_root(folder_id), path_value)
 
 
 def safe_upload_name(name: str) -> str:

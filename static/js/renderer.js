@@ -37,18 +37,95 @@ const SUGGESTION_CHIPS = [
   { icon: ICONS.chipHelp,   label: 'Ideas',      prompt: 'Brainstorm practical ideas for' },
 ];
 
-export function clearMessages() {
+function formatFolderChatDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const today = new Date();
+  const sameYear = date.getFullYear() === today.getFullYear();
+  return new Intl.DateTimeFormat(undefined, sameYear
+    ? { month: 'short', day: 'numeric' }
+    : { year: 'numeric', month: 'short', day: 'numeric' }
+  ).format(date);
+}
+
+export function clearMessages({ folder = null, conversations = [] } = {}) {
   const messages = messagesEl();
   const composer = document.getElementById('composer-area');
+  const main = document.getElementById('main');
 
-  messages.innerHTML = `
+  messages.innerHTML = folder ? `
+    <div id="empty-state" class="folder-empty-state">
+      <div class="folder-home-title">${ICONS.folder}<span>${escapeHtml(folder.name || 'Untitled Folder')}</span></div>
+    </div>` : `
     <div id="empty-state">
       <div class="es-logo"><span>Lu</span><em>men</em></div>
       <div class="es-sub">A clean little console for big thoughts.</div>
     </div>`;
 
   if (composer) messages.appendChild(composer);
-  document.getElementById('main')?.classList.add('is-empty');
+  main?.classList.add('is-empty');
+  main?.classList.toggle('folder-home', Boolean(folder));
+
+  if (folder) {
+    const history = document.createElement('section');
+    history.id = 'folder-home-chats';
+    history.innerHTML = `
+      <div class="folder-home-tabs"><span class="active">Chats</span></div>
+      <div class="folder-home-list">
+        ${conversations.length ? conversations.map(conv => `
+          <div class="folder-home-chat" data-conv-id="${escapeHtml(conv.id)}">
+            <button class="folder-home-chat-open" type="button">
+              <span class="folder-home-chat-title">${escapeHtml(conv.title || 'Untitled')}</span>
+              <time>${escapeHtml(formatFolderChatDate(conv.updated_at))}</time>
+            </button>
+            <div class="conv-menu-wrap">
+              <button class="conv-menu-btn" type="button" title="Conversation options" aria-label="Conversation options" aria-expanded="false">
+                ${ICONS.moreVertical}
+              </button>
+              <div class="conv-menu" role="menu">
+                <button class="conv-menu-item" type="button" role="menuitem" data-action="rename">
+                  ${ICONS.edit}<span>Rename</span>
+                </button>
+                <button class="conv-menu-item danger" type="button" role="menuitem" data-action="remove">
+                  ${ICONS.trash}<span>Delete</span>
+                </button>
+              </div>
+            </div>
+          </div>`).join('') : '<div class="folder-home-no-chats">No chats in this folder yet</div>'}
+      </div>`;
+    history.querySelectorAll('.folder-home-chat').forEach(item => {
+      const convId = item.dataset.convId;
+      item.querySelector('.folder-home-chat-open').addEventListener('click', () => document.dispatchEvent(new CustomEvent(
+        'chat:open-conversation-requested',
+        { detail: { convId } },
+      )));
+      item.querySelector('.conv-menu-btn').addEventListener('click', event => {
+        event.stopPropagation();
+        document.dispatchEvent(new CustomEvent(
+          'chat:toggle-conversation-menu-requested',
+          { detail: { item } },
+        ));
+      });
+      item.querySelector('[data-action="rename"]').addEventListener('click', event => {
+        event.stopPropagation();
+        item.classList.remove('menu-open');
+        document.dispatchEvent(new CustomEvent(
+          'chat:rename-conversation-requested',
+          { detail: { convId } },
+        ));
+      });
+      item.querySelector('[data-action="remove"]').addEventListener('click', event => {
+        event.stopPropagation();
+        item.classList.remove('menu-open');
+        document.dispatchEvent(new CustomEvent(
+          'chat:delete-conversation-requested',
+          { detail: { convId } },
+        ));
+      });
+    });
+    messages.appendChild(history);
+  }
 
   const suggestionsBar = document.getElementById('suggestions-bar');
   if (suggestionsBar) {
@@ -70,6 +147,7 @@ export function clearMessages() {
   }
   const inputEl = document.getElementById('user-input');
   if (inputEl) {
+    inputEl.placeholder = folder ? `New chat in ${folder.name}` : 'Ask anything…';
     inputEl.value = inputEl.value || '';
     inputEl.dispatchEvent(new Event('input'));
   }
@@ -175,7 +253,9 @@ export function renderAllMessages(displayLog) {
   moveComposerToMain();
   messagesEl().innerHTML = '';
   if (displayLog.length > 0) {
-    document.getElementById('main')?.classList.remove('is-empty');
+    document.getElementById('main')?.classList.remove('is-empty', 'folder-home');
+    const input = document.getElementById('user-input');
+    if (input) input.placeholder = 'Ask anything…';
   } else {
     clearMessages();
     return;

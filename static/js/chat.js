@@ -223,7 +223,7 @@ document.addEventListener('chat:conversation-opened', async event => {
 });
 
 function currentTitle() {
-  return document.getElementById('chat-title-input').value.trim() || 'Untitled';
+  return document.getElementById('chat-title-input').value.trim() || 'New Conversation';
 }
 
 function applyTurnTitle(turn, title) {

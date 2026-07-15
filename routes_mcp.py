@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, request
 import container_service
 import mcp_adapters
 import mcp_service
+import store
 from mcp_adapters import ContainerConversationRequired
 
 blueprint = Blueprint("mcp", __name__)
@@ -32,7 +33,7 @@ def save_mcp_config():
 @blueprint.route("/api/mcp/tools", methods=["GET"])
 def list_mcp_tools():
     requested_conv_id = request.args.get("conv_id", "")
-    conv_id = requested_conv_id or container_service.DISCOVERY_CONTAINER_ID
+    conv_id = store.runtime_id(requested_conv_id) if requested_conv_id else container_service.DISCOVERY_CONTAINER_ID
     tools: list[dict] = []
     skipped: list[dict] = []
     discovery_mode = not requested_conv_id
@@ -69,7 +70,8 @@ def call_mcp_tool():
     if not server_config:
         return jsonify({"error": f"MCP server '{server_name}' not found"}), 404
 
-    conv_id = body.get("conv_id", "")
+    requested_conv_id = body.get("conv_id", "")
+    conv_id = store.runtime_id(requested_conv_id) if requested_conv_id else ""
     try:
         result = mcp_service.run_async(mcp_service.invoke_tool(
             server_name,

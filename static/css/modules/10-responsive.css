@@ -21,7 +21,7 @@
   #sidebar.collapsed .sidebar-action { width: 100%; padding: 8px 10px; justify-content: flex-start; gap: 9px; border-radius: 8px; }
   #main { margin-left: 0 !important; }
   #chat-header { height: calc(var(--chat-header-mobile-h, 50px) + env(safe-area-inset-top, 0px)); padding: env(safe-area-inset-top, 0px) 12px 0; gap: 8px; }
-  #chat-title-input { font-size: .82rem; }
+  #chat-title-wrap, #chat-title-input { font-size: .82rem; }
   #composer-area { bottom: env(safe-area-inset-bottom, 12px); width: calc(100% - 24px); }
   #main.is-empty #composer-area { width: 100%; transform: none; }
   .msg-row { padding: 12px 14px 4px; }
@@ -36,6 +36,9 @@
   .msg-content pre { max-width: 100%; }
   .msg-content pre code { font-size: .75rem; }
   #main.is-empty #messages { padding-block: clamp(14px, 3vh, 28px); }
+  #main.folder-home #messages { padding-top: 28px; gap: 16px; }
+  .folder-home-title { font-size: 1.2rem; }
+  .folder-home-title svg { width: 21px; height: 21px; }
   .input-hint { display: none; }
   .conv-item { padding: 10px 8px; }
   .conv-menu-btn { opacity: 1; padding: 6px; }

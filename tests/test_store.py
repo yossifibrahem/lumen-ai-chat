@@ -110,6 +110,26 @@ class TestCreate:
         conv = store.create("disk-check")
         assert (tmp_lumen["conv_dir"] / f"{conv['id']}.json").exists()
 
+    def test_chats_in_folder_share_runtime_but_keep_separate_messages(self, tmp_lumen):
+        folder = store.create_folder("Project")
+        first = store.create("First", folder["id"])
+        second = store.create("Second", folder["id"])
+        first["messages"] = [{"role": "user", "content": "only first"}]
+        store.save(first["id"], first)
+
+        assert store.runtime_id(first["id"]) == store.runtime_id(second["id"])
+        assert store.working_directory(first["id"]) == store.working_directory(second["id"])
+        assert store.load(second["id"])["messages"] == []
+
+
+class TestFolders:
+    def test_folder_crud(self, tmp_lumen):
+        folder = store.create_folder("Project")
+        assert store.get_folder(folder["id"])["name"] == "Project"
+        assert store.update_folder(folder["id"], "Renamed")["name"] == "Renamed"
+        assert store.delete_folder(folder["id"]) is True
+        assert store.get_folder(folder["id"]) is None
+
 
 class TestLoad:
     def test_loads_existing_conversation(self, tmp_lumen):

@@ -23,6 +23,12 @@ let panelWidth = DEFAULT_PANEL_WIDTH;
 // Resolved once in initFilePanel — these elements are stable for the page lifetime.
 let els = {};
 
+function workspaceApiBase() {
+  if (state.convId) return `/api/conversations/${encodeURIComponent(state.convId)}`;
+  if (state.folderId) return `/api/folders/${encodeURIComponent(state.folderId)}`;
+  return null;
+}
+
 function maxPanelWidth() {
   return Math.max(MIN_PANEL_WIDTH, Math.min(Math.round(window.innerWidth * 0.72), 920));
 }
@@ -305,7 +311,8 @@ function fileRow(entry, isParent = false) {
 }
 
 async function loadFileList(path = currentPath, { fallbackToRoot = true } = {}) {
-  if (!state.convId) {
+  const apiBase = workspaceApiBase();
+  if (!apiBase) {
     currentPath = '/workspace';
     els.list.innerHTML = '<div class="file-panel-empty">Start or open a chat to browse its workspace.</div>';
     setEmptyPreview('Workspace files will appear after a chat exists.');
@@ -317,7 +324,7 @@ async function loadFileList(path = currentPath, { fallbackToRoot = true } = {}) 
   if (!els.list.children.length) {
     els.list.innerHTML = '<div class="file-panel-empty">Loading files…</div>';
   }
-  const payload = await api.get(`/api/conversations/${encodeURIComponent(state.convId)}/files?path=${encodeURIComponent(currentPath)}`);
+  const payload = await api.get(`${apiBase}/files?path=${encodeURIComponent(currentPath)}`);
   if (payload.error) {
     if (payload.error === 'Path not found' && fallbackToRoot && currentPath !== '/workspace') {
       currentPath = '/workspace';
@@ -332,7 +339,8 @@ async function loadFileList(path = currentPath, { fallbackToRoot = true } = {}) 
 }
 
 async function loadFilePreview(path) {
-  if (!state.convId || !path) return;
+  const apiBase = workspaceApiBase();
+  if (!apiBase || !path) return;
   selectedPath = path;
   setPreviewOpen(true);
 
@@ -344,7 +352,7 @@ async function loadFilePreview(path) {
   els.download.disabled = true;
   els.download.removeAttribute('data-path');
 
-  const data = await api.get(`/api/conversations/${encodeURIComponent(state.convId)}/files/content?path=${encodeURIComponent(path)}`);
+  const data = await api.get(`${apiBase}/files/content?path=${encodeURIComponent(path)}`);
   if (data.error) {
     if (isMissingWorkspacePath(data.error)) {
       closePreview();
@@ -482,9 +490,10 @@ export function initFilePanel() {
   });
 
   els.download?.addEventListener('click', () => {
-    if (!state.convId || !els.download.dataset.path) return;
+    const apiBase = workspaceApiBase();
+    if (!apiBase || !els.download.dataset.path) return;
     const link = document.createElement('a');
-    link.href = `/api/conversations/${encodeURIComponent(state.convId)}/files/download?path=${encodeURIComponent(els.download.dataset.path)}`;
+    link.href = `${apiBase}/files/download?path=${encodeURIComponent(els.download.dataset.path)}`;
     link.download = '';
     link.click();
   });

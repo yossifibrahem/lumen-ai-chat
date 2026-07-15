@@ -58,6 +58,33 @@ class TestCreateConversation:
         assert resp.status_code == 201
         assert resp.json.get("title")  # non-empty
 
+    def test_create_in_folder(self, client, tmp_lumen):
+        folder = store.create_folder("Shared")
+        first = client.post("/api/conversations", json={"folder_id": folder["id"]}).json
+        second = client.post("/api/conversations", json={"folder_id": folder["id"]}).json
+        assert first["folder_id"] == folder["id"]
+        assert first["working_directory"] == second["working_directory"]
+
+
+class TestFolders:
+    def test_folder_routes(self, client, tmp_lumen):
+        created = client.post("/api/folders", json={"name": "Project"})
+        assert created.status_code == 201
+        folder_id = created.json["id"]
+        assert any(item["id"] == folder_id for item in client.get("/api/folders").json)
+        assert client.put(f"/api/folders/{folder_id}", json={"name": "Renamed"}).json["name"] == "Renamed"
+
+    def test_deleting_folder_unfiles_chats_and_cleans_shared_runtime(self, client, tmp_lumen):
+        folder = store.create_folder("Shared")
+        conv = store.create("Keep me", folder["id"])
+        with patch("container_service.stop_container") as stop, \
+             patch("container_service.delete_workspace") as delete_workspace:
+            response = client.delete(f"/api/folders/{folder['id']}")
+        assert response.status_code == 200
+        assert "folder_id" not in store.load(conv["id"])
+        stop.assert_called_once_with(f"folder_{folder['id']}")
+        delete_workspace.assert_called_once_with(f"folder_{folder['id']}")
+
 
 class TestGetConversation:
 
@@ -132,6 +159,18 @@ class TestDeleteConversation:
              patch("container_service.delete_workspace"):
             resp = client.delete("/api/conversations/ghost-99")
         assert resp.status_code == 404
+
+    def test_shared_runtime_survives_until_last_folder_chat_is_deleted(self, client, tmp_lumen):
+        folder = store.create_folder("Shared")
+        first = store.create("One", folder["id"])
+        second = store.create("Two", folder["id"])
+        with patch("container_service.stop_container") as stop, \
+             patch("container_service.delete_workspace") as delete_workspace:
+            client.delete(f"/api/conversations/{first['id']}")
+            stop.assert_not_called()
+            delete_workspace.assert_not_called()
+            client.delete(f"/api/conversations/{second['id']}")
+            stop.assert_called_once_with(f"folder_{folder['id']}")
 
 
 class TestConversationMetaRoutes:
@@ -256,6 +295,12 @@ class TestWorkspaceFileRoutes:
         root.mkdir(parents=True, exist_ok=True)
         return conv_id, root
 
+    def _make_folder_workspace(self, tmp_lumen) -> tuple[str, Path]:
+        folder = store.create_folder("folder-files")
+        root = tmp_lumen["containers_dir"] / f"folder_{folder['id']}"
+        root.mkdir(parents=True, exist_ok=True)
+        return folder["id"], root
+
     def test_list_unknown_conv_returns_error(self, client, tmp_lumen):
         resp = client.get("/api/conversations/ghost/files")
         # Service returns ({"error": ...}, 404) which route passes through
@@ -308,6 +353,37 @@ class TestWorkspaceFileRoutes:
                 query_string={"path": "../escape"},
             )
         assert resp.status_code == 400
+
+    def test_folder_workspace_lists_shared_files_without_a_conversation(self, client, tmp_lumen):
+        folder_id, root = self._make_folder_workspace(tmp_lumen)
+        (root / "shared.md").write_text("# shared")
+
+        resp = client.get(f"/api/folders/{folder_id}/files")
+
+        assert resp.status_code == 200
+        assert [entry["name"] for entry in resp.json["entries"]] == ["shared.md"]
+
+    def test_folder_workspace_previews_and_downloads_shared_file(self, client, tmp_lumen):
+        folder_id, root = self._make_folder_workspace(tmp_lumen)
+        (root / "notes.txt").write_text("folder notes")
+
+        preview = client.get(
+            f"/api/folders/{folder_id}/files/content",
+            query_string={"path": "/workspace/notes.txt"},
+        )
+        download = client.get(
+            f"/api/folders/{folder_id}/files/download",
+            query_string={"path": "/workspace/notes.txt"},
+        )
+
+        assert preview.status_code == 200
+        assert preview.json["content"] == "folder notes"
+        assert download.status_code == 200
+        assert download.data == b"folder notes"
+
+    def test_missing_folder_workspace_returns_404(self, client, tmp_lumen):
+        missing_id = "00000000-0000-0000-0000-000000000000"
+        assert client.get(f"/api/folders/{missing_id}/files").status_code == 404
 
 
 # ===========================================================================

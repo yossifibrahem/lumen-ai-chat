@@ -9,10 +9,22 @@ import { ICONS } from './icons.js';
 import { escapeHtml } from './format.js';
 import { refreshFilePanel, resetFilePanel } from './file_panel.js';
 
+let folders = [];
+let conversations = [];
+let pendingFolderId = null;
+let activeFolderId = null;
+let editingFolder = null;
+let folderEditorBound = false;
+
 // ── Sidebar list ──────────────────────────────────────────────────────────────
 
 export async function loadConversationList() {
-  const list      = await api.get('/api/conversations');
+  const [list, folderList] = await Promise.all([
+    api.get('/api/conversations'),
+    api.get('/api/folders'),
+  ]);
+  conversations = list;
+  folders = folderList;
   const container = document.getElementById('conv-list');
   container.innerHTML = '';
 
@@ -20,27 +32,82 @@ export async function loadConversationList() {
   const searchInput = document.getElementById('conv-search');
   const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
-  if (!list.length) {
+  if (!list.length && !folders.length) {
     container.innerHTML = '<div class="conv-section-label conv-empty">No conversations yet</div>';
     return;
   }
 
-  container.appendChild(
-    Object.assign(document.createElement('div'), { className: 'conv-section-label', textContent: 'Recent' })
-  );
-  list.forEach(conv => {
-    const item = _buildConvItem(conv);
-    if (query) {
-      const title = (conv.title || '').toLowerCase();
-      item.style.display = title.includes(query) ? '' : 'none';
-    }
-    container.appendChild(item);
-  });
+  folders.forEach(folder => container.appendChild(_buildFolderGroup(folder)));
+
+  const unfiled = list.filter(conv => !conv.folder_id || !folders.some(folder => folder.id === conv.folder_id));
+  if (unfiled.length) {
+    container.appendChild(Object.assign(document.createElement('div'), {
+      className: 'conv-section-label', textContent: 'Recent',
+    }));
+    unfiled.forEach(conv => container.appendChild(_buildConvItem(conv)));
+  }
 
   // Re-apply section label visibility
   if (query) {
-    container.querySelectorAll('.conv-section-label').forEach(l => l.style.display = 'none');
+    document.getElementById('conv-search')?.dispatchEvent(new Event('input'));
   }
+}
+
+function _buildFolderGroup(folder) {
+  const group = document.createElement('section');
+  group.className = 'folder-group';
+  group.dataset.folderId = folder.id;
+  group.innerHTML = `
+    <div class="folder-header">
+      <button class="folder-open" type="button" aria-label="Open ${escapeHtml(folder.name || 'Untitled Folder')}">
+        <span class="folder-icon">${ICONS.folder}</span>
+        <span class="folder-name">${escapeHtml(folder.name || 'Untitled Folder')}</span>
+      </button>
+      <div class="folder-controls">
+        <button class="folder-action" type="button" data-folder-action="add" title="New chat in folder" aria-label="New chat in folder">${ICONS.plus}</button>
+        <div class="folder-menu-wrap">
+          <button class="folder-menu-btn" type="button" title="Folder options" aria-label="Folder options" aria-expanded="false">${ICONS.moreVertical}</button>
+          <div class="conv-menu folder-menu" role="menu">
+            <button class="conv-menu-item" type="button" role="menuitem" data-folder-action="rename">
+              ${ICONS.edit}<span>Rename</span>
+            </button>
+            <button class="conv-menu-item danger" type="button" role="menuitem" data-folder-action="remove">
+              ${ICONS.trash}<span>Delete folder</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  group.querySelector('.folder-open').addEventListener('click', () => startNewChat(folder.id));
+  group.querySelector('[data-folder-action="add"]').addEventListener('click', () => startNewChat(folder.id));
+  const menuBtn = group.querySelector('.folder-menu-btn');
+  menuBtn.addEventListener('click', event => {
+    event.stopPropagation();
+    const willOpen = !group.classList.contains('folder-menu-open');
+    closeFolderMenus(group);
+    group.classList.toggle('folder-menu-open', willOpen);
+    menuBtn.setAttribute('aria-expanded', String(willOpen));
+  });
+  group.querySelector('[data-folder-action="rename"]').addEventListener('click', event => {
+    event.stopPropagation();
+    closeFolderMenus();
+    renameFolder(folder);
+  });
+  group.querySelector('[data-folder-action="remove"]').addEventListener('click', event => {
+    event.stopPropagation();
+    closeFolderMenus();
+    removeFolder(folder);
+  });
+  return group;
+}
+
+function closeFolderMenus(exceptGroup = null) {
+  document.querySelectorAll('.folder-group.folder-menu-open').forEach(group => {
+    if (group === exceptGroup) return;
+    group.classList.remove('folder-menu-open');
+    group.querySelector('.folder-menu-btn')?.setAttribute('aria-expanded', 'false');
+  });
 }
 
 function _buildConvItem(conv) {
@@ -62,6 +129,10 @@ function _buildConvItem(conv) {
         <button class="conv-menu-item" type="button" role="menuitem" data-action="rename">
           ${ICONS.edit}
           <span>Rename</span>
+        </button>
+        <button class="conv-menu-item" type="button" role="menuitem" data-action="move">
+          ${ICONS.folder}
+          <span>Move to folder</span>
         </button>
         <button class="conv-menu-item danger" type="button" role="menuitem" data-action="remove">
           ${ICONS.trash}
@@ -92,11 +163,17 @@ function _buildConvItem(conv) {
     deleteConversation(conv.id);
   });
 
+  item.querySelector('[data-action="move"]').addEventListener('click', e => {
+    e.stopPropagation();
+    closeConversationMenus();
+    moveConversation(conv);
+  });
+
   return item;
 }
 
 function closeConversationMenus(exceptItem = null) {
-  document.querySelectorAll('.conv-item.menu-open').forEach(item => {
+  document.querySelectorAll('.conv-item.menu-open, .folder-home-chat.menu-open').forEach(item => {
     if (item === exceptItem) return;
     item.classList.remove('menu-open');
     item.querySelector('.conv-menu-btn')?.setAttribute('aria-expanded', 'false');
@@ -112,10 +189,14 @@ function toggleConversationMenu(item) {
 
 document.addEventListener('click', e => {
   if (!e.target.closest('.conv-menu-wrap')) closeConversationMenus();
+  if (!e.target.closest('.folder-menu-wrap')) closeFolderMenus();
 });
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeConversationMenus();
+  if (e.key === 'Escape') {
+    closeConversationMenus();
+    closeFolderMenus();
+  }
 });
 
 // ── CRUD ──────────────────────────────────────────────────────────────────────
@@ -126,11 +207,48 @@ function updateTitleInput(title) {
   titleInput.value = title || '';
 }
 
+function folderById(folderId) {
+  return folders.find(folder => folder.id === folderId) || null;
+}
+
+function folderEmptyContext(folderId, excludeConvId = null) {
+  const folder = folderById(folderId);
+  if (!folder) return {};
+  return {
+    folder,
+    conversations: conversations.filter(conv => conv.folder_id === folderId && conv.id !== excludeConvId),
+  };
+}
+
+function updateHeaderFolder(folderId, title = '') {
+  activeFolderId = folderId || null;
+  state.folderId = activeFolderId;
+  const folder = folderById(activeFolderId);
+  const prefix = document.getElementById('chat-folder-prefix');
+  const separator = document.getElementById('chat-title-separator');
+  const titleInput = document.getElementById('chat-title-input');
+  const hasFolder = Boolean(folder);
+  prefix.textContent = folder?.name || '';
+  prefix.hidden = !hasFolder;
+  separator.hidden = !hasFolder;
+  if (titleInput && document.activeElement !== titleInput) titleInput.value = title || '';
+}
+
 function updateConversationListTitle(convId, title) {
   if (!convId || !title) return;
 
+  const cached = conversations.find(conv => conv.id === convId);
+  if (cached) {
+    cached.title = title;
+    cached.updated_at = new Date().toISOString();
+  }
+
   const item = document.querySelector(`.conv-item[data-id="${CSS.escape(convId)}"]`);
   const titleEl = item?.querySelector('.conv-title');
+  const folderHomeTitle = document.querySelector(
+    `.folder-home-chat[data-conv-id="${CSS.escape(convId)}"] .folder-home-chat-title`,
+  );
+  if (folderHomeTitle) folderHomeTitle.textContent = title;
   if (!titleEl || titleEl.textContent === title) return;
 
   titleEl.textContent = title;
@@ -157,6 +275,10 @@ function upsertConversationListItem(conv) {
     return;
   }
 
+  if (conv.folder_id) {
+    loadConversationList().then(() => setActiveConversationItem(conv.id));
+    return;
+  }
   if (container.querySelector('.conv-empty')) container.innerHTML = '';
   if (!container.querySelector('.conv-section-label')) {
     container.appendChild(Object.assign(document.createElement('div'), {
@@ -183,9 +305,12 @@ function applyConversationData(id, data, { render = true } = {}) {
   state.messages   = data.messages || [];
   state.displayLog = data.displayLog || [];
 
-  updateTitleInput(data.title || '');
+  updateHeaderFolder(data.folder_id, data.title || '');
   updateConversationListTitle(id, data.title || '');
-  if (render) renderAllMessages(state.displayLog);
+  if (render) {
+    if (state.displayLog.length) renderAllMessages(state.displayLog);
+    else clearMessages(folderEmptyContext(data.folder_id, id));
+  }
 }
 
 export async function openConversation(id) {
@@ -204,28 +329,35 @@ export async function openConversation(id) {
 
 // Resets the UI to an empty chat without touching the server.
 // The actual conversation record is created lazily on the first send (chat.js).
-export function startNewChat() {
+export function startNewChat(folderId = null) {
+  pendingFolderId = folderId;
   state.convId     = null;
   state.messages   = [];
   state.displayLog = [];
   storage.remove(STORAGE_KEYS.lastConv);
-  document.getElementById('chat-title-input').value = '';
-  clearMessages();
+  updateHeaderFolder(folderId, '');
+  clearMessages(folderEmptyContext(folderId));
   resetFilePanel();
   refreshFilePanel();
-  document.dispatchEvent(new CustomEvent('chat:conversation-opened', { detail: { convId: null, data: {} } }));
+  document.dispatchEvent(new CustomEvent('chat:conversation-opened', {
+    detail: { convId: null, data: folderId ? { folder_id: folderId } : {} },
+  }));
   document.querySelectorAll('.conv-item.active').forEach(el => el.classList.remove('active'));
   if (window.innerWidth <= 768) toggleSidebar(false);
 }
 
 // Creates a conversation record on the server. Called by chat.js before the first send.
 export async function createNewConversation() {
-  const data = await api.post('/api/conversations', { title: 'New Conversation' });
+  const data = await api.post('/api/conversations', {
+    title: 'New Conversation',
+    ...(pendingFolderId ? { folder_id: pendingFolderId } : {}),
+  });
+  pendingFolderId = null;
   state.convId     = data.id;
   state.messages   = [];
   state.displayLog = [];
   storage.set(STORAGE_KEYS.lastConv, data.id);
-  document.getElementById('chat-title-input').value = 'New Conversation';
+  updateHeaderFolder(data.folder_id, 'New Conversation');
   resetFilePanel();
   refreshFilePanel();
   upsertConversationListItem(data);
@@ -234,7 +366,10 @@ export async function createNewConversation() {
 export function renameConversation(convId) {
   if (!convId) return;
 
-  const currentTitle = document.querySelector(`.conv-item[data-id="${CSS.escape(convId)}"] .conv-title`)?.textContent || 'Untitled';
+  const currentTitle = document.querySelector(
+    `.conv-item[data-id="${CSS.escape(convId)}"] .conv-title, `
+    + `.folder-home-chat[data-conv-id="${CSS.escape(convId)}"] .folder-home-chat-title`,
+  )?.textContent || 'Untitled';
   const input   = document.getElementById('rename-conv-input');
   const confirm = document.getElementById('rename-conv-confirm');
   const overlay = document.getElementById('rename-conv-modal');
@@ -262,7 +397,7 @@ export function renameConversation(convId) {
     if (e.key === 'Escape') { input.removeEventListener('keydown', keyHandler); cleanup(); }
   }
 
-  freshConfirm.addEventListener('click', submit, { once: true });
+  freshConfirm.addEventListener('click', submit);
   input.addEventListener('keydown', keyHandler);
 }
 
@@ -277,8 +412,12 @@ export function deleteConversation(convId) {
   freshConfirm.addEventListener('click', async () => {
     closeModal('delete-conv-modal');
     await api.delete(`/api/conversations/${convId}`);
-    if (state.convId === convId) startNewChat();
+    const deletingActive = state.convId === convId;
+    if (deletingActive) startNewChat();
     await loadConversationList();
+    if (!deletingActive && !state.convId && activeFolderId) {
+      clearMessages(folderEmptyContext(activeFolderId));
+    }
   }, { once: true });
 }
 
@@ -295,12 +434,122 @@ export async function persistConversationFor(convId, { title, messages, displayL
   if (payload.title) updateConversationListTitle(convId, payload.title);
 }
 
+export function createFolder() {
+  openFolderEditor();
+}
+
+function renameFolder(folder) {
+  openFolderEditor(folder);
+}
+
+function openFolderEditor(folder = null) {
+  editingFolder = folder;
+  const input = document.getElementById('folder-name-input');
+  const title = document.getElementById('folder-modal-title');
+  const confirm = document.getElementById('folder-modal-confirm');
+  input.value = folder?.name || '';
+  title.textContent = folder ? 'Rename folder' : 'New folder';
+  confirm.textContent = folder ? 'Rename' : 'Create';
+  openModal('folder-modal');
+  requestAnimationFrame(() => { input.focus(); input.select(); });
+
+  if (!folderEditorBound) {
+    confirm.addEventListener('click', submitFolderEditor);
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter') submitFolderEditor();
+      if (event.key === 'Escape') closeModal('folder-modal');
+    });
+    folderEditorBound = true;
+  }
+}
+
+async function submitFolderEditor() {
+    const input = document.getElementById('folder-name-input');
+    const name = input.value.trim();
+    if (!name) return;
+    closeModal('folder-modal');
+    const folder = editingFolder;
+    editingFolder = null;
+    const updated = folder
+      ? await api.put(`/api/folders/${folder.id}`, { name })
+      : await api.post('/api/folders', { name });
+    await loadConversationList();
+    if (folder && activeFolderId === updated.id) {
+      updateHeaderFolder(activeFolderId, document.getElementById('chat-title-input').value);
+      if (!state.displayLog.length) clearMessages(folderEmptyContext(activeFolderId, state.convId));
+    }
+}
+
+async function removeFolder(folder) {
+  const confirm = document.getElementById('delete-folder-confirm');
+  openModal('delete-folder-modal');
+  const freshConfirm = confirm.cloneNode(true);
+  confirm.replaceWith(freshConfirm);
+  freshConfirm.addEventListener('click', async () => {
+    closeModal('delete-folder-modal');
+    await api.delete(`/api/folders/${folder.id}`);
+    await loadConversationList();
+    if (state.convId) await openConversation(state.convId);
+  }, { once: true });
+}
+
+function moveConversation(conv) {
+  const select = document.getElementById('move-conv-folder');
+  select.innerHTML = [
+    '<option value="">Recent (no folder)</option>',
+    ...folders.map(folder => `<option value="${folder.id}">${escapeHtml(folder.name)}</option>`),
+  ].join('');
+  select.value = conv.folder_id || '';
+  openModal('move-conv-modal');
+
+  const confirm = document.getElementById('move-conv-confirm');
+  const freshConfirm = confirm.cloneNode(true);
+  confirm.replaceWith(freshConfirm);
+  freshConfirm.addEventListener('click', async () => {
+    closeModal('move-conv-modal');
+    const updated = await api.put(`/api/conversations/${conv.id}`, { folder_id: select.value || null });
+    await loadConversationList();
+    if (state.convId === conv.id) {
+      updateHeaderFolder(updated.folder_id, updated.title || '');
+      if (!state.displayLog.length) clearMessages(folderEmptyContext(updated.folder_id, conv.id));
+      resetFilePanel();
+      refreshFilePanel();
+    }
+  }, { once: true });
+}
+
 export async function renameConversationTitle() {
   if (!state.convId) return;
 
   const titleInput = document.getElementById('chat-title-input');
-  const title = titleInput.value.trim() || 'Untitled';
+  const title = titleInput.value.trim() || 'New Conversation';
   titleInput.value = title;
 
   await persistConversationFor(state.convId, { title });
 }
+
+document.addEventListener('chat:open-conversation-requested', event => {
+  const convId = event.detail?.convId;
+  if (convId) openConversation(convId);
+});
+
+document.addEventListener('chat:toggle-conversation-menu-requested', event => {
+  const item = event.detail?.item;
+  if (item) toggleConversationMenu(item);
+});
+
+document.addEventListener('chat:rename-conversation-requested', event => {
+  const convId = event.detail?.convId;
+  if (convId) {
+    closeConversationMenus();
+    renameConversation(convId);
+  }
+});
+
+document.addEventListener('chat:delete-conversation-requested', event => {
+  const convId = event.detail?.convId;
+  if (convId) {
+    closeConversationMenus();
+    deleteConversation(convId);
+  }
+});

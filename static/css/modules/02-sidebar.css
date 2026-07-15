@@ -149,6 +149,83 @@
   text-transform: uppercase;
   letter-spacing: .08em;
 }
+.folder-group {
+  position: relative;
+  margin: 2px 0 8px;
+}
+.folder-header {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 5px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: var(--text2);
+  transition: color var(--fast), background var(--fast), border-color var(--fast);
+}
+.folder-header:hover,
+.folder-group.folder-menu-open .folder-header {
+  background: var(--surface);
+  color: var(--text);
+}
+.folder-open,
+.folder-action,
+.folder-menu-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  line-height: 0;
+  flex-shrink: 0;
+  transition: color var(--fast), background var(--fast), opacity var(--fast), transform var(--fast);
+}
+.folder-open {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  display: flex;
+  justify-content: flex-start;
+  color: inherit;
+  text-align: left;
+}
+.folder-icon { display: flex; margin: 0 8px 0 3px; color: var(--text3); }
+.folder-icon svg { width: 14px; height: 14px; }
+.folder-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: .73rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+.folder-controls { display: flex; align-items: center; gap: 1px; margin-left: 4px; }
+.folder-menu-wrap { position: relative; display: flex; }
+.folder-action,
+.folder-menu-btn { color: var(--text3); opacity: 0; pointer-events: none; }
+.folder-header:hover :is(.folder-action, .folder-menu-btn),
+.folder-group.folder-menu-open .folder-menu-btn,
+:is(.folder-action, .folder-menu-btn):focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+:is(.folder-action, .folder-menu-btn):hover,
+.folder-group.folder-menu-open .folder-menu-btn {
+  background: var(--surface2);
+  color: var(--text);
+}
+.folder-action svg { width: 13px; height: 13px; }
+.folder-menu-btn svg { width: 15px; height: 15px; }
+.folder-menu { top: calc(100% + 4px); right: 0; min-width: 148px; }
+.folder-group.folder-menu-open .folder-menu { display: block; }
 .conv-empty,
 .conv-search-empty {
   margin: 8px 4px;
@@ -214,7 +291,7 @@
   right: 0;
   top: calc(100% + 4px);
   z-index: 20;
-  min-width: 120px;
+  min-width: 142px;
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: 9px;

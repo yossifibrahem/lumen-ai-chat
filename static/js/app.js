@@ -8,7 +8,7 @@ import { storage }  from './storage.js';
 
 import { openModal, closeModal, toggleSidebar, initSidebar, autoResize, updateCharCount, initMobileKeyboardHandling, showToast } from './ui.js';
 import { loadSettings, saveSettings, saveChatSettings, syncSettingsUI, fetchModels, initKeyToggle, initParameterSliders } from './settings.js';
-import { loadConversationList, openConversation, renameConversationTitle, startNewChat, persistConversationFor } from './conversations.js';
+import { createFolder, loadConversationList, openConversation, renameConversationTitle, startNewChat, persistConversationFor } from './conversations.js';
 import { loadMcpConfig, saveMcpConfig, applyMcpToolSettings, resetMcpDraftSettings, reloadTools, loadCachedTools } from './mcp.js';
 import { sendMessage, stopAssistantTurn, editAndResend, regenerateFrom } from './chat.js';
 import { initImageAttachments, hasPendingAttachments } from './chat_attachments.js';
@@ -24,7 +24,8 @@ import { switchBranch } from './chat_branches.js';
 
 function bindSidebarEvents() {
   document.getElementById('btn-toggle-sidebar').addEventListener('click', () => toggleSidebar());
-  document.getElementById('btn-new-chat').addEventListener('click', startNewChat);
+  document.getElementById('btn-new-chat').addEventListener('click', () => startNewChat());
+  document.getElementById('btn-new-folder').addEventListener('click', createFolder);
 
   // Conversation search
   const searchInput = document.getElementById('conv-search');
@@ -32,14 +33,22 @@ function bindSidebarEvents() {
     const q = searchInput.value.trim().toLowerCase();
     const convList = document.getElementById('conv-list');
     const items    = convList.querySelectorAll('.conv-item');
-    let visible    = 0;
 
     items.forEach(item => {
       const title = (item.querySelector('.conv-title')?.textContent || '').toLowerCase();
       const show  = !q || title.includes(q);
       item.style.display = show ? '' : 'none';
-      if (show) visible++;
     });
+
+    convList.querySelectorAll('.folder-group').forEach(group => {
+      const hasVisibleChat = [...group.querySelectorAll('.conv-item')].some(item => item.style.display !== 'none');
+      const folderMatches = (group.querySelector('.folder-name')?.textContent || '').toLowerCase().includes(q);
+      group.style.display = !q || hasVisibleChat || folderMatches ? '' : 'none';
+      if (q && folderMatches) group.querySelectorAll('.conv-item').forEach(item => { item.style.display = ''; });
+    });
+
+    const visible = [...items].filter(item => item.style.display !== 'none' && item.closest('.folder-group')?.style.display !== 'none').length;
+    const visibleFolders = [...convList.querySelectorAll('.folder-group')].filter(group => group.style.display !== 'none').length;
 
     // Section label visibility
     convList.querySelectorAll('.conv-section-label').forEach(label => {
@@ -48,7 +57,7 @@ function bindSidebarEvents() {
 
     // No-results message
     let noResults = convList.querySelector('.conv-search-empty');
-    if (!visible && q) {
+    if (!visible && !visibleFolders && q) {
       if (!noResults) {
         noResults = Object.assign(document.createElement('div'), { className: 'conv-search-empty' });
         convList.appendChild(noResults);

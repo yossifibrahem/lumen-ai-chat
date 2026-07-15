@@ -231,6 +231,7 @@
 #main.is-empty #suggestions-bar {
   display: flex;
 }
+#main.folder-home #suggestions-bar { display: none; }
 .suggestion-chip {
   display: flex;
   align-items: center;

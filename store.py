@@ -22,6 +22,8 @@ from mcp_adapters import conversation_working_directory
 CONVERSATIONS_DIR = Path.home() / ".lumen" / "conversations"
 CONVERSATIONS_DIR.mkdir(parents=True, exist_ok=True)
 
+FOLDERS_FILE = Path.home() / ".lumen" / "folders.json"
+
 IMAGES_DIR = Path.home() / ".lumen" / "images"
 IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -31,6 +33,7 @@ _SAFE_NAME = re.compile(r'^[a-f0-9]{64}\.(png|jpeg|webp|gif)$')
 
 _index: list[dict] | None = None
 _index_lock = threading.RLock()
+_folders_lock = threading.RLock()
 
 
 def _conversation_summary(path: Path) -> dict | None:
@@ -39,7 +42,9 @@ def _conversation_summary(path: Path) -> dict | None:
         return {
             "id":                path.stem,
             "title":             data.get("title", "Untitled"),
-            "working_directory": str(working_directory(path.stem)),
+            "folder_id":         data.get("folder_id"),
+            "updated_at":        data.get("updated_at") or data.get("created_at"),
+            "working_directory": str(conversation_working_directory(runtime_id(path.stem, data))),
         }
     except Exception:
         return None
@@ -76,7 +81,9 @@ def _update_index_for(conv_id: str, data: dict) -> None:
         summary = {
             "id": conv_id,
             "title": data.get("title", "Untitled"),
-            "working_directory": str(working_directory(conv_id)),
+            "folder_id": data.get("folder_id"),
+            "updated_at": data.get("updated_at") or data.get("created_at"),
+            "working_directory": str(conversation_working_directory(runtime_id(conv_id, data))),
         }
         _index = [item for item in _index if item.get("id") != conv_id]
         _index.insert(0, summary)
@@ -125,8 +132,77 @@ def _path(conv_id: str) -> Path:
 
 
 def working_directory(conv_id: str) -> Path:
-    """Return the isolated MCP working directory for one conversation."""
-    return conversation_working_directory(conv_id)
+    """Return the MCP workspace for a chat (shared by chats in one folder)."""
+    return conversation_working_directory(runtime_id(conv_id))
+
+
+def runtime_id(conv_id: str, data: dict | None = None) -> str:
+    """Return the container/workspace identity used by a conversation."""
+    conversation = data if data is not None else load(conv_id)
+    folder_id = conversation.get("folder_id") if conversation else None
+    return f"folder_{folder_id}" if folder_id else conv_id
+
+
+def _read_folders() -> list[dict]:
+    if not FOLDERS_FILE.exists():
+        return []
+    try:
+        data = json.loads(FOLDERS_FILE.read_text())
+        return data if isinstance(data, list) else []
+    except (OSError, json.JSONDecodeError):
+        return []
+
+
+def _write_folders(folders: list[dict]) -> None:
+    FOLDERS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = FOLDERS_FILE.with_suffix(f".tmp-{uuid.uuid4().hex}")
+    tmp_path.write_text(json.dumps(folders, indent=2))
+    atomic_replace(tmp_path, FOLDERS_FILE)
+
+
+def list_folders() -> list[dict]:
+    with _folders_lock:
+        return list(_read_folders())
+
+
+def get_folder(folder_id: str) -> dict | None:
+    return next((folder for folder in list_folders() if folder.get("id") == folder_id), None)
+
+
+def create_folder(name: str = "New Folder") -> dict:
+    now = datetime.now(timezone.utc).isoformat()
+    folder = {"id": str(uuid.uuid4()), "name": name or "New Folder", "created_at": now, "updated_at": now}
+    with _folders_lock:
+        folders = _read_folders()
+        folders.append(folder)
+        _write_folders(folders)
+    return folder
+
+
+def update_folder(folder_id: str, name: str) -> dict | None:
+    with _folders_lock:
+        folders = _read_folders()
+        folder = next((item for item in folders if item.get("id") == folder_id), None)
+        if folder is None:
+            return None
+        folder["name"] = name or "Untitled Folder"
+        folder["updated_at"] = datetime.now(timezone.utc).isoformat()
+        _write_folders(folders)
+        return dict(folder)
+
+
+def delete_folder(folder_id: str) -> bool:
+    with _folders_lock:
+        folders = _read_folders()
+        remaining = [item for item in folders if item.get("id") != folder_id]
+        if len(remaining) == len(folders):
+            return False
+        _write_folders(remaining)
+        return True
+
+
+def folder_conversations(folder_id: str) -> list[dict]:
+    return [conv for conv in list_all() if conv.get("folder_id") == folder_id]
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -176,13 +252,16 @@ def delete(conv_id: str) -> bool:
     return False
 
 
-def create(title: str = "New Conversation") -> dict:
+def create(title: str = "New Conversation", folder_id: str | None = None) -> dict:
     """Create, persist, and return a blank conversation."""
     conv_id = str(uuid.uuid4())
-    return save(conv_id, {
+    data = {
         "id":                conv_id,
         "title":             title,
         "messages":          [],
-        "working_directory": str(working_directory(conv_id)),
         "created_at":        datetime.now(timezone.utc).isoformat(),
-    })
+    }
+    if folder_id:
+        data["folder_id"] = folder_id
+    data["working_directory"] = str(conversation_working_directory(runtime_id(conv_id, data)))
+    return save(conv_id, data)

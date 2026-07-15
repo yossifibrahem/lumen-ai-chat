@@ -26,6 +26,8 @@ export const DEFAULT_ICONS = Object.freeze({
   menu: icon('<path d="M4.5 7h15M4.5 12h15M4.5 17h15"/>', 'stroke-width="2.6"'),
   settings: icon('<path d="M4 7h9"/><path d="M17 7h3"/><circle cx="15" cy="7" r="2"/><path d="M4 17h3"/><path d="M11 17h9"/><circle cx="9" cy="17" r="2"/>'),
   plus: icon('<path d="M12 5v14M5 12h14"/>', 'stroke-width="2.7"'),
+  folder: icon('<path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>'),
+  folderPlus: icon('<path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><path d="M12 11v5M9.5 13.5h5"/>'),
 
   // ── Brand / logo ───────────────────────────────────────────────────────────
   logo: icon('<path d="M7.5 4h9A3.5 3.5 0 0 1 20 7.5v9a3.5 3.5 0 0 1-3.5 3.5h-9A3.5 3.5 0 0 1 4 16.5v-9A3.5 3.5 0 0 1 7.5 4z"/><path d="M12 4V2.5"/><path d="M9 2.5h6"/><path d="M8.7 10h.01M15.3 10h.01"/><path d="M9 14.75c1.9 1.25 4.1 1.25 6 0"/>'),

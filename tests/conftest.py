@@ -53,6 +53,7 @@ def tmp_lumen(tmp_path, monkeypatch):
 
     monkeypatch.setattr("store.CONVERSATIONS_DIR", conv_dir)
     monkeypatch.setattr("store.IMAGES_DIR", images_dir)
+    monkeypatch.setattr("store.FOLDERS_FILE", tmp_path / "folders.json")
     monkeypatch.setattr("container_service.CONTAINERS_ROOT", containers_dir)
 
     import store

@@ -163,6 +163,7 @@ class TurnRecorder:
 
 def run_persistent_chat_turn(body: dict, cancel_event: threading.Event, stream_id: str, publish: Publish) -> None:
     conv_id = body.get("conv_id", "")
+    runtime_id = store.runtime_id(conv_id) if conv_id else ""
     title = body.get("title") or "Untitled"
     turn_messages = list(body.get("conversation_messages") or [])
     display_log = list(body.get("display_log") or [])
@@ -195,10 +196,10 @@ def run_persistent_chat_turn(body: dict, cancel_event: threading.Event, stream_i
             })
             if server_names:
                 extra_volumes = mcp_service.collect_all_extra_volumes(server_names)
-                container_service.ensure_container(conv_id, extra_volumes)
+                container_service.ensure_container(runtime_id, extra_volumes)
 
         if conv_id and tool_meta:
-            session_pool = mcp_service.get_persistent_pool(conv_id)
+            session_pool = mcp_service.get_persistent_pool(runtime_id)
 
         while not cancel_event.is_set():
             acc_text = ""

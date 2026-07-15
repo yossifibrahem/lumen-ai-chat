@@ -39,6 +39,7 @@ export const STORAGE_KEYS = {
 // Single mutable state object shared across all modules.
 export const state = {
   convId:            null,
+  folderId:          null,
   messages:          [],   // OpenAI API message history
   displayLog:        [],   // Serialisable render log (messages + tool results)
   mcpTools:          [],

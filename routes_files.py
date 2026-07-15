@@ -62,6 +62,35 @@ def download_conversation_file(conv_id: str):
     return send_file(target, as_attachment=True, download_name=target.name)
 
 
+@blueprint.route("/api/folders/<folder_id>/files", methods=["GET"])
+def folder_files(folder_id: str):
+    if err := _bad_conv_id(folder_id):
+        return err
+    return _json_result(workspace_service.list_folder_dir(folder_id, request.args.get("path", "")))
+
+
+@blueprint.route("/api/folders/<folder_id>/files/content", methods=["GET"])
+def get_folder_file_content(folder_id: str):
+    if err := _bad_conv_id(folder_id):
+        return err
+    return _json_result(workspace_service.read_folder_file(folder_id, request.args.get("path", "")))
+
+
+@blueprint.route("/api/folders/<folder_id>/files/download", methods=["GET"])
+def download_folder_file(folder_id: str):
+    if err := _bad_conv_id(folder_id):
+        return err
+    if not store.get_folder(folder_id):
+        return jsonify({"error": "Folder not found"}), 404
+    try:
+        target, _ = workspace_service.resolve_folder_workspace_path(folder_id, request.args.get("path", ""))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    if not target.exists() or not target.is_file():
+        return jsonify({"error": "File not found"}), 404
+    return send_file(target, as_attachment=True, download_name=target.name)
+
+
 @blueprint.route("/api/images", methods=["POST"])
 def upload_image():
     body = request.get_json(silent=True) or {}
