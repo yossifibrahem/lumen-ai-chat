@@ -100,14 +100,15 @@ export function clearMessages({ folder = null, conversations = [] } = {}) {
         </div>
       </div>
       <div class="folder-home-panel folder-instructions-panel" role="tabpanel" data-folder-panel="instructions" hidden>
-        <div class="field">
-          <label for="folder-instructions-input">Folder instructions</label>
-          <textarea id="folder-instructions-input" class="textarea-tall" placeholder="Add instructions for every chat in this folder…">${escapeHtml(folder.system_prompt || '')}</textarea>
-          <div class="field-note">When set, these instructions replace the global system prompt for chats in this folder.</div>
+        <div class="folder-instructions-heading">
+          <div class="section-title">Folder instructions</div>
+          <p class="tool-card-desc">Guide how the assistant should respond in every chat in this folder.</p>
         </div>
+        <textarea id="folder-instructions-input" class="msg-edit-textarea" aria-label="Folder instructions" placeholder="Be concise and cite workspace files.">${escapeHtml(folder.system_prompt || '')}</textarea>
         <div class="folder-instructions-actions">
+          <span class="field-note">Overrides the global system prompt when it isn’t empty.</span>
           <span class="folder-instructions-status" role="status"></span>
-          <button class="btn-primary" type="button" data-save-folder-instructions>Save instructions</button>
+          <button class="btn-secondary" type="button" data-save-folder-instructions>Save</button>
         </div>
       </div>`;
     const tabs = [...history.querySelectorAll('[data-folder-tab]')];
