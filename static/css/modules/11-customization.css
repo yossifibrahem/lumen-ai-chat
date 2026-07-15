@@ -8,10 +8,46 @@ html.no-transition *, html.no-transition *::before, html.no-transition *::after 
   animation: none !important;
 }
 
-/* Sidebar pre-collapsed before JS loads — mirrors #sidebar.collapsed exactly */
+/* Sidebar pre-collapsed before JS loads — prevents an open-sidebar flash. */
 html.sidebar-init-closed #sidebar {
   width: 64px;
   min-width: 64px;
+}
+html.sidebar-init-closed #sidebar :is(.logo-name, #sidebar-search, #conv-list, .sidebar-label) {
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+html.sidebar-init-closed #sidebar #sidebar-header {
+  justify-content: center;
+  padding: 14px 0 6px;
+}
+html.sidebar-init-closed #sidebar .logo {
+  flex: 0 0 auto;
+  padding: 0;
+  gap: 0;
+}
+html.sidebar-init-closed #sidebar #sidebar-footer {
+  padding: 6px 0 8px;
+  align-items: center;
+}
+html.sidebar-init-closed #sidebar .sidebar-action {
+  width: 40px;
+  min-height: 40px;
+  padding: 0;
+  justify-content: center;
+  gap: 0;
+  border-radius: 10px;
+}
+
+@media (max-width: 768px) {
+  html.sidebar-init-closed #sidebar {
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    transform: translateX(-100%);
+  }
 }
 
 /* Base font size variable (set by JS) */

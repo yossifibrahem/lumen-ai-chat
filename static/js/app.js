@@ -6,7 +6,7 @@
 import { STORAGE_KEYS, state } from './state.js';
 import { storage }  from './storage.js';
 
-import { openModal, closeModal, toggleSidebar, autoResize, updateCharCount, initMobileKeyboardHandling, showToast } from './ui.js';
+import { openModal, closeModal, toggleSidebar, initSidebar, autoResize, updateCharCount, initMobileKeyboardHandling, showToast } from './ui.js';
 import { loadSettings, saveSettings, saveChatSettings, syncSettingsUI, fetchModels, initKeyToggle, initParameterSliders } from './settings.js';
 import { loadConversationList, openConversation, renameConversationTitle, startNewChat, persistConversationFor } from './conversations.js';
 import { loadMcpConfig, saveMcpConfig, applyMcpToolSettings, resetMcpDraftSettings, reloadTools, loadCachedTools } from './mcp.js';
@@ -302,11 +302,5 @@ function bindEvents() {
     clearMessages(); // Show empty state when no conversation exists
   }
 
-  const savedSidebarState = storage.get(STORAGE_KEYS.sidebar);
-  const sidebarOpen = savedSidebarState !== null ? savedSidebarState : state.sidebarDefaultOpen;
-  // Always start collapsed on mobile — sidebar overlays content there
-  const shouldOpen = window.innerWidth <= 768 ? false : sidebarOpen;
-  // Remove the CSS pre-collapse class — JS takes over from here
-  document.documentElement.classList.remove('sidebar-init-closed');
-  if (!shouldOpen) toggleSidebar(false);
+  initSidebar(state.sidebarDefaultOpen);
 })();

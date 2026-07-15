@@ -87,7 +87,7 @@
     // On first visit, default to open on desktop and closed on mobile.
     var sidebarSaved = localStorage.getItem('lumen_sidebar');
     var sidebarOpen = sidebarSaved === null ? !isMobile : sidebarSaved === 'true';
-    if (!sidebarOpen) {
+    if (isMobile || !sidebarOpen) {
       r.classList.add('sidebar-init-closed');
     }
 
@@ -114,7 +114,7 @@
 <body>
 
 <!-- Sidebar -->
-<aside id="sidebar">
+<aside id="sidebar" aria-label="Conversation sidebar">
   <div id="sidebar-header">
     <div class="logo">
       <div class="logo-mark">
@@ -132,11 +132,11 @@
   <div id="conv-list"></div>
 
   <div id="sidebar-footer">
-    <button class="sidebar-action" id="btn-new-chat">
+    <button class="sidebar-action" id="btn-new-chat" title="New chat">
       <span data-icon="plus"></span>
       <span class="sidebar-label">New chat</span>
     </button>
-    <button class="sidebar-action" id="btn-open-settings">
+    <button class="sidebar-action" id="btn-open-settings" title="Settings">
       <span data-icon="settings"></span>
       <span class="sidebar-label">Settings</span>
     </button>
@@ -146,7 +146,7 @@
 <!-- Main -->
 <main id="main" class="is-empty">
   <div id="chat-header">
-    <button id="btn-toggle-sidebar" title="Toggle sidebar">
+    <button id="btn-toggle-sidebar" title="Close sidebar" aria-label="Close sidebar" aria-controls="sidebar" aria-expanded="true">
       <span data-icon="menu"></span>
     </button>
     <input id="chat-title-input" type="text" placeholder="Untitled Conversation" maxlength="80" />

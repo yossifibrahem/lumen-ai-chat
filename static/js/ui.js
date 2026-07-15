@@ -25,35 +25,73 @@ export function showStatus(elementId, message, type) {
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
+const sidebarMedia = window.matchMedia('(max-width: 768px)');
+
+function getSidebarElements() {
+  return {
+    sidebar: document.getElementById('sidebar'),
+    toggle: document.getElementById('btn-toggle-sidebar'),
+    search: document.getElementById('sidebar-search'),
+    conversations: document.getElementById('conv-list'),
+  };
+}
+
+function getSidebarBackdrop() {
+  let backdrop = document.getElementById('sidebar-backdrop');
+  if (backdrop) return backdrop;
+
+  backdrop = document.createElement('div');
+  backdrop.id = 'sidebar-backdrop';
+  backdrop.addEventListener('click', () => toggleSidebar(false));
+  document.body.appendChild(backdrop);
+  return backdrop;
+}
+
+function applySidebarState(open, { persist = !sidebarMedia.matches } = {}) {
+  const { sidebar, toggle, search, conversations } = getSidebarElements();
+  if (!sidebar || !toggle) return;
+
+  const isMobile = sidebarMedia.matches;
+  sidebar.classList.toggle('collapsed', !open);
+  sidebar.dataset.state = open ? 'open' : (isMobile ? 'hidden' : 'mini');
+
+  // Keep off-screen/hidden controls out of keyboard navigation. The desktop
+  // mini rail itself remains interactive so New chat and Settings still work.
+  if (search) search.inert = !open;
+  if (conversations) conversations.inert = !open;
+
+  const action = open ? 'Close sidebar' : 'Open sidebar';
+  toggle.setAttribute('aria-expanded', String(open));
+  toggle.setAttribute('aria-label', action);
+  toggle.title = action;
+
+  const backdrop = isMobile ? getSidebarBackdrop() : document.getElementById('sidebar-backdrop');
+  backdrop?.classList.toggle('visible', isMobile && open);
+
+  if (persist) storage.set(STORAGE_KEYS.sidebar, open);
+}
+
 export function toggleSidebar(forceOpen) {
   const sidebar  = document.getElementById('sidebar');
-  const main     = document.getElementById('main');
-  const isMobile = window.innerWidth <= 768;
   const open     = forceOpen !== undefined ? forceOpen : sidebar.classList.contains('collapsed');
 
-  sidebar.classList.toggle('collapsed', !open);
+  applySidebarState(open);
+}
 
-  if (isMobile) {
-    // On mobile the sidebar overlays — manage a backdrop instead of margin
-    let backdrop = document.getElementById('sidebar-backdrop');
-    if (!backdrop) {
-      backdrop = document.createElement('div');
-      backdrop.id = 'sidebar-backdrop';
-      document.body.appendChild(backdrop);
-      backdrop.addEventListener('click', () => toggleSidebar(true));
-    }
-    if (open) {
-      backdrop.classList.add('visible');
-    } else {
-      backdrop.classList.remove('visible');
-    }
-    main.style.marginLeft = '';
-  } else {
-    // On desktop: sidebar collapses to icon rail (64px), main shifts accordingly
-    main.style.marginLeft = open ? '' : '0';
-  }
+export function initSidebar(defaultOpen = true) {
+  const savedState = storage.get(STORAGE_KEYS.sidebar);
+  const desktopOpen = savedState !== null ? savedState : defaultOpen;
 
-  storage.set(STORAGE_KEYS.sidebar, open);
+  // Mobile is an ephemeral overlay; opening or closing it must not overwrite
+  // the user's desktop open/mini preference.
+  applySidebarState(sidebarMedia.matches ? false : desktopOpen, { persist: false });
+  document.documentElement.classList.remove('sidebar-init-closed');
+
+  sidebarMedia.addEventListener('change', event => {
+    const savedDesktopState = storage.get(STORAGE_KEYS.sidebar);
+    const preferredDesktopState = savedDesktopState !== null ? savedDesktopState : defaultOpen;
+    applySidebarState(event.matches ? false : preferredDesktopState, { persist: false });
+  });
 }
 
 // ── Modals ────────────────────────────────────────────────────────────────────
