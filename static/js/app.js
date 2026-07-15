@@ -33,18 +33,54 @@ function bindSidebarEvents() {
 function bindModelPickerEvents() {
   const modelBadge   = document.getElementById('model-badge');
   const modelPopover = document.getElementById('model-popover');
+  const viewportMargin = 8;
+  const popoverGap = 8;
+
+  function positionModelPopover() {
+    if (!modelPopover.classList.contains('open')) return;
+
+    const badgeRect = modelBadge.getBoundingClientRect();
+    const headerBottom = document.getElementById('chat-header')?.getBoundingClientRect().bottom || 0;
+    const viewportWidth = window.visualViewport?.width || window.innerWidth;
+    const viewportHeight = window.visualViewport?.height || window.innerHeight;
+    const popoverWidth = Math.min(260, viewportWidth - (viewportMargin * 2));
+    const spaceAbove = badgeRect.top - popoverGap - headerBottom - viewportMargin;
+    const spaceBelow = viewportHeight - badgeRect.bottom - popoverGap - viewportMargin;
+    const openDownward = spaceBelow > spaceAbove;
+    const availableHeight = Math.max(0, openDownward ? spaceBelow : spaceAbove);
+    const unclampedLeft = badgeRect.left;
+    const clampedLeft = Math.min(
+      Math.max(viewportMargin, unclampedLeft),
+      viewportWidth - popoverWidth - viewportMargin,
+    );
+
+    modelPopover.classList.toggle('open-downward', openDownward);
+    modelPopover.style.left = `${clampedLeft - badgeRect.left}px`;
+    modelPopover.style.setProperty('--model-popover-max-height', `${availableHeight}px`);
+  }
+
+  function closeModelPopover() {
+    modelPopover.classList.remove('open', 'open-downward');
+    modelBadge.classList.remove('open');
+    modelBadge.setAttribute('aria-expanded', 'false');
+  }
 
   modelBadge.addEventListener('click', e => {
     e.stopPropagation();
     const isOpen = modelPopover.classList.toggle('open');
     modelBadge.classList.toggle('open', isOpen);
+    modelBadge.setAttribute('aria-expanded', String(isOpen));
+    if (isOpen) positionModelPopover();
+    else modelPopover.classList.remove('open-downward');
   });
   document.addEventListener('click', e => {
     if (!document.getElementById('model-picker-wrap').contains(e.target)) {
-      modelPopover.classList.remove('open');
-      modelBadge.classList.remove('open');
+      closeModelPopover();
     }
   });
+  window.addEventListener('resize', positionModelPopover);
+  window.visualViewport?.addEventListener('resize', positionModelPopover);
+  window.visualViewport?.addEventListener('scroll', positionModelPopover);
 }
 
 function bindModalEvents() {
