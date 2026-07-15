@@ -87,8 +87,8 @@
   gap: 0;
 }
 
-/* Footer buttons become icon-only */
-#sidebar.collapsed #sidebar-footer {
+/* Sidebar actions become icon-only */
+#sidebar.collapsed :is(#sidebar-primary-actions, #sidebar-footer) {
   padding: 6px 0 8px;
   align-items: center;
 }
@@ -282,8 +282,8 @@
 .conv-menu-item.danger:hover { color: var(--red); }
 .conv-menu-item svg { width: 12px; height: 12px; }
 
-/* ─── Sidebar footer ──────────────────────────────────────────────────────── */
-#sidebar-footer {
+/* ─── Sidebar actions ─────────────────────────────────────────────────────── */
+:is(#sidebar-primary-actions, #sidebar-footer) {
   padding: 6px 8px 8px;
   display: flex;
   flex-direction: column;
@@ -291,6 +291,7 @@
   flex-shrink: 0;
   transition: padding .22s var(--ease);
 }
+#sidebar-primary-actions { padding-top: 4px; }
 .sidebar-action {
   display: flex;
   align-items: center;

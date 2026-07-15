@@ -29,7 +29,7 @@ html.sidebar-init-closed #sidebar .logo {
   padding: 0;
   gap: 0;
 }
-html.sidebar-init-closed #sidebar #sidebar-footer {
+html.sidebar-init-closed #sidebar :is(#sidebar-primary-actions, #sidebar-footer) {
   padding: 6px 0 8px;
   align-items: center;
 }

@@ -16,7 +16,7 @@
   #sidebar.collapsed .sidebar-label { opacity: 1; pointer-events: auto; width: auto; overflow: visible; }
   #sidebar.collapsed #sidebar-header { justify-content: flex-start; flex-direction: row; align-items: center; padding: 14px 10px 6px; gap: 4px; }
   #sidebar.collapsed .logo { flex: 1; padding: 0 2px; gap: 9px; }
-  #sidebar.collapsed #sidebar-footer { padding: 6px 8px 8px; align-items: stretch; }
+  #sidebar.collapsed :is(#sidebar-primary-actions, #sidebar-footer) { padding: 6px 8px 8px; align-items: stretch; }
   #sidebar.collapsed .sidebar-action { width: 100%; padding: 8px 10px; justify-content: flex-start; gap: 9px; border-radius: 8px; }
   #main { margin-left: 0 !important; }
   #chat-header { height: calc(var(--chat-header-mobile-h, 50px) + env(safe-area-inset-top, 0px)); padding: env(safe-area-inset-top, 0px) 12px 0; gap: 8px; }

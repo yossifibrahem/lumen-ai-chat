@@ -34,7 +34,12 @@ export async function loadConversationList() {
     return;
   }
 
-  folders.forEach(folder => container.appendChild(_buildFolderGroup(folder)));
+  if (folders.length) {
+    container.appendChild(Object.assign(document.createElement('div'), {
+      className: 'conv-section-label', textContent: 'Folders',
+    }));
+    folders.forEach(folder => container.appendChild(_buildFolderGroup(folder)));
+  }
 
   const unfiled = list.filter(conv => !conv.folder_id || !folders.some(folder => folder.id === conv.folder_id));
   if (unfiled.length) {
