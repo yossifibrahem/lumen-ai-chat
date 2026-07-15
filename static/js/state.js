@@ -40,6 +40,7 @@ export const STORAGE_KEYS = {
 export const state = {
   convId:            null,
   folderId:          null,
+  folderSystemPrompt:'',
   messages:          [],   // OpenAI API message history
   displayLog:        [],   // Serialisable render log (messages + tool results)
   mcpTools:          [],

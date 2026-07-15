@@ -224,6 +224,7 @@ function updateHeaderFolder(folderId, title = '') {
   activeFolderId = folderId || null;
   state.folderId = activeFolderId;
   const folder = folderById(activeFolderId);
+  state.folderSystemPrompt = folder?.system_prompt || '';
   const prefix = document.getElementById('chat-folder-prefix');
   const separator = document.getElementById('chat-title-separator');
   const titleInput = document.getElementById('chat-title-input');
@@ -552,4 +553,20 @@ document.addEventListener('chat:delete-conversation-requested', event => {
     closeConversationMenus();
     deleteConversation(convId);
   }
+});
+
+document.addEventListener('chat:update-folder-instructions-requested', async event => {
+  const { folderId, systemPrompt, done } = event.detail || {};
+  if (!folderId) return;
+
+  const updated = await api.put(`/api/folders/${folderId}`, { system_prompt: systemPrompt || '' });
+  if (updated.error) {
+    done?.(updated.error);
+    return;
+  }
+
+  const index = folders.findIndex(folder => folder.id === folderId);
+  if (index >= 0) folders[index] = updated;
+  if (activeFolderId === folderId) state.folderSystemPrompt = updated.system_prompt || '';
+  done?.(null, updated);
 });

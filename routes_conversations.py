@@ -47,14 +47,23 @@ def list_folders():
 
 @blueprint.route("/api/folders", methods=["POST"])
 def create_folder():
-    return jsonify(store.create_folder(_body().get("name", "New Folder"))), 201
+    body = _body()
+    return jsonify(store.create_folder(
+        body.get("name", "New Folder"),
+        body.get("system_prompt", ""),
+    )), 201
 
 
 @blueprint.route("/api/folders/<folder_id>", methods=["PUT"])
 def update_folder(folder_id: str):
     if err := _bad_conv_id(folder_id):
         return err
-    folder = store.update_folder(folder_id, _body().get("name", "Untitled Folder"))
+    body = _body()
+    folder = store.update_folder(
+        folder_id,
+        name=body.get("name") if "name" in body else None,
+        system_prompt=body.get("system_prompt") if "system_prompt" in body else None,
+    )
     return jsonify(folder) if folder else (jsonify({"error": "Not found"}), 404)
 
 

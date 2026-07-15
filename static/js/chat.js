@@ -244,6 +244,7 @@ function createTurnContext(convId) {
   return {
     convId,
     title: currentTitle(),
+    systemPrompt: state.folderSystemPrompt.trim() || state.systemPrompt,
     messages: state.messages.slice(),
     displayLog: state.displayLog.slice(),
   };
@@ -597,7 +598,7 @@ async function runChatLoop(turn) {
     const payload = {
       model:     state.model || 'gpt-4o',
       temperature:  state.temperature ?? 0.7,
-      messages:              await buildApiMessages(turn.messages),
+      messages:              await buildApiMessages(turn.messages, turn.systemPrompt),
       conversation_messages: turn.messages,
       display_log:           turn.displayLog,
       title:                 turn.title,

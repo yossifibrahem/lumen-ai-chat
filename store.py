@@ -169,9 +169,15 @@ def get_folder(folder_id: str) -> dict | None:
     return next((folder for folder in list_folders() if folder.get("id") == folder_id), None)
 
 
-def create_folder(name: str = "New Folder") -> dict:
+def create_folder(name: str = "New Folder", system_prompt: str = "") -> dict:
     now = datetime.now(timezone.utc).isoformat()
-    folder = {"id": str(uuid.uuid4()), "name": name or "New Folder", "created_at": now, "updated_at": now}
+    folder = {
+        "id": str(uuid.uuid4()),
+        "name": name or "New Folder",
+        "system_prompt": system_prompt or "",
+        "created_at": now,
+        "updated_at": now,
+    }
     with _folders_lock:
         folders = _read_folders()
         folders.append(folder)
@@ -179,13 +185,20 @@ def create_folder(name: str = "New Folder") -> dict:
     return folder
 
 
-def update_folder(folder_id: str, name: str) -> dict | None:
+def update_folder(
+    folder_id: str,
+    name: str | None = None,
+    system_prompt: str | None = None,
+) -> dict | None:
     with _folders_lock:
         folders = _read_folders()
         folder = next((item for item in folders if item.get("id") == folder_id), None)
         if folder is None:
             return None
-        folder["name"] = name or "Untitled Folder"
+        if name is not None:
+            folder["name"] = name or "Untitled Folder"
+        if system_prompt is not None:
+            folder["system_prompt"] = system_prompt
         folder["updated_at"] = datetime.now(timezone.utc).isoformat()
         _write_folders(folders)
         return dict(folder)

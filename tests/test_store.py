@@ -127,6 +127,9 @@ class TestFolders:
         folder = store.create_folder("Project")
         assert store.get_folder(folder["id"])["name"] == "Project"
         assert store.update_folder(folder["id"], "Renamed")["name"] == "Renamed"
+        updated = store.update_folder(folder["id"], system_prompt="Answer as a researcher.")
+        assert updated["name"] == "Renamed"
+        assert updated["system_prompt"] == "Answer as a researcher."
         assert store.delete_folder(folder["id"]) is True
         assert store.get_folder(folder["id"]) is None
 

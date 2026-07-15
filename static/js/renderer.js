@@ -71,8 +71,12 @@ export function clearMessages({ folder = null, conversations = [] } = {}) {
     const history = document.createElement('section');
     history.id = 'folder-home-chats';
     history.innerHTML = `
-      <div class="folder-home-tabs"><span class="active">Chats</span></div>
-      <div class="folder-home-list">
+      <div class="folder-home-tabs" role="tablist" aria-label="Folder content">
+        <button class="folder-home-tab active" type="button" role="tab" aria-selected="true" data-folder-tab="chats">Chats</button>
+        <button class="folder-home-tab" type="button" role="tab" aria-selected="false" data-folder-tab="instructions">Instructions</button>
+      </div>
+      <div class="folder-home-panel" role="tabpanel" data-folder-panel="chats">
+        <div class="folder-home-list">
         ${conversations.length ? conversations.map(conv => `
           <div class="folder-home-chat" data-conv-id="${escapeHtml(conv.id)}">
             <button class="folder-home-chat-open" type="button">
@@ -93,7 +97,29 @@ export function clearMessages({ folder = null, conversations = [] } = {}) {
               </div>
             </div>
           </div>`).join('') : '<div class="folder-home-no-chats">No chats in this folder yet</div>'}
+        </div>
+      </div>
+      <div class="folder-home-panel folder-instructions-panel" role="tabpanel" data-folder-panel="instructions" hidden>
+        <div class="field">
+          <label for="folder-instructions-input">Folder instructions</label>
+          <textarea id="folder-instructions-input" class="textarea-tall" placeholder="Add instructions for every chat in this folder…">${escapeHtml(folder.system_prompt || '')}</textarea>
+          <div class="field-note">When set, these instructions replace the global system prompt for chats in this folder.</div>
+        </div>
+        <div class="folder-instructions-actions">
+          <span class="folder-instructions-status" role="status"></span>
+          <button class="btn-primary" type="button" data-save-folder-instructions>Save instructions</button>
+        </div>
       </div>`;
+    const tabs = [...history.querySelectorAll('[data-folder-tab]')];
+    const panels = [...history.querySelectorAll('[data-folder-panel]')];
+    tabs.forEach(tab => tab.addEventListener('click', () => {
+      tabs.forEach(item => {
+        const active = item === tab;
+        item.classList.toggle('active', active);
+        item.setAttribute('aria-selected', String(active));
+      });
+      panels.forEach(panel => { panel.hidden = panel.dataset.folderPanel !== tab.dataset.folderTab; });
+    }));
     history.querySelectorAll('.folder-home-chat').forEach(item => {
       const convId = item.dataset.convId;
       item.querySelector('.folder-home-chat-open').addEventListener('click', () => document.dispatchEvent(new CustomEvent(
@@ -123,6 +149,24 @@ export function clearMessages({ folder = null, conversations = [] } = {}) {
           { detail: { convId } },
         ));
       });
+    });
+    const instructionsInput = history.querySelector('#folder-instructions-input');
+    const saveInstructions = history.querySelector('[data-save-folder-instructions]');
+    const instructionsStatus = history.querySelector('.folder-instructions-status');
+    saveInstructions.addEventListener('click', () => {
+      saveInstructions.disabled = true;
+      instructionsStatus.textContent = 'Saving…';
+      document.dispatchEvent(new CustomEvent('chat:update-folder-instructions-requested', {
+        detail: {
+          folderId: folder.id,
+          systemPrompt: instructionsInput.value.trim(),
+          done: error => {
+            saveInstructions.disabled = false;
+            instructionsStatus.textContent = error ? `Could not save: ${error}` : 'Saved';
+            instructionsStatus.classList.toggle('error', Boolean(error));
+          },
+        },
+      }));
     });
     messages.appendChild(history);
   }

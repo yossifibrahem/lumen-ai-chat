@@ -74,6 +74,16 @@ class TestFolders:
         assert any(item["id"] == folder_id for item in client.get("/api/folders").json)
         assert client.put(f"/api/folders/{folder_id}", json={"name": "Renamed"}).json["name"] == "Renamed"
 
+    def test_folder_instructions_update_without_renaming(self, client, tmp_lumen):
+        folder = store.create_folder("Project")
+        updated = client.put(
+            f"/api/folders/{folder['id']}",
+            json={"system_prompt": "Always cite the workspace files."},
+        )
+        assert updated.status_code == 200
+        assert updated.json["name"] == "Project"
+        assert updated.json["system_prompt"] == "Always cite the workspace files."
+
     def test_deleting_folder_unfiles_chats_and_cleans_shared_runtime(self, client, tmp_lumen):
         folder = store.create_folder("Shared")
         conv = store.create("Keep me", folder["id"])

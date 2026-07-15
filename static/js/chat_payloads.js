@@ -128,12 +128,12 @@ function prepareMessageForApi(message) {
     : cleanMessage;
 }
 
-export async function buildApiMessages(turnMessages) {
+export async function buildApiMessages(turnMessages, turnSystemPrompt = null) {
   const messages = [];
-  const systemParts = [state.systemPrompt, buildAppSystemPrompt()].filter(Boolean);
+  const configuredPrompt = turnSystemPrompt ?? (state.folderSystemPrompt.trim() || state.systemPrompt);
+  const systemParts = [configuredPrompt, buildAppSystemPrompt()].filter(Boolean);
   if (systemParts.length) messages.push({ role: 'system', content: systemParts.join('\n\n') });
 
   messages.push(...turnMessages.map(prepareMessageForApi));
   return expandImageRefs(messages);
 }
-
