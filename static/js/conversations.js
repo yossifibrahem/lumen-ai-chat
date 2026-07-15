@@ -28,12 +28,9 @@ export async function loadConversationList() {
   const container = document.getElementById('conv-list');
   container.innerHTML = '';
 
-  // Re-apply search filter after reload if there's an active query
-  const searchInput = document.getElementById('conv-search');
-  const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
-
   if (!list.length && !folders.length) {
     container.innerHTML = '<div class="conv-section-label conv-empty">No conversations yet</div>';
+    renderConversationSearchResults();
     return;
   }
 
@@ -47,10 +44,76 @@ export async function loadConversationList() {
     unfiled.forEach(conv => container.appendChild(_buildConvItem(conv)));
   }
 
-  // Re-apply section label visibility
-  if (query) {
-    document.getElementById('conv-search')?.dispatchEvent(new Event('input'));
+  renderConversationSearchResults();
+}
+
+function formatSearchDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const sameYear = date.getFullYear() === new Date().getFullYear();
+  return new Intl.DateTimeFormat(undefined, sameYear
+    ? { month: 'short', day: 'numeric' }
+    : { year: 'numeric', month: 'short', day: 'numeric' }
+  ).format(date);
+}
+
+function renderConversationSearchResults() {
+  const input = document.getElementById('conv-search');
+  const results = document.getElementById('search-results');
+  if (!input || !results) return;
+
+  const query = input.value.trim().toLocaleLowerCase();
+  const matches = conversations.filter(conv => {
+    const folderName = folderById(conv.folder_id)?.name || '';
+    return !query
+      || (conv.title || 'Untitled').toLocaleLowerCase().includes(query)
+      || folderName.toLocaleLowerCase().includes(query);
+  });
+
+  if (!matches.length) {
+    results.innerHTML = `<div class="folder-home-no-chats">${query
+      ? `No conversations found for “${escapeHtml(input.value.trim())}”`
+      : 'No conversations yet'}</div>`;
+    return;
   }
+
+  results.innerHTML = matches.map(conv => {
+    const folderName = folderById(conv.folder_id)?.name || '';
+    return `
+      <div class="folder-home-chat search-result" data-conv-id="${escapeHtml(conv.id)}">
+        <button class="folder-home-chat-open search-result-open" type="button">
+          <span class="search-result-copy">
+            <span class="folder-home-chat-title">${escapeHtml(conv.title || 'Untitled')}</span>
+            ${folderName ? `<span class="search-result-folder">${escapeHtml(folderName)}</span>` : ''}
+          </span>
+          <time>${escapeHtml(formatSearchDate(conv.updated_at))}</time>
+        </button>
+      </div>`;
+  }).join('');
+
+  results.querySelectorAll('.search-result-open').forEach(button => {
+    button.addEventListener('click', async () => {
+      const convId = button.closest('.search-result')?.dataset.convId;
+      if (!convId) return;
+      closeModal('search-modal');
+      await openConversation(convId);
+    });
+  });
+}
+
+export function bindConversationSearch() {
+  const button = document.getElementById('btn-open-search');
+  const input = document.getElementById('conv-search');
+  if (!button || !input || button.dataset.bound) return;
+  button.dataset.bound = 'true';
+
+  button.addEventListener('click', () => {
+    renderConversationSearchResults();
+    openModal('search-modal');
+    requestAnimationFrame(() => input.focus());
+  });
+  input.addEventListener('input', renderConversationSearchResults);
 }
 
 function _buildFolderGroup(folder) {
@@ -251,13 +314,10 @@ function updateConversationListTitle(convId, title) {
     `.folder-home-chat[data-conv-id="${CSS.escape(convId)}"] .folder-home-chat-title`,
   );
   if (folderHomeTitle) folderHomeTitle.textContent = title;
+  renderConversationSearchResults();
   if (!titleEl || titleEl.textContent === title) return;
 
   titleEl.textContent = title;
-
-  const searchInput = document.getElementById('conv-search');
-  const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
-  if (query) item.style.display = title.toLowerCase().includes(query) ? '' : 'none';
 }
 
 function setActiveConversationItem(convId) {
@@ -269,6 +329,10 @@ function setActiveConversationItem(convId) {
 function upsertConversationListItem(conv) {
   const container = document.getElementById('conv-list');
   if (!container || !conv?.id) return;
+
+  const cachedIndex = conversations.findIndex(item => item.id === conv.id);
+  if (cachedIndex >= 0) conversations[cachedIndex] = { ...conversations[cachedIndex], ...conv };
+  else conversations.unshift(conv);
 
   const existing = container.querySelector(`.conv-item[data-id="${CSS.escape(conv.id)}"]`);
   if (existing) {

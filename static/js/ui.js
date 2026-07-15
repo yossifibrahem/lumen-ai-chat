@@ -31,7 +31,6 @@ function getSidebarElements() {
   return {
     sidebar: document.getElementById('sidebar'),
     toggle: document.getElementById('btn-toggle-sidebar'),
-    search: document.getElementById('sidebar-search'),
     conversations: document.getElementById('conv-list'),
   };
 }
@@ -48,7 +47,7 @@ function getSidebarBackdrop() {
 }
 
 function applySidebarState(open, { persist = !sidebarMedia.matches } = {}) {
-  const { sidebar, toggle, search, conversations } = getSidebarElements();
+  const { sidebar, toggle, conversations } = getSidebarElements();
   if (!sidebar || !toggle) return;
 
   const isMobile = sidebarMedia.matches;
@@ -57,7 +56,6 @@ function applySidebarState(open, { persist = !sidebarMedia.matches } = {}) {
 
   // Keep off-screen/hidden controls out of keyboard navigation. The desktop
   // mini rail itself remains interactive so New chat and Settings still work.
-  if (search) search.inert = !open;
   if (conversations) conversations.inert = !open;
 
   const action = open ? 'Close sidebar' : 'Open sidebar';

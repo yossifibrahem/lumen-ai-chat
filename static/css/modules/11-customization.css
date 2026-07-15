@@ -13,7 +13,7 @@ html.sidebar-init-closed #sidebar {
   width: 64px;
   min-width: 64px;
 }
-html.sidebar-init-closed #sidebar :is(.logo-name, #sidebar-search, #conv-list, .sidebar-label) {
+html.sidebar-init-closed #sidebar :is(.logo-name, #conv-list, .sidebar-label) {
   opacity: 0;
   pointer-events: none;
   width: 0;

@@ -67,7 +67,6 @@
 
 /* Hide text labels when collapsed */
 #sidebar.collapsed .logo-name,
-#sidebar.collapsed #sidebar-search,
 #sidebar.collapsed #conv-list,
 #sidebar.collapsed .sidebar-label {
   opacity: 0;
@@ -101,39 +100,6 @@
   gap: 0;
   border-radius: 10px;
 }
-
-/* ─── Sidebar search ──────────────────────────────────────────────────────── */
-#sidebar-search {
-  position: relative;
-  padding: 5px 10px 8px;
-  flex-shrink: 0;
-  transition: opacity .15s var(--ease);
-}
-.sidebar-search-icon {
-  position: absolute;
-  left: 20px;
-  top: calc(50% - 1px);
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  color: var(--text3);
-  pointer-events: none;
-}
-.sidebar-search-icon svg { width: 13px; height: 13px; }
-#conv-search {
-  width: 100%;
-  height: 34px;
-  padding: 0 10px 0 31px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface2);
-  color: var(--text);
-  font-size: .73rem;
-  font-family: var(--font-mono);
-  outline: none;
-  transition: border-color var(--fast), background var(--fast);
-}
-#conv-search::placeholder { color: var(--text3); }
 
 /* ─── Conversation list ───────────────────────────────────────────────────── */
 #conv-list {
@@ -223,8 +189,7 @@
 .folder-menu-btn svg { width: 15px; height: 15px; }
 .folder-menu { top: calc(100% + 4px); right: 0; min-width: 148px; }
 .folder-group.folder-menu-open .folder-menu { display: block; }
-.conv-empty,
-.conv-search-empty {
+.conv-empty {
   margin: 8px 4px;
   padding: 16px 8px;
   color: var(--text3);
