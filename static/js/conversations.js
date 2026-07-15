@@ -230,6 +230,7 @@ function updateHeaderFolder(folderId, title = '') {
   const titleInput = document.getElementById('chat-title-input');
   const hasFolder = Boolean(folder);
   prefix.textContent = folder?.name || '';
+  prefix.setAttribute('aria-label', folder ? `Open folder ${folder.name}` : 'Open folder');
   prefix.hidden = !hasFolder;
   separator.hidden = !hasFolder;
   if (titleInput && document.activeElement !== titleInput) titleInput.value = title || '';
@@ -532,6 +533,10 @@ export async function renameConversationTitle() {
 document.addEventListener('chat:open-conversation-requested', event => {
   const convId = event.detail?.convId;
   if (convId) openConversation(convId);
+});
+
+document.getElementById('chat-folder-prefix')?.addEventListener('click', () => {
+  if (activeFolderId) startNewChat(activeFolderId);
 });
 
 document.addEventListener('chat:toggle-conversation-menu-requested', event => {

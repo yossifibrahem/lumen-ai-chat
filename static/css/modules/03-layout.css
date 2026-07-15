@@ -38,13 +38,18 @@
   font-weight: 500;
 }
 #chat-folder-prefix {
+  appearance: none;
   flex: 0 1 auto;
   min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text2);
 }
+#chat-folder-prefix:hover { color: var(--text); }
 #chat-title-separator { flex-shrink: 0; color: var(--text3); }
 #chat-title-input {
   flex: 1 1 auto;
