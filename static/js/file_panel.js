@@ -12,15 +12,15 @@ import { escapeHtml, formatBytes, fileExtension as ext } from './format.js';
 const PANEL_WIDTH_KEY = 'lumen_file_panel_width';
 const MIN_PANEL_WIDTH = 280;
 const DEFAULT_PANEL_WIDTH = 380;
+const WORKSPACE_ROOT = '/workspace';
 
-let currentPath = '/workspace';
 let selectedPath = null;
 let isOpen = false;
 let renderMode = 'render';   // 'render' | 'code'
 let currentFileData = null;  // last loaded file payload, for re-rendering without re-fetch
 let panelWidth = DEFAULT_PANEL_WIDTH;
 let treeRenderId = 0;
-const expandedPaths = new Set(['/workspace']);
+const expandedPaths = new Set([WORKSPACE_ROOT]);
 
 // Resolved once in initFilePanel — these elements are stable for the page lifetime.
 let els = {};
@@ -52,11 +52,6 @@ function loadSavedPanelWidth() {
 function savePanelWidth(width) {
   applyPanelWidth(width);
   storage.set(PANEL_WIDTH_KEY, panelWidth);
-}
-
-function formatDate(seconds) {
-  if (!seconds) return '';
-  return new Date(seconds * 1000).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 function languageFromName(name = '') {
@@ -274,7 +269,7 @@ function setEmptyPreview(message = 'Select a file to preview it here.') {
   els.body.innerHTML = `<div class="file-panel-empty">${escapeHtml(message)}</div>`;
 }
 
-function displayNameForPath(path = '/workspace') {
+function displayNameForPath(path = WORKSPACE_ROOT) {
   const parts = String(path).split('/').filter(Boolean);
   return parts.at(-1) || 'workspace';
 }
@@ -354,7 +349,7 @@ function collapseTreeItem(item, path) {
 function fileTreeItem(entry, depth, renderId, { root = false, payload = null } = {}) {
   const isDirectory = entry.type === 'directory';
   const item = document.createElement('div');
-  item.className = `file-tree-item ${isDirectory ? 'is-dir' : 'is-file'}${root ? ' is-root' : ''}`;
+  item.className = `file-tree-item ${isDirectory ? 'is-dir' : 'is-file'}`;
   item.setAttribute('role', 'treeitem');
 
   const row = document.createElement('button');
@@ -403,14 +398,13 @@ function fileTreeItem(entry, depth, renderId, { root = false, payload = null } =
 
 async function renderList(payload) {
   const renderId = ++treeRenderId;
-  els.path.textContent = payload.path || currentPath;
   els.list.innerHTML = '';
   els.list.setAttribute('role', 'tree');
   els.list.setAttribute('aria-label', 'Workspace files');
 
   const rootEntry = {
     name: displayNameForPath(payload.path),
-    path: payload.path || '/workspace',
+    path: payload.path || WORKSPACE_ROOT,
     type: 'directory',
   };
   expandedPaths.add(rootEntry.path);
@@ -422,23 +416,20 @@ async function renderList(payload) {
 async function loadFileList() {
   const apiBase = workspaceApiBase();
   if (!apiBase) {
-    currentPath = '/workspace';
     els.list.innerHTML = '<div class="file-panel-empty">Start or open a chat to browse its workspace.</div>';
     setEmptyPreview('Workspace files will appear after a chat exists.');
     setPreviewOpen(false);
     return;
   }
 
-  currentPath = '/workspace';
   if (!els.list.children.length) {
     els.list.innerHTML = '<div class="file-panel-empty">Loading files…</div>';
   }
-  const payload = await api.get(`${apiBase}/files?path=${encodeURIComponent(currentPath)}`);
+  const payload = await api.get(`${apiBase}/files?path=${encodeURIComponent(WORKSPACE_ROOT)}`);
   if (payload.error) {
     els.list.innerHTML = `<div class="file-panel-empty">${escapeHtml(payload.error)}</div>`;
     return false;
   }
-  currentPath = '/workspace';
   await renderList(payload);
   return true;
 }
@@ -461,7 +452,7 @@ async function loadFilePreview(path) {
   if (data.error) {
     if (isMissingWorkspacePath(data.error)) {
       closePreview();
-      await loadFileList(currentPath);
+      await loadFileList();
       showToast('Previewed file is no longer available');
       return false;
     }
@@ -527,7 +518,7 @@ export async function refreshFilePanel({ keepPreview = true } = {}) {
   if (!els.panel || !isOpen) return;
 
   try {
-    await loadFileList(currentPath);
+    await loadFileList();
     if (keepPreview && selectedPath && els.panel.classList.contains('preview-open')) {
       await loadFilePreview(selectedPath);
     }
@@ -537,11 +528,10 @@ export async function refreshFilePanel({ keepPreview = true } = {}) {
 }
 
 export function resetFilePanel() {
-  currentPath = '/workspace';
   expandedPaths.clear();
-  expandedPaths.add('/workspace');
+  expandedPaths.add(WORKSPACE_ROOT);
   closePreview();
-  // Preserve the open/closed panel state; only reset path and preview for the new chat.
+  // Preserve the open/closed panel state; reset expansion and preview for the new chat.
 }
 
 
@@ -555,7 +545,6 @@ export function initFilePanel() {
     previewRefresh: document.getElementById('btn-refresh-files-preview'),
     previewClose:  document.getElementById('btn-close-files-preview'),
     back:          document.getElementById('btn-back-files'),
-    path:          document.getElementById('file-panel-path'),
     list:          document.getElementById('file-panel-list'),
     title:         document.getElementById('file-preview-title'),
     body:          document.getElementById('file-preview-body'),
