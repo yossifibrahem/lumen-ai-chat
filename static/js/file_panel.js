@@ -299,9 +299,7 @@ async function populateTreeGroup(group, payload, depth, renderId) {
   if (renderId !== treeRenderId) return;
   group.innerHTML = '';
 
-  if (!payload.entries?.length) {
-    group.appendChild(treeStatus('Empty folder', 'is-empty'));
-  } else {
+  if (payload.entries?.length) {
     const items = payload.entries.map(entry => fileTreeItem(entry, depth, renderId));
     items.forEach(item => group.appendChild(item.element));
     await Promise.all(items.map(item => item.restoreExpansion()));

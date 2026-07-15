@@ -186,7 +186,6 @@ body.file-panel-resizing { cursor: col-resize; user-select: none; }
   font-size: .61rem;
   white-space: nowrap;
 }
-.file-tree-status.is-empty { font-style: italic; opacity: .7; }
 .file-tree-status.is-error { color: var(--red); }
 .file-tree-status.is-loading { animation: file-tree-pulse 1.1s ease-in-out infinite; }
 @keyframes file-tree-pulse { 50% { opacity: .45; } }
