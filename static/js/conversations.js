@@ -133,7 +133,7 @@ function _buildFolderGroup(folder) {
       </button>
       <div class="folder-controls">
         <div class="folder-menu-wrap">
-          <button class="folder-menu-btn" type="button" title="Folder options" aria-label="Folder options" aria-expanded="false">${ICONS.moreVertical}</button>
+          <button class="conv-menu-btn folder-menu-btn" type="button" title="Folder options" aria-label="Folder options" aria-expanded="false">${ICONS.moreVertical}</button>
           <div class="conv-menu folder-menu" role="menu">
             <button class="conv-menu-item" type="button" role="menuitem" data-folder-action="rename">
               ${ICONS.edit}<span>Rename</span>
