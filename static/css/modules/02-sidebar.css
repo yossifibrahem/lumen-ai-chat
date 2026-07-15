@@ -109,7 +109,7 @@
   transition: opacity .15s var(--ease);
 }
 .conv-section-label {
-  padding: 9px 8px 6px;
+  padding: 8px 8px 5px;
   color: var(--text3);
   font-size: .61rem;
   text-transform: uppercase;
@@ -117,12 +117,12 @@
 }
 .folder-group {
   position: relative;
-  margin: 2px 0 8px;
+  margin: 1px 0;
 }
 .folder-header {
   display: flex;
   align-items: center;
-  min-height: 38px;
+  min-height: 36px;
   padding: 0 5px;
   border: 1px solid transparent;
   border-radius: 7px;
@@ -202,9 +202,9 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  min-height: 44px;
+  min-height: 36px;
   padding: 0 8px 0 8px;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
   border: 1px solid transparent;
   border-radius: 8px;
   cursor: pointer;

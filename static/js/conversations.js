@@ -36,7 +36,7 @@ export async function loadConversationList() {
 
   if (folders.length) {
     container.appendChild(Object.assign(document.createElement('div'), {
-      className: 'conv-section-label', textContent: 'Folders',
+      className: 'conv-section-label folders-section-label', textContent: 'Folders',
     }));
     folders.forEach(folder => container.appendChild(_buildFolderGroup(folder)));
   }
@@ -44,7 +44,7 @@ export async function loadConversationList() {
   const unfiled = list.filter(conv => !conv.folder_id || !folders.some(folder => folder.id === conv.folder_id));
   if (unfiled.length) {
     container.appendChild(Object.assign(document.createElement('div'), {
-      className: 'conv-section-label', textContent: 'Recent',
+      className: 'conv-section-label recent-section-label', textContent: 'Recent',
     }));
     unfiled.forEach(conv => container.appendChild(_buildConvItem(conv)));
   }
@@ -351,17 +351,19 @@ function upsertConversationListItem(conv) {
     return;
   }
   if (container.querySelector('.conv-empty')) container.innerHTML = '';
-  if (!container.querySelector('.conv-section-label')) {
-    container.appendChild(Object.assign(document.createElement('div'), {
-      className: 'conv-section-label',
+  let recentLabel = container.querySelector('.recent-section-label');
+  if (!recentLabel) {
+    recentLabel = Object.assign(document.createElement('div'), {
+      className: 'conv-section-label recent-section-label',
       textContent: 'Recent',
-    }));
+    });
+    container.appendChild(recentLabel);
   }
 
   container.insertBefore(_buildConvItem({
     title: 'New Conversation',
     ...conv,
-  }), container.querySelector('.conv-section-label')?.nextSibling || null);
+  }), recentLabel.nextSibling);
   setActiveConversationItem(conv.id);
 }
 
