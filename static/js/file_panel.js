@@ -13,6 +13,7 @@ const PANEL_WIDTH_KEY = 'lumen_file_panel_width';
 const MIN_PANEL_WIDTH = 280;
 const DEFAULT_PANEL_WIDTH = 380;
 const WORKSPACE_ROOT = '/workspace';
+const TREE_INDENT_PX = 14;
 
 let selectedPath = null;
 let isOpen = false;
@@ -356,7 +357,7 @@ function fileTreeItem(entry, depth, renderId, { root = false, payload = null } =
   row.type = 'button';
   row.className = `file-row ${isDirectory ? 'is-dir' : 'is-file'}${entry.path === selectedPath ? ' active' : ''}`;
   row.dataset.path = entry.path;
-  row.style.setProperty('--tree-depth', depth);
+  row.style.setProperty('--tree-offset', `${depth * TREE_INDENT_PX}px`);
   row.title = entry.path;
   if (isDirectory) row.setAttribute('aria-expanded', String(root || expandedPaths.has(entry.path)));
   row.innerHTML = `
