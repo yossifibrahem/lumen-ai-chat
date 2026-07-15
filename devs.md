@@ -83,7 +83,7 @@ The app is intentionally lightweight: no database, no frontend framework, no bun
         ├── chat_send.js           # Send flow and stream start/handling
         ├── stream_consumer.js     # SSE response reader and error response helpers
         ├── conversations.js       # Conversation CRUD and sidebar list
-        ├── customization.js       # Theme/font/accent/customization state
+        ├── customization.js       # Color mode/font/accent/customization state
         ├── dom.js                 # Shared DOM lookup helpers
         ├── file_panel.js          # Workspace browser/preview/download UI
         ├── format.js              # Formatting helpers

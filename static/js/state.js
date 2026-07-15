@@ -18,9 +18,8 @@ export const CUSTOMIZATION_DEFAULTS = {
   groupSequentialBlocks:  true,
   hideThinkingTokens:     true,
   fontSize:              'medium',    // 'small' | 'medium' | 'large'
-  fontFamily:            'geist',     // 'geist' | 'pixel' | 'system'
+  fontFamily:            'geist',     // 'geist' | 'system'
   theme:                 'auto',      // 'dark' | 'light' | 'auto'
-  uiTheme:              'default',
   accentColor:           '#5B8DEF',   // preset swatch
   customAccentColor:     '',          // user custom hex
 };

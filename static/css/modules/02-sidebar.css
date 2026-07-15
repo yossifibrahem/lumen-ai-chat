@@ -169,7 +169,6 @@
   color: var(--text);
 }
 .folder-open,
-.folder-action,
 .folder-menu-btn {
   appearance: none;
   -webkit-appearance: none;
@@ -209,20 +208,18 @@
 }
 .folder-controls { display: flex; align-items: center; gap: 1px; margin-left: 4px; }
 .folder-menu-wrap { position: relative; display: flex; }
-.folder-action,
 .folder-menu-btn { color: var(--text3); opacity: 0; pointer-events: none; }
-.folder-header:hover :is(.folder-action, .folder-menu-btn),
+.folder-header:hover .folder-menu-btn,
 .folder-group.folder-menu-open .folder-menu-btn,
-:is(.folder-action, .folder-menu-btn):focus-visible {
+.folder-menu-btn:focus-visible {
   opacity: 1;
   pointer-events: auto;
 }
-:is(.folder-action, .folder-menu-btn):hover,
+.folder-menu-btn:hover,
 .folder-group.folder-menu-open .folder-menu-btn {
   background: var(--surface2);
   color: var(--text);
 }
-.folder-action svg { width: 13px; height: 13px; }
 .folder-menu-btn svg { width: 15px; height: 15px; }
 .folder-menu { top: calc(100% + 4px); right: 0; min-width: 148px; }
 .folder-group.folder-menu-open .folder-menu { display: block; }

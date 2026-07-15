@@ -51,7 +51,7 @@ Lumen is built for developers who want a capable local AI chat application witho
 - Auto-generated conversation titles after the first exchange
 - Create, rename, delete, and search conversations
 - Switch between edited-message and regenerated-response branches with arrows in the message footer
-- Customizable theme, accent color, font size, sidebar, timestamps, and more — stored in `localStorage`
+- Customizable color mode, accent color, font size, sidebar, timestamps, and more — stored in `localStorage`
 
 **Architecture**
 - No database — conversations are plain JSON files under `~/.lumen/`

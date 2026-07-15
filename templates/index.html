@@ -9,7 +9,7 @@
 
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600&family=Pixelify+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet" />
 
 <!-- Rendering libraries -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -22,7 +22,6 @@
 
 <!-- App styles -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
-<link id="ui-theme-pixel" rel="stylesheet" href="{{ url_for('static', filename='css/themes/pixel.css') }}" disabled />
 
 <!-- Apply saved customization before first paint to prevent flash of defaults -->
 <script>
@@ -30,12 +29,6 @@
   try {
     var prefs = JSON.parse(localStorage.getItem('lumen_customization') || '{}');
     var r = document.documentElement;
-
-    // Apply the saved visual skin before first paint.
-    var uiTheme = prefs.uiTheme === 'pixel' ? 'pixel' : 'default';
-    r.setAttribute('data-ui-theme', uiTheme);
-    var pixelThemeLink = document.getElementById('ui-theme-pixel');
-    if (pixelThemeLink) pixelThemeLink.disabled = uiTheme !== 'pixel';
 
     // Theme
     var theme = prefs.theme || 'auto';
@@ -92,7 +85,7 @@
     }
 
     // Font family
-    var fontMap = { geist: "'Geist', sans-serif", pixel: "'Pixelify Sans', 'JetBrains Mono', monospace", system: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" };
+    var fontMap = { geist: "'Geist', sans-serif", system: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" };
     var savedFontFamily = prefs.fontFamily === 'space' ? 'geist' : prefs.fontFamily;
     var fontFamily = fontMap[savedFontFamily] ? savedFontFamily : 'geist';
     r.style.setProperty('--font-roman', fontMap[fontFamily]);
@@ -424,20 +417,6 @@
         <div class="section-sep"></div>
 
         <div class="settings-section">
-          <div class="section-title">Visual Style</div>
-          <div class="field">
-            <label>UI theme</label>
-            <select id="cust-ui-theme">
-              <option value="default">Default Classic</option>
-              <option value="pixel">Retro Pixel Chat</option>
-            </select>
-            <div class="field-note">Skins change the UI shape and icon style. Light/dark mode, fonts, and accent color still work separately.</div>
-          </div>
-        </div>
-
-        <div class="section-sep"></div>
-
-        <div class="settings-section">
           <div class="section-title">Typography</div>
           <div class="field-row">
             <div class="field">
@@ -452,7 +431,6 @@
               <label>Font family</label>
               <select id="cust-font-family">
                 <option value="geist">Standard — Geist</option>
-                <option value="pixel">Pixel — Pixelify Sans</option>
                 <option value="system">System default</option>
               </select>
             </div>

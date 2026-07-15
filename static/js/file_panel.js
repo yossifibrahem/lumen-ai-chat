@@ -19,6 +19,8 @@ let isOpen = false;
 let renderMode = 'render';   // 'render' | 'code'
 let currentFileData = null;  // last loaded file payload, for re-rendering without re-fetch
 let panelWidth = DEFAULT_PANEL_WIDTH;
+let treeRenderId = 0;
+const expandedPaths = new Set(['/workspace']);
 
 // Resolved once in initFilePanel — these elements are stable for the page lifetime.
 let els = {};
@@ -250,6 +252,7 @@ function renderContent(data, mode) {
 
 function resetPreview() {
   selectedPath = null;
+  setSelectedTreeRow(null);
   currentFileData = null;
   renderMode = 'render';
   els.title.textContent = 'Preview';
@@ -271,46 +274,152 @@ function setEmptyPreview(message = 'Select a file to preview it here.') {
   els.body.innerHTML = `<div class="file-panel-empty">${escapeHtml(message)}</div>`;
 }
 
-function renderList(payload) {
-  els.path.textContent = payload.path || currentPath;
-  els.list.innerHTML = '';
+function displayNameForPath(path = '/workspace') {
+  const parts = String(path).split('/').filter(Boolean);
+  return parts.at(-1) || 'workspace';
+}
 
-  if (payload.parent) {
-    els.list.appendChild(fileRow({ name: '..', path: payload.parent, type: 'directory', size: null }, true));
+function setSelectedTreeRow(path) {
+  els.list?.querySelectorAll('.file-row.active').forEach(row => row.classList.remove('active'));
+  const row = [...(els.list?.querySelectorAll('.file-row.is-file') || [])]
+    .find(candidate => candidate.dataset.path === path);
+  row?.classList.add('active');
+}
+
+function treeStatus(message, className = '') {
+  const status = document.createElement('div');
+  status.className = `file-tree-status${className ? ` ${className}` : ''}`;
+  status.textContent = message;
+  return status;
+}
+
+async function fetchDirectory(path) {
+  const apiBase = workspaceApiBase();
+  if (!apiBase) return { error: 'Start or open a chat to browse its workspace.' };
+  return api.get(`${apiBase}/files?path=${encodeURIComponent(path)}`);
+}
+
+async function populateTreeGroup(group, payload, depth, renderId) {
+  if (renderId !== treeRenderId) return;
+  group.innerHTML = '';
+
+  if (!payload.entries?.length) {
+    group.appendChild(treeStatus('Empty folder', 'is-empty'));
+  } else {
+    const items = payload.entries.map(entry => fileTreeItem(entry, depth, renderId));
+    items.forEach(item => group.appendChild(item.element));
+    await Promise.all(items.map(item => item.restoreExpansion()));
   }
 
-  if (!payload.entries?.length && !payload.parent) {
-    els.list.innerHTML = '<div class="file-panel-empty">No files yet. Tool output and uploads will appear here.</div>';
+  if (payload.truncated) {
+    group.appendChild(treeStatus(
+      payload.limit ? `First ${payload.limit} entries shown` : 'Partial list shown',
+      'is-note',
+    ));
+  }
+}
+
+async function expandTreeItem(item, entry, depth, renderId) {
+  const group = item.querySelector(':scope > .file-tree-children');
+  const row = item.querySelector(':scope > .file-row');
+  if (!group || !row || renderId !== treeRenderId) return;
+
+  expandedPaths.add(entry.path);
+  item.classList.add('expanded', 'loading');
+  item.querySelector(':scope > .file-row .file-row-icon').innerHTML = ICONS.folderOpen;
+  row.setAttribute('aria-expanded', 'true');
+  group.hidden = false;
+  group.replaceChildren(treeStatus('Loading…', 'is-loading'));
+
+  const payload = await fetchDirectory(entry.path);
+  if (renderId !== treeRenderId || !item.isConnected) return;
+  item.classList.remove('loading');
+  if (payload.error) {
+    group.replaceChildren(treeStatus(payload.error, 'is-error'));
     return;
   }
-
-  payload.entries.forEach(entry => els.list.appendChild(fileRow(entry)));
-  if (payload.truncated) {
-    const note = document.createElement('div');
-    note.className = 'file-panel-note';
-    note.textContent = payload.limit ? `Showing the first ${payload.limit} entries.` : 'Showing a partial list.';
-    els.list.appendChild(note);
-  }
+  await populateTreeGroup(group, payload, depth + 1, renderId);
 }
 
-function fileRow(entry, isParent = false) {
+function collapseTreeItem(item, path) {
+  const group = item.querySelector(':scope > .file-tree-children');
+  const row = item.querySelector(':scope > .file-row');
+  expandedPaths.delete(path);
+  item.classList.remove('expanded', 'loading');
+  item.querySelector(':scope > .file-row .file-row-icon').innerHTML = ICONS.mcpFileSystem;
+  row?.setAttribute('aria-expanded', 'false');
+  if (group) group.hidden = true;
+}
+
+function fileTreeItem(entry, depth, renderId, { root = false, payload = null } = {}) {
+  const isDirectory = entry.type === 'directory';
+  const item = document.createElement('div');
+  item.className = `file-tree-item ${isDirectory ? 'is-dir' : 'is-file'}${root ? ' is-root' : ''}`;
+  item.setAttribute('role', 'treeitem');
+
   const row = document.createElement('button');
-  row.className = `file-row ${entry.type === 'directory' ? 'is-dir' : 'is-file'}${entry.path === selectedPath ? ' active' : ''}`;
+  row.type = 'button';
+  row.className = `file-row ${isDirectory ? 'is-dir' : 'is-file'}${entry.path === selectedPath ? ' active' : ''}`;
+  row.dataset.path = entry.path;
+  row.style.setProperty('--tree-depth', depth);
   row.title = entry.path;
+  if (isDirectory) row.setAttribute('aria-expanded', String(root || expandedPaths.has(entry.path)));
   row.innerHTML = `
-    <span class="file-row-icon">${entry.type === 'directory' ? ICONS.mcpFileSystem : ICONS.file}</span>
-    <span class="file-row-main">
-      <span class="file-row-name">${escapeHtml(entry.name)}</span>
-      <span class="file-row-sub">${entry.type === 'directory' ? (isParent ? 'Parent folder' : 'Folder') : formatBytes(entry.size)}</span>
-    </span>`;
-  row.addEventListener('click', () => {
-    if (entry.type === 'directory') loadFileList(entry.path);
-    else loadFilePreview(entry.path);
+    <span class="file-row-icon">${isDirectory ? ICONS.mcpFileSystem : ICONS.file}</span>
+    <span class="file-row-name">${escapeHtml(entry.name)}</span>
+    ${isDirectory || entry.size == null ? '' : `<span class="file-row-size">${escapeHtml(formatBytes(entry.size))}</span>`}`;
+  item.appendChild(row);
+
+  let group = null;
+  if (isDirectory) {
+    group = document.createElement('div');
+    group.className = 'file-tree-children';
+    group.setAttribute('role', 'group');
+    group.hidden = !root && !expandedPaths.has(entry.path);
+    item.appendChild(group);
+  }
+
+  row.addEventListener('click', async () => {
+    if (!isDirectory) {
+      setSelectedTreeRow(entry.path);
+      await loadFilePreview(entry.path);
+      return;
+    }
+    if (item.classList.contains('expanded')) collapseTreeItem(item, entry.path);
+    else await expandTreeItem(item, entry, depth, renderId);
   });
-  return row;
+
+  return {
+    element: item,
+    restoreExpansion: async () => {
+      if (!isDirectory || (!root && !expandedPaths.has(entry.path))) return;
+      item.classList.add('expanded');
+      item.querySelector(':scope > .file-row .file-row-icon').innerHTML = ICONS.folderOpen;
+      if (payload) await populateTreeGroup(group, payload, depth + 1, renderId);
+      else await expandTreeItem(item, entry, depth, renderId);
+    },
+  };
 }
 
-async function loadFileList(path = currentPath, { fallbackToRoot = true } = {}) {
+async function renderList(payload) {
+  const renderId = ++treeRenderId;
+  els.path.textContent = payload.path || currentPath;
+  els.list.innerHTML = '';
+  els.list.setAttribute('role', 'tree');
+  els.list.setAttribute('aria-label', 'Workspace files');
+
+  const rootEntry = {
+    name: displayNameForPath(payload.path),
+    path: payload.path || '/workspace',
+    type: 'directory',
+  };
+  expandedPaths.add(rootEntry.path);
+  const root = fileTreeItem(rootEntry, 0, renderId, { root: true, payload });
+  els.list.appendChild(root.element);
+  await root.restoreExpansion();
+}
+
+async function loadFileList() {
   const apiBase = workspaceApiBase();
   if (!apiBase) {
     currentPath = '/workspace';
@@ -320,21 +429,17 @@ async function loadFileList(path = currentPath, { fallbackToRoot = true } = {}) 
     return;
   }
 
-  currentPath = path || '/workspace';
+  currentPath = '/workspace';
   if (!els.list.children.length) {
     els.list.innerHTML = '<div class="file-panel-empty">Loading files…</div>';
   }
   const payload = await api.get(`${apiBase}/files?path=${encodeURIComponent(currentPath)}`);
   if (payload.error) {
-    if (payload.error === 'Path not found' && fallbackToRoot && currentPath !== '/workspace') {
-      currentPath = '/workspace';
-      return loadFileList('/workspace', { fallbackToRoot: false });
-    }
     els.list.innerHTML = `<div class="file-panel-empty">${escapeHtml(payload.error)}</div>`;
     return false;
   }
-  currentPath = payload.path || currentPath;
-  renderList(payload);
+  currentPath = '/workspace';
+  await renderList(payload);
   return true;
 }
 
@@ -433,6 +538,8 @@ export async function refreshFilePanel({ keepPreview = true } = {}) {
 
 export function resetFilePanel() {
   currentPath = '/workspace';
+  expandedPaths.clear();
+  expandedPaths.add('/workspace');
   closePreview();
   // Preserve the open/closed panel state; only reset path and preview for the new chat.
 }

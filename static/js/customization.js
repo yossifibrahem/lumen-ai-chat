@@ -2,7 +2,6 @@
 
 import { state, CUSTOMIZATION_DEFAULTS, STORAGE_KEYS } from './state.js';
 import { storage } from './storage.js';
-import { refreshIcons } from './icons.js';
 
 // ── Apply ─────────────────────────────────────────────────────────────────────
 // Reads from `state` and pushes every setting into the live DOM.
@@ -10,25 +9,14 @@ import { refreshIcons } from './icons.js';
 let autoThemeListenerAttached = false;
 let currentAccentHex = null;
 
-const UI_THEME_STYLESHEETS = {
-  pixel: 'ui-theme-pixel',
-};
-
-function normalizeUiTheme(theme) {
-  return Object.prototype.hasOwnProperty.call(UI_THEME_STYLESHEETS, theme) ? theme : 'default';
-}
-
 function normalizeFontFamily(family) {
   if (family === 'space') return 'geist';
-  return ['geist', 'pixel', 'system'].includes(family) ? family : 'geist';
+  return ['geist', 'system'].includes(family) ? family : 'geist';
 }
 
 export function applyCustomization() {
   // Theme (light/dark/auto)
   _applyTheme(state.theme || CUSTOMIZATION_DEFAULTS.theme);
-
-  // Visual style / UI theme
-  _applyUiTheme(state.uiTheme || CUSTOMIZATION_DEFAULTS.uiTheme);
 
   // Font size
   const isMobile = window.innerWidth <= 768;
@@ -61,22 +49,9 @@ function _applyTheme(theme) {
   if (currentAccentHex) _applyAccent(currentAccentHex);
 }
 
-function _applyUiTheme(theme) {
-  const normalized = normalizeUiTheme(theme);
-  document.documentElement.setAttribute('data-ui-theme', normalized);
-
-  Object.entries(UI_THEME_STYLESHEETS).forEach(([themeKey, linkId]) => {
-    const link = document.getElementById(linkId);
-    if (link) link.disabled = normalized !== themeKey;
-  });
-
-  refreshIcons();
-}
-
 function _applyFontFamily(family) {
   const map = {
     geist:   "'Geist', sans-serif",
-    pixel:   "'Pixelify Sans', 'JetBrains Mono', monospace",
     system:  "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   };
   document.documentElement.style.setProperty('--font-roman', map[normalizeFontFamily(family)]);
@@ -145,7 +120,6 @@ export function saveCustomization() {
     fontSize:              state.fontSize,
     fontFamily:            state.fontFamily,
     theme:                 state.theme,
-    uiTheme:               state.uiTheme,
     accentColor:           state.accentColor,
     customAccentColor:     state.customAccentColor,
   });
@@ -213,9 +187,6 @@ export function syncCustomizationUI() {
   const ff = document.getElementById('cust-font-family');
   if (ff) ff.value = normalizeFontFamily(state.fontFamily);
 
-  const uiTheme = document.getElementById('cust-ui-theme');
-  if (uiTheme) uiTheme.value = normalizeUiTheme(state.uiTheme || CUSTOMIZATION_DEFAULTS.uiTheme);
-
   // Theme radio
   const themeRadio = document.querySelector(`input[name="cust-theme"][value="${state.theme || CUSTOMIZATION_DEFAULTS.theme}"]`);
   if (themeRadio) themeRadio.checked = true;
@@ -244,8 +215,6 @@ function _readControlsIntoState() {
   state.groupSequentialBlocks = document.getElementById('cust-group-seq-blocks')?.checked  ?? state.groupSequentialBlocks;
   state.fontSize              = document.getElementById('cust-font-size')?.value           ?? state.fontSize;
   state.fontFamily            = normalizeFontFamily(document.getElementById('cust-font-family')?.value ?? state.fontFamily);
-  state.uiTheme               = normalizeUiTheme(document.getElementById('cust-ui-theme')?.value ?? state.uiTheme);
-
   const themeRadio = document.querySelector('input[name="cust-theme"]:checked');
   if (themeRadio) state.theme = themeRadio.value;
 

@@ -25,7 +25,7 @@
 }
 .eye-btn:hover { color: var(--text); background: var(--surface); }
 
-/* Compact API key visibility button. Kept global so default and theme skins share the same sizing. */
+/* Compact API key visibility button. */
 #settings-modal #tab-api .input-with-eye input { padding-right: 40px; }
 #settings-modal #tab-api .input-with-eye .eye-btn {
   right: 6px;
@@ -152,14 +152,9 @@
    Theme-specific surface / text / border colours are in [data-theme="…"] below.
    ─────────────────────────────────────────────────────────────────────────── */
 :root {
-  /* Accent tokens are runtime values from the Appearance system.
-     CSS consumes them, but themes must not choose them. */
-  --accent-solid-hover: color-mix(in srgb, var(--accent) 86%, var(--on-accent) 14%);
-
   /* Semantic colour — same across themes */
   --green: #4f8f5f;
   --red: #c44e42;
-  --blue: #557ea5;
 
   /* Layout */
   --radius: 12px;

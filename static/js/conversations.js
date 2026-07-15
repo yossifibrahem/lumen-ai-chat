@@ -64,7 +64,6 @@ function _buildFolderGroup(folder) {
         <span class="folder-name">${escapeHtml(folder.name || 'Untitled Folder')}</span>
       </button>
       <div class="folder-controls">
-        <button class="folder-action" type="button" data-folder-action="add" title="New chat in folder" aria-label="New chat in folder">${ICONS.plus}</button>
         <div class="folder-menu-wrap">
           <button class="folder-menu-btn" type="button" title="Folder options" aria-label="Folder options" aria-expanded="false">${ICONS.moreVertical}</button>
           <div class="conv-menu folder-menu" role="menu">
@@ -79,8 +78,9 @@ function _buildFolderGroup(folder) {
       </div>
     </div>`;
 
-  group.querySelector('.folder-open').addEventListener('click', () => startNewChat(folder.id));
-  group.querySelector('[data-folder-action="add"]').addEventListener('click', () => startNewChat(folder.id));
+  group.querySelector('.folder-header').addEventListener('click', event => {
+    if (!event.target.closest('.folder-menu-wrap')) startNewChat(folder.id);
+  });
   const menuBtn = group.querySelector('.folder-menu-btn');
   menuBtn.addEventListener('click', event => {
     event.stopPropagation();

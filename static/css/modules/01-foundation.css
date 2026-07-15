@@ -38,7 +38,7 @@ button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
 svg { flex-shrink: 0; }
 
-/* Live icons: JS swaps the inner SVG when the active UI theme changes. */
+/* Shared wrapper for inline app icons. */
 .app-icon {
   display: inline-flex;
   align-items: center;
