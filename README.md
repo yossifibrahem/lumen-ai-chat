@@ -4,7 +4,7 @@ A self-hosted Flask chatbot with real-time streaming, folder-based chat organiza
 
 Lumen is built for developers who want a capable local AI chat application without heavy infrastructure. The backend is plain Flask, the frontend is native browser ES modules served directly — no bundler, no framework, no deployment ritual.
 
-<img width="2890" height="2178" alt="ChatGPT Image May 19, 2026, 07_53_37 PM-Photoroom (2)" src="https://github.com/user-attachments/assets/4d21b2aa-5925-48eb-a7f6-f71bc78d10f7" />
+<img width="2940" height="1662" alt="Untitled design" src="https://github.com/user-attachments/assets/f4d3b00f-a986-4081-bd41-b74ed4afbdf0" />
 
 
 ---
