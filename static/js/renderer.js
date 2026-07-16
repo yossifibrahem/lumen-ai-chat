@@ -60,7 +60,7 @@ export function clearMessages({ folder = null, conversations = [] } = {}) {
     </div>` : `
     <div id="empty-state">
       <div class="es-logo"><span>Lu</span><em>men</em></div>
-      <div class="es-sub">A clean little console for big thoughts.</div>
+      <div class="es-sub">Ask a question, explore an idea, or get help with a task.</div>
     </div>`;
 
   if (composer) messages.appendChild(composer);
