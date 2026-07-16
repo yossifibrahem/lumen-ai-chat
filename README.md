@@ -1,6 +1,6 @@
 # Lumen AI Chat
 
-A self-hosted Flask chatbot with real-time streaming, per-conversation Docker sandboxes, MCP server support, and a zero-build-step frontend.
+A self-hosted Flask chatbot with real-time streaming, folder-based chat organization, isolated Docker sandboxes, MCP server support, and a zero-build-step frontend.
 
 Lumen is built for developers who want a capable local AI chat application without heavy infrastructure. The backend is plain Flask, the frontend is native browser ES modules served directly — no bundler, no framework, no deployment ritual.
 
@@ -12,16 +12,19 @@ Lumen is built for developers who want a capable local AI chat application witho
 ## Features
 
 **Model support**
+
 - Any OpenAI-compatible API — OpenAI, Ollama, LM Studio, or a local proxy
 - Configure API key, base URL, model, and system prompt from the browser UI
 - Proxied model-list fetching so you can pick models without leaving the chat
 
 **Streaming**
+
 - Responses stream over Server-Sent Events (SSE) token-by-token
 - Cancel mid-stream; the partial response is saved automatically
 - Reattach to an in-progress stream if you navigate away and return
 
 **MCP (Model Context Protocol)**
+
 - Add MCP servers through the UI or `mcp.json`
 - Tool metadata keeps the MCP server name separate from the model-facing tool name
 - Persistent MCP stdio session pooling — sessions are opened once per conversation and reused across all turns until the container stops
@@ -29,31 +32,46 @@ Lumen is built for developers who want a capable local AI chat application witho
 - Tool activity renders inline: arguments, running state, and results
 
 **Persistent memory**
+
 - The model remembers facts across all conversations via `~/.lumen/memory.md`
 - Mounted read-write into every container at `/memory.md` so the model can update it using its file tools
 - Memory contents are injected into the system prompt at the start of every turn
 
-**Per-conversation Docker sandboxes**
-- Every conversation gets its own Docker container and workspace directory
+**Folders**
+
+- Group related conversations into folders and open a folder home with its chats and shared files
+- Create, rename, delete, and search folders; move existing conversations into or out of a folder
+- Add folder-level instructions that apply to every chat in the folder
+- Chats in a folder keep separate message histories while sharing one Docker sandbox and workspace
+
+**Isolated Docker sandboxes**
+
+- Standalone conversations get their own Docker container and workspace directory; conversations in a folder share the folder's runtime
 - The workspace is mounted at `/workspace` inside the container
 - MCP servers run inside the container — code execution is isolated from the host
 - Containers are stopped automatically when idle (configurable timeout)
 - Stale containers from previous sessions are cleaned up at startup
 
 **File handling**
+
 - Upload files into the conversation workspace via the browser panel
+- Browse nested workspace directories in an expandable file tree
 - Preview text/code/Markdown files inline; download any workspace file
+- Access a folder's shared workspace before opening or creating a chat
 - Images are stored by SHA-256 content hash and sent as vision inputs to compatible models
 
 **UI**
+
 - Markdown, syntax-highlighted code blocks, and KaTeX math rendering
 - Voice input via the browser Web Speech API
 - Auto-generated conversation titles after the first exchange
-- Create, rename, delete, and search conversations
+- Create, rename, delete, move, and search conversations from the dedicated search modal
+- Responsive sidebar with a compact desktop mode and off-canvas mobile layout
 - Switch between edited-message and regenerated-response branches with arrows in the message footer
 - Customizable color mode, accent color, font size, sidebar, timestamps, and more — stored in `localStorage`
 
 **Architecture**
+
 - No database — conversations are plain JSON files under `~/.lumen/`
 - No frontend build step — Flask serves `templates/` and `static/` directly
 - No bundler — browser ES modules imported with `type="module"`
@@ -167,7 +185,7 @@ mcp>=1.0.0
 
 ### Build the Sandbox Image
 
-All MCP servers run inside a per-conversation Docker container. Build the image once before starting the app:
+All MCP servers run inside the active chat or folder's Docker sandbox. Build the image once before starting the app:
 
 ```bash
 docker build -f Dockerfile.sandbox -t lumen-sandbox .
@@ -235,7 +253,7 @@ http://localhost:1234/v1     # LM Studio
 | `LUMEN_MCP_CONFIG_FILE` | `~/.lumen/mcp.json` | MCP server config path |
 | `LUMEN_MCP_CONFIG_CACHE_TTL` | `5` | Seconds to cache MCP config reads |
 | `LUMEN_SANDBOX_IMAGE` | `lumen-sandbox` | Docker image for sandbox containers |
-| `LUMEN_CONTAINERS_ROOT` | `~/.lumen/containers` | Host directory for per-conversation workspaces |
+| `LUMEN_CONTAINERS_ROOT` | `~/.lumen/containers` | Host directory for standalone-chat and shared-folder workspaces |
 | `LUMEN_CONTAINER_MEMORY` | `512m` | Memory limit per sandbox container |
 | `LUMEN_CONTAINER_CPUS` | `1` | CPU quota per sandbox container |
 | `LUMEN_CONTAINER_NETWORK` | `bridge` | Docker network mode |
@@ -259,8 +277,9 @@ All runtime data is stored outside the repo under `~/.lumen/`:
 ├── advanced_config.json   # Container and file-handling settings (written by the UI)
 ├── mcp.json               # MCP server configuration
 ├── memory.md              # Persistent cross-chat memory; mounted at /memory.md in every container
+├── folders.json           # Folder names, IDs, and folder-level instructions
 ├── conversations/         # One JSON file per conversation
-├── containers/            # One workspace directory per conversation
+├── containers/            # Workspace directories for standalone chats and shared folders
 └── images/                # Uploaded images keyed by SHA-256 hash
 ```
 
@@ -268,7 +287,7 @@ All runtime data is stored outside the repo under `~/.lumen/`:
 
 MCP servers are configured in `~/.lumen/mcp.json` (or the path set by `LUMEN_MCP_CONFIG_FILE`). The settings panel can read and write this file from the browser.
 
-All MCP servers run inside the conversation's Docker container with the workspace mounted at `/workspace`. Use `/workspace`-relative paths in server arguments.
+All MCP servers run inside the active chat or folder's Docker sandbox with the workspace mounted at `/workspace`. Use `/workspace`-relative paths in server arguments.
 
 **Example `mcp.json`:**
 
@@ -307,9 +326,17 @@ Model-facing tool names use the MCP tool name directly. The matching MCP server 
 3. Open settings and enter your API key, base URL, and model.
 4. Type a message and press **Enter**. Use **Shift + Enter** for a newline.
 
+### Organizing Chats with Folders
+
+1. Click **New folder** in the sidebar and give the folder a name.
+2. Open the folder to create chats, browse its shared workspace, or add folder-level instructions.
+3. Use a conversation's menu to move an existing chat into a folder or back to **Recent**.
+
+Each chat retains its own message history, but chats in the same folder use one shared Docker container and `/workspace`. Folder instructions are used in place of the global system prompt for chats in that folder. Deleting a folder permanently deletes its chats, shared container, and workspace files.
+
 ### Uploading Files
 
-Open the workspace panel, upload a file, and it will appear under `/workspace/uploads/` inside the conversation container. Preview text files in the browser or download any workspace file directly.
+Open the workspace panel, upload a file, and it will appear under `/workspace/uploads/` inside the active sandbox. Expand directories in the file tree, preview text files in the browser, or download any workspace file directly. When you are working in a folder, every chat in that folder sees the same files.
 
 ### Using MCP Tools
 
@@ -341,7 +368,7 @@ Click the stop button while a response is streaming. The server marks the stream
 | `docker_path_utils.py` | Cross-platform Docker volume path conversion — translates Windows drive-letter paths to valid Linux container mount targets |
 | `routes.py` | Thin blueprint registration shim — registers the five route group blueprints |
 | `routes_startup.py` | Setup screen, health probe, Docker/image requirement checks, streaming sandbox image build |
-| `routes_conversations.py` | Conversation CRUD, workspace path, container status, danger-delete |
+| `routes_conversations.py` | Conversation and folder CRUD, workspace path, container status, danger-delete |
 | `routes_chat.py` | Streaming, cancel, approve, settings, advanced/container settings, model list |
 | `routes_mcp.py` | MCP config, tool discovery, direct tool calls |
 | `routes_files.py` | Workspace file listing, upload, preview, download, image storage |
@@ -354,7 +381,7 @@ Click the stop button while a response is streaming. The server marks the stream
 | `mcp_adapters.py` | Wraps MCP commands for Docker `exec`; extracts and mounts host volume paths |
 | `container_service.py` | Docker container lifecycle: create, start, stop, idle reaping, workspace management |
 | `workspace_service.py` | Safe file operations inside the conversation workspace; path traversal protection |
-| `store.py` | Filesystem persistence for conversations and images; cached conversation index |
+| `store.py` | Filesystem persistence for conversations, folders, and images; cached conversation index |
 
 ### Chat Turn Flow
 
@@ -362,9 +389,9 @@ A single chat turn in `chat_turn_service.py`:
 
 1. Build an OpenAI client from server-side config.
 2. Read `~/.lumen/memory.md` and inject its contents into the system message.
-3. Pre-mount MCP server volumes and ensure the conversation container is running.
+3. Pre-mount MCP server volumes and ensure the chat or folder sandbox is running.
 4. Stream model output via `streaming.py`; accumulate text and tool calls.
-5. For each tool call: request approval (unless auto-approved), invoke via the persistent `McpSessionPool` (shared across turns for the conversation), append the tool result to message history.
+5. For each tool call: request approval (unless auto-approved), invoke via the persistent `McpSessionPool` (reused across turns in the active runtime), append the tool result to message history.
 6. Loop until the model finishes without further tool calls.
 7. Emit `assistant_done` and optionally a generated `title` event.
 
@@ -393,7 +420,7 @@ The frontend is plain browser ES modules — no build step, no framework. `templ
 | `renderer_actions.js` | Copy/edit/regenerate buttons and branch arrows in message footers |
 | `mcp.js` | MCP config UI, tool loading, enable/auto-approve toggles |
 | `file_panel.js` | Workspace browser, preview, and download |
-| `conversations.js` | Conversation CRUD and sidebar |
+| `conversations.js` | Conversation/folder CRUD, search, folder home, and sidebar rendering |
 | `settings.js` | API and chat settings UI |
 | `markdown.js` | Markdown, code highlighting, KaTeX, safe workspace file links |
 | `tool_adapters/` | Per-tool display adapters (`agent_tools.js`, `exa.js`) |
@@ -421,14 +448,14 @@ Tests are fully isolated: `conftest.py` redirects filesystem paths to `tmp_path`
 | Test file | What it covers |
 |---|---|
 | `test_app_config.py` | Config load/save, env overrides, public config, atomic persistence |
-| `test_store.py` | SHA-256 image naming, conversation CRUD, cached index, concurrency |
+| `test_store.py` | SHA-256 image naming, conversation/folder CRUD, shared runtimes, cached index, concurrency |
 | `test_workspace_service.py` | Path traversal rejection, preview limits, upload collision handling |
 | `test_chat_turn_service.py` | Tool approval, title extraction, `TurnRecorder` throttle/finalize |
 | `test_streaming.py` | Event ordering, tool delta accumulation, parallel tools, cancellation |
 | `test_mcp_service.py` | Config cache, malformed config, `McpSessionPool` same-task cleanup |
 | `test_mcp_adapters.py` | Docker exec params, project-root detection, volume deduplication |
 | `test_container_service.py` | Container naming, exec argv/env, name conflicts, idle reaper |
-| `test_routes.py` | HTTP routes, error paths, conversation update whitelist |
+| `test_routes.py` | HTTP routes, folder/shared-workspace behavior, error paths, conversation update whitelist |
 | `test_tool_approval.py` | Approval gate: request/resolve lifecycle, concurrent approvals, cancel-event unblocking |
 | `test_title_service.py` | Title tool definition, message-to-text conversion, title extraction from model response |
 
