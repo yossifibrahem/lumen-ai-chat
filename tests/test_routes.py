@@ -84,14 +84,20 @@ class TestFolders:
         assert updated.json["name"] == "Project"
         assert updated.json["system_prompt"] == "Always cite the workspace files."
 
-    def test_deleting_folder_unfiles_chats_and_cleans_shared_runtime(self, client, tmp_lumen):
+    def test_deleting_folder_deletes_chats_and_cleans_shared_runtime(self, client, tmp_lumen):
         folder = store.create_folder("Shared")
-        conv = store.create("Keep me", folder["id"])
+        first = store.create("Delete me", folder["id"])
+        second = store.create("Delete me too", folder["id"])
+        unrelated = store.create("Keep me")
         with patch("container_service.stop_container") as stop, \
              patch("container_service.delete_workspace") as delete_workspace:
             response = client.delete(f"/api/folders/{folder['id']}")
         assert response.status_code == 200
-        assert "folder_id" not in store.load(conv["id"])
+        assert set(response.json["deleted_conversation_ids"]) == {first["id"], second["id"]}
+        assert store.load(first["id"]) is None
+        assert store.load(second["id"]) is None
+        assert store.load(unrelated["id"]) is not None
+        assert store.get_folder(folder["id"]) is None
         stop.assert_called_once_with(f"folder_{folder['id']}")
         delete_workspace.assert_called_once_with(f"folder_{folder['id']}")
 

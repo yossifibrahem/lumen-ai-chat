@@ -560,9 +560,13 @@ async function removeFolder(folder) {
   confirm.replaceWith(freshConfirm);
   freshConfirm.addEventListener('click', async () => {
     closeModal('delete-folder-modal');
+    const deletingActiveConversation = conversations.some(
+      conv => conv.id === state.convId && conv.folder_id === folder.id,
+    );
+    const deletingActiveFolder = activeFolderId === folder.id;
     await api.delete(`/api/folders/${folder.id}`);
+    if (deletingActiveConversation || deletingActiveFolder) startNewChat();
     await loadConversationList();
-    if (state.convId) await openConversation(state.convId);
   }, { once: true });
 }
 

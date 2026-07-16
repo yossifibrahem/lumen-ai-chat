@@ -74,16 +74,15 @@ def delete_folder(folder_id: str):
     if not store.get_folder(folder_id):
         return jsonify({"error": "Not found"}), 404
     runtime_id = f"folder_{folder_id}"
-    for summary in store.folder_conversations(folder_id):
-        data = store.load(summary["id"])
-        if data:
-            data.pop("folder_id", None)
-            data["working_directory"] = str(container_service.conversation_workspace(data["id"]))
-            store.save(data["id"], data)
+    conversation_ids = [
+        summary["id"] for summary in store.folder_conversations(folder_id)
+    ]
+    for conversation_id in conversation_ids:
+        store.delete(conversation_id)
     store.delete_folder(folder_id)
     container_service.stop_container(runtime_id)
     container_service.delete_workspace(runtime_id)
-    return jsonify({"ok": True})
+    return jsonify({"ok": True, "deleted_conversation_ids": conversation_ids})
 
 
 @blueprint.route("/api/conversations/<conv_id>", methods=["GET"])
