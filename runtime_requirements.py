@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,6 +11,7 @@ import advanced_config
 
 log = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).resolve().parent
+DOCKER_PROBE_TIMEOUT_SECONDS = 5
 
 
 @dataclass(frozen=True)
@@ -40,32 +42,70 @@ def _image_name() -> str:
     return str(advanced_config.load_advanced_config()["sandbox_image"])
 
 
-def _run(args: list[str], *, cwd: Path | None = None) -> subprocess.CompletedProcess:
-    return subprocess.run(args, capture_output=True, text=True, cwd=cwd)
+def _run(
+    args: list[str],
+    *,
+    cwd: Path | None = None,
+    timeout: float | None = None,
+) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        args,
+        capture_output=True,
+        text=True,
+        cwd=cwd,
+        timeout=timeout,
+    )
+
+
+def _docker_unavailable(image: str, details: str) -> RequirementStatus:
+    return RequirementStatus(
+        ok=False,
+        code="docker_unavailable",
+        title="Docker is not available",
+        message="Install Docker and ensure the docker command is on PATH, then click Retry.",
+        action="retry",
+        image=image,
+        details=details,
+    )
 
 
 def check_docker() -> RequirementStatus:
-    """Return whether the Docker daemon is reachable."""
+    """Return whether both the Docker CLI and daemon are usable.
+
+    Locating the executable separately gives a precise installation error,
+    while querying the server version verifies that the selected Docker
+    context can actually reach a daemon.  The short timeout prevents a stuck
+    Docker Desktop or remote context from hanging app startup indefinitely.
+    """
     image = _image_name()
+    docker = shutil.which("docker")
+    if docker is None:
+        return _docker_unavailable(image, "The docker executable was not found on PATH.")
+
     try:
-        result = _run(["docker", "info"])
-    except FileNotFoundError as exc:
+        result = _run(
+            [docker, "version", "--format", "{{.Server.Version}}"],
+            timeout=DOCKER_PROBE_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
         return RequirementStatus(
             ok=False,
-            code="docker_unavailable",
-            title="Docker is not available",
-            message="Please install/start Docker, then click Retry.",
+            code="docker_not_running",
+            title="Docker is not responding",
+            message="Start or restart Docker, then click Retry.",
             action="retry",
             image=image,
-            details=str(exc),
+            details=f"Docker did not respond within {DOCKER_PROBE_TIMEOUT_SECONDS} seconds.",
         )
+    except OSError as exc:
+        return _docker_unavailable(image, str(exc))
 
     if result.returncode != 0:
         return RequirementStatus(
             ok=False,
             code="docker_not_running",
-            title="Docker is not running",
-            message="Please start Docker, then click Retry.",
+            title="Docker is not ready",
+            message="Start Docker and make sure this user can access it, then click Retry.",
             action="retry",
             image=image,
             details=(result.stderr or result.stdout).strip(),

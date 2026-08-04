@@ -243,7 +243,7 @@ Owns Docker availability and sandbox image checks. Used by `app.py` at startup a
 
 Key behavior:
 
-- `check_docker()` — runs `docker info` to verify the daemon is reachable.
+- `check_docker()` — resolves the Docker CLI, then runs a bounded server-version probe to verify the selected Docker context can reach a usable daemon without hanging app startup.
 - `check_sandbox_image()` — verifies the configured image exists locally (`docker image inspect`).
 - `check_requirements()` — returns the first unmet requirement, or ok.
 - `build_sandbox_image()` — blocking build; returns a `RequirementStatus`.
