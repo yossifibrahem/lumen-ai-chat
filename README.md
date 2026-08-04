@@ -101,7 +101,7 @@ python app.py
 
 Open **http://localhost:8080**, then open the settings panel to enter your API key, base URL, and model name.
 
-For LAN testing, the web dev server binds to `0.0.0.0` by default, so another device on the same trusted network can open `http://<your-computer-ip>:8080`. Set `LUMEN_HOST=127.0.0.1` if you want browser access limited to the same machine.
+The development server binds to `127.0.0.1` with debug mode disabled by default. For deliberate LAN testing on a trusted network, set `LUMEN_HOST=0.0.0.0`, configure `LUMEN_CORS_ORIGINS`, and open `http://<your-computer-ip>:8080` from the other device.
 
 > If Docker is not running or the `lumen-sandbox` image has not been built, the app starts and shows a setup screen with Retry / Build Sandbox Image actions.
 
@@ -201,6 +201,12 @@ http://localhost:1234/v1     # LM Studio
 | `OPENAI_API_KEY` | — | Overrides the saved API key |
 | `OPENAI_BASE_URL` | — | Overrides the saved API base URL |
 | `OPENAI_API_BASE` | — | Fallback alias for `OPENAI_BASE_URL` |
+| `LUMEN_HOST` | `127.0.0.1` | Flask development-server bind address |
+| `LUMEN_PORT` | `8080` | Flask development-server port |
+| `LUMEN_DEBUG` | disabled | Enable Flask debug mode with `1`, `true`, `yes`, or `on` |
+| `LUMEN_OPENAI_TIMEOUT` | `120` | OpenAI-compatible request/read timeout in seconds |
+| `LUMEN_MCP_TOOL_TIMEOUT` | `120` | Maximum MCP tool-call duration in seconds |
+| `LUMEN_TOOL_APPROVAL_TIMEOUT` | `600` | Maximum wait for a tool approval decision in seconds |
 | `LUMEN_CONFIG_FILE` | `~/.lumen/config.json` | Server-side API config path |
 | `LUMEN_CONFIG_CACHE_TTL` | `5` | Seconds to cache API config reads |
 | `LUMEN_ADVANCED_CONFIG_FILE` | `~/.lumen/advanced_config.json` | Advanced/container settings config path |

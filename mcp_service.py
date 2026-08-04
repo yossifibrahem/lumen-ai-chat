@@ -9,6 +9,7 @@ import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,14 @@ _config_cache_at = 0.0
 _config_cache_path: Path | None = None
 _config_cache_lock = threading.Lock()
 _CONFIG_TTL_SECONDS = float(os.getenv("LUMEN_MCP_CONFIG_CACHE_TTL", "5"))
+
+
+def _mcp_timeout_delta() -> timedelta:
+    try:
+        value = float(os.getenv("LUMEN_MCP_TOOL_TIMEOUT", "120"))
+    except (TypeError, ValueError):
+        value = 120.0
+    return timedelta(seconds=value if value > 0 else 120.0)
 
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -139,7 +148,11 @@ async def fetch_tools(server_name: str, server_config: dict, conv_id: str = "") 
     tools: list[dict] = []
     try:
         async with stdio_client(params) as (reader, writer):
-            async with ClientSession(reader, writer) as session:
+            async with ClientSession(
+                reader,
+                writer,
+                read_timeout_seconds=_mcp_timeout_delta(),
+            ) as session:
                 await session.initialize()
                 for tool in (await session.list_tools()).tools:
                     tools.append({
@@ -161,7 +174,11 @@ async def invoke_tool(server_name: str, server_config: dict, tool_name: str, arg
     params = _build_server_params(server_name, server_config, conv_id=conv_id)
     try:
         async with stdio_client(params) as (reader, writer):
-            async with ClientSession(reader, writer) as session:
+            async with ClientSession(
+                reader,
+                writer,
+                read_timeout_seconds=_mcp_timeout_delta(),
+            ) as session:
                 await session.initialize()
                 result = await session.call_tool(tool_name, arguments)
                 text = "\n".join(

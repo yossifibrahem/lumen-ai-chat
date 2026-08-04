@@ -151,6 +151,23 @@ class TestRequestToolApproval:
         t.join(timeout=2)
         assert result == [False]
 
+    def test_returns_false_when_approval_times_out(self):
+        started = time.monotonic()
+        result = svc.request_tool_approval(
+            "timeout-stream",
+            "timeout-call",
+            "bash",
+            {},
+            _noop_publish,
+            _make_cancel(),
+            timeout_seconds=0.02,
+        )
+
+        assert result is False
+        assert time.monotonic() - started < 0.5
+        with svc._pending_approvals_lock:
+            assert "timeout-stream" not in svc._pending_approvals
+
     def test_emits_tool_approval_required_event(self):
         cancel = _make_cancel()
         events: list[dict] = []

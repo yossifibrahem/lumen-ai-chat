@@ -133,6 +133,7 @@ def _shutdown_containers() -> None:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    host = os.getenv("LUMEN_HOST", "0.0.0.0")
+    host = os.getenv("LUMEN_HOST", "127.0.0.1")
     port = int(os.getenv("LUMEN_PORT", "8080"))
-    create_app().run(debug=True, host=host, port=port, threaded=True)
+    debug = os.getenv("LUMEN_DEBUG", "").strip().lower() in {"1", "true", "yes", "on"}
+    create_app().run(debug=debug, host=host, port=port, threaded=True)

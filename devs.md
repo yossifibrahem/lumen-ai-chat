@@ -168,6 +168,12 @@ Important environment variables:
 OPENAI_API_KEY               overrides saved API key
 OPENAI_BASE_URL              overrides saved API base URL
 OPENAI_API_BASE              fallback alias for API base URL
+LUMEN_HOST                   default: 127.0.0.1; set 0.0.0.0 only for deliberate LAN access
+LUMEN_PORT                   default: 8080
+LUMEN_DEBUG                  disabled by default; accepts 1/true/yes/on
+LUMEN_OPENAI_TIMEOUT         default: 120 seconds
+LUMEN_MCP_TOOL_TIMEOUT       default: 120 seconds
+LUMEN_TOOL_APPROVAL_TIMEOUT  default: 600 seconds
 LUMEN_CONFIG_FILE            path to server-side config JSON
 LUMEN_CONFIG_CACHE_TTL       default: 5 seconds
 LUMEN_ADVANCED_CONFIG_FILE   path to advanced/container config JSON; default ~/.lumen/advanced_config.json
@@ -333,7 +339,7 @@ This is the core backend orchestration layer for a chat turn. It re-exports `res
 Key responsibilities:
 
 - Read `~/.lumen/memory.md` and inject its contents into the system message via `_inject_memory()` before the streaming loop.
-- Create an OpenAI client from `app_config.load_config()`.
+- Create an OpenAI client from `app_config.load_config()` with the bounded `LUMEN_OPENAI_TIMEOUT`.
 - Stream model chunks through `streaming.stream_chat_completion()`.
 - Accumulate text and `reasoning_content`.
 - Persist partial assistant output using `TurnRecorder`.
@@ -381,7 +387,7 @@ Because this module is stateless, it can be imported and unit-tested without any
 Bounded approval subsystem (52 lines). Contains:
 
 - `_pending_approvals` dict and its `threading.Lock`.
-- `request_tool_approval(approval_id, tool_name, tool_args)` — registers a pending approval and blocks until resolved.
+- `request_tool_approval(stream_id, call_id, tool_name, tool_args, publish, cancel_event)` — registers a pending approval and blocks until resolved, cancelled, or `LUMEN_TOOL_APPROVAL_TIMEOUT` expires.
 - `resolve_tool_approval(approval_id, approved)` — unblocks the waiting turn with the decision.
 
 `chat_turn_service` re-exports `resolve_tool_approval` at module level so `routes_chat.py` only needs to import from one place.
@@ -420,6 +426,7 @@ Contains the entire `McpSessionPool` class (168 lines) extracted from `mcp_servi
 - Owns the dedicated worker coroutine for the whole turn.
 - Manages session lifecycle: open, invoke, `ClientSession.__aexit__`, and `stdio_client.__aexit__` all happen in the same asyncio Task.
 - Handles retry logic for transient session failures.
+- Bounds each invocation with `LUMEN_MCP_TOOL_TIMEOUT` while preserving same-task cleanup semantics.
 - Imports `_build_server_params` from `mcp_service` on demand to avoid a circular import.
 
 ### `mcp_adapters.py`
@@ -508,6 +515,8 @@ state.serverHasApiKey
 ```
 
 The API key should not be persisted in `state` or localStorage. The settings UI may accept a key and send it to `/api/settings`, but it should clear the input after saving and only retain `serverHasApiKey` metadata in browser state.
+
+`chat.js` keeps active turn contexts in `activeTurns`. Each context owns its stream ID, cancellation flag, and `AbortController`; approval and cancel requests must use that context rather than the currently visible conversation's global state.
 
 ### App startup: `app.js`
 

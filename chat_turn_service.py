@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 from collections.abc import Callable
@@ -16,6 +17,19 @@ import streaming as stream_module
 import title_service
 import memory_service
 import tool_approval
+
+
+def _positive_float_env(name: str, default: float) -> float:
+    """Read a positive seconds value without making a bad env var fatal."""
+    try:
+        value = float(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+    return value if value > 0 else default
+
+
+OPENAI_TIMEOUT_SECONDS = _positive_float_env("LUMEN_OPENAI_TIMEOUT", 120.0)
+
 
 def _inject_memory(api_messages: list) -> list:
     """Prepend or extend the system message with memory contents if any exist."""
@@ -46,6 +60,7 @@ def openai_client(body: dict | None = None) -> OpenAI:
     return OpenAI(
         api_key=cfg.get("api_key") or "sk-placeholder",
         base_url=cfg.get("api_base") or app_config.DEFAULT_API_BASE,
+        timeout=OPENAI_TIMEOUT_SECONDS,
     )
 
 
@@ -213,6 +228,7 @@ def run_persistent_chat_turn(body: dict, cancel_event: threading.Event, stream_i
                 tools=body.get("tools", []),
                 cancel_event=cancel_event,
                 temperature=float(body.get("temperature", 0.7)),
+                timeout=OPENAI_TIMEOUT_SECONDS,
             ):
                 event = _parse_stream_payload(raw)
                 if not event:

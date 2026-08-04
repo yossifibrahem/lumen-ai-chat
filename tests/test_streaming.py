@@ -170,6 +170,26 @@ class TestDoneEvent:
         assert any(e["type"] == "text" for e in events)
 
 
+class TestRequestOptions:
+
+    def test_timeout_is_forwarded_to_openai_request(self):
+        client = MagicMock()
+        mock_stream = MagicMock()
+        mock_stream.__iter__ = MagicMock(return_value=iter([]))
+        client.chat.completions.create.return_value = mock_stream
+
+        list(streaming.stream_chat_completion(
+            client,
+            "gpt-4o",
+            [],
+            [],
+            threading.Event(),
+            timeout=12.5,
+        ))
+
+        assert client.chat.completions.create.call_args.kwargs["timeout"] == 12.5
+
+
 # ---------------------------------------------------------------------------
 # Tool call events
 # ---------------------------------------------------------------------------

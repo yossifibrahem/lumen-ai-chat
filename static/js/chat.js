@@ -22,8 +22,6 @@ import { sendMessage as sendMessageImpl } from './chat_send.js';
 import { editAndResend as editAndResendImpl, regenerateFrom as regenerateFromImpl } from './chat_edit.js';
 import { assistantFooterHostIndex, lastAssistantMessageIndex } from './chat_log_utils.js';
 
-let turnAbortController = null;
-let turnCancelled = false;
 const activeTurns = new Map();
 
 // Attachment handling lives in chat_attachments.js.
@@ -61,7 +59,7 @@ function isCurrentStreamContext(turn, ctx) {
   return activeTurns.get(turn.convId)?.ctx === ctx;
 }
 
-function createStreamContext(turn) {
+function createStreamContext(turn, streamId = '') {
   const ctx = {
     accText:            '',
     accReasoning:       '',
@@ -75,6 +73,9 @@ function createStreamContext(turn) {
     toolRunningIndex:   0,
     toolResultIndex:    0,
     assistantDone:      false,
+    streamId,
+    abortController:    null,
+    cancelled:          false,
     isVisible:          () => isTurnVisible(turn),
     getContentEl:       () => {
       if (!ctx.contentEl && isTurnVisible(turn)) ctx.contentEl = createStreamingMessage();
@@ -152,6 +153,7 @@ async function attachServerStream(convId, streamId, data = {}) {
   const existingRuntime = activeTurns.get(convId);
   if (existingRuntime) {
     existingRuntime.streamId ||= streamId;
+    existingRuntime.ctx.streamId ||= streamId;
     const attached = reattachActiveTurn(convId);
     if (attached && !existingRuntime.ctx?.assistantDone) {
       state.streamId = existingRuntime.streamId;
@@ -166,7 +168,7 @@ async function attachServerStream(convId, streamId, data = {}) {
     messages:   data.messages || [],
     displayLog: activeTurnBaseLog(data.displayLog || []),
   };
-  const ctx = createStreamContext(turn);
+  const ctx = createStreamContext(turn, streamId);
   activeTurns.set(convId, { turn, ctx, streamId });
 
   if (isTurnVisible(turn)) {
@@ -179,17 +181,17 @@ async function attachServerStream(convId, streamId, data = {}) {
 
 
   try {
-    turnAbortController = new AbortController();
+    ctx.abortController = new AbortController();
     const resp = await api.stream('/api/chat/stream', {
       stream_id: streamId,
       conv_id: convId,
       attach: true,
-    }, { signal: turnAbortController.signal });
+    }, { signal: ctx.abortController.signal });
 
     if (!resp.ok) throw new Error(await readResponseError(resp));
 
     const success = await readSSEStream(resp, raw => processSSEEvent(raw, ctx));
-    if (!success || turnCancelled) return false;
+    if (!success || ctx.cancelled) return false;
 
     if (!ctx.assistantDone) {
       commitRuntimeAssistantPartial(ctx);
@@ -264,8 +266,8 @@ function finishAssistantTurn(turn = null, ctx = null) {
   if (turn?.convId && isCurrent) activeTurns.delete(turn.convId);
 
   if ((!turn || isTurnVisible(turn)) && isCurrent) {
-    turnAbortController = null;
-    state.streamId = null;
+    if (ctx) ctx.abortController = null;
+    if (!ctx || state.streamId === ctx.streamId) state.streamId = null;
     setStreaming(false);
   }
 }
@@ -417,7 +419,6 @@ function finalizeAssistantAnswer(ctx, messages = null, displayLog = null) {
 
 async function runAssistantTurnAndPersist(turn) {
   setStreaming(true);
-  turnCancelled = false;
   let ctx = null;
 
   try {
@@ -434,11 +435,11 @@ export async function stopAssistantTurn() {
   const runtime = state.convId ? activeTurns.get(state.convId) : null;
   if (runtime?.ctx) finalizeInterruptedAssistantTurn(runtime.ctx);
 
-  turnCancelled = true;
+  if (runtime?.ctx) runtime.ctx.cancelled = true;
   cancelAllToolApprovals();
-  turnAbortController?.abort();
+  runtime?.ctx?.abortController?.abort();
 
-  const streamId = state.streamId || runtime?.streamId;
+  const streamId = runtime?.streamId || state.streamId;
   state.streamId = null;
   setStreaming(false);
 
@@ -522,7 +523,7 @@ async function processSSEEvent(raw, ctx) {
 
     // Send the decision back to the server so it can unblock and proceed.
     api.post('/api/chat/approve', {
-      stream_id: state.streamId,
+      stream_id: ctx.streamId,
       call_id:   evt.call_id,
       approved,
     }).catch(() => {});
@@ -582,8 +583,8 @@ async function processSSEEvent(raw, ctx) {
 // ── SSE loop ──────────────────────────────────────────────────────────────────
 
 async function runChatLoop(turn) {
-  const ctx = createStreamContext(turn);
   const streamId = createClientId('stream');
+  const ctx = createStreamContext(turn, streamId);
 
   activeTurns.set(turn.convId, { turn, ctx, streamId });
   state.streamId = streamId;
@@ -593,7 +594,7 @@ async function runChatLoop(turn) {
   // right after send. Reattach is only for switching/reloading into a running turn.
 
   try {
-    turnAbortController = new AbortController();
+    ctx.abortController = new AbortController();
 
     const payload = {
       model:     state.model || 'gpt-4o',
@@ -609,19 +610,19 @@ async function runChatLoop(turn) {
       auto_generate_titles:  state.autoGenerateTitles ?? true,
     };
 
-    const resp = await api.stream('/api/chat/stream', payload, { signal: turnAbortController.signal });
+    const resp = await api.stream('/api/chat/stream', payload, { signal: ctx.abortController.signal });
 
     if (!resp.ok) throw new Error(await readResponseError(resp));
 
     const success = await readSSEStream(resp, raw => processSSEEvent(raw, ctx));
-    if (!success || turnCancelled) return;
+    if (!success || ctx.cancelled) return ctx;
 
     if (!ctx.assistantDone) {
       commitRuntimeAssistantPartial(ctx);
       finalizeAssistantAnswer(ctx);
     }
   } catch (err) {
-    if (turnCancelled || err.name === 'AbortError') return ctx;
+    if (ctx.cancelled || err.name === 'AbortError') return ctx;
 
     const el = ctx.getContentEl();
     if (el) el.innerHTML = `<span class="inline-error">Network error: ${escapeHtml(err.message)}</span>`;

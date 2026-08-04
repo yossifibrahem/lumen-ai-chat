@@ -24,16 +24,28 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import threading
+from concurrent.futures import TimeoutError as FutureTimeoutError
+from datetime import timedelta
 
 log = logging.getLogger(__name__)
+
+
+def _tool_timeout() -> float:
+    try:
+        value = float(os.getenv("LUMEN_MCP_TOOL_TIMEOUT", "120"))
+    except (TypeError, ValueError):
+        return 120.0
+    return value if value > 0 else 120.0
 
 
 class McpSessionPool:
     """Reuse MCP stdio sessions for multiple tool calls across turns."""
 
-    def __init__(self, conv_id: str = "") -> None:
+    def __init__(self, conv_id: str = "", tool_timeout: float | None = None) -> None:
         self.conv_id = conv_id
+        self.tool_timeout = _tool_timeout() if tool_timeout is None else max(0.01, tool_timeout)
         self._loop: asyncio.AbstractEventLoop | None = None
         self._aqueue: asyncio.Queue | None = None
         self._ready = threading.Event()
@@ -76,11 +88,21 @@ class McpSessionPool:
             if op == "invoke":
                 _, server_name, server_config, tool_name, arguments, future = job
                 try:
-                    result = await self._invoke(server_name, server_config, tool_name, arguments)
+                    result = await self._invoke(
+                        server_name, server_config, tool_name, arguments
+                    )
+                except TimeoutError:
+                    await self._close_one_session(server_name)
+                    if not future.done():
+                        future.set_exception(TimeoutError(
+                            f"MCP tool '{tool_name}' timed out after {self.tool_timeout:g} seconds"
+                        ))
                 except Exception as exc:
-                    future.set_exception(exc)
+                    if not future.done():
+                        future.set_exception(exc)
                 else:
-                    future.set_result(result)
+                    if not future.done():
+                        future.set_result(result)
             elif op == "close":
                 _, future = job
                 try:
@@ -105,7 +127,11 @@ class McpSessionPool:
         params = _build_server_params(server_name, server_config, conv_id=self.conv_id)
         stdio_cm = stdio_client(params)
         reader, writer = await stdio_cm.__aenter__()
-        session_cm = ClientSession(reader, writer)
+        session_cm = ClientSession(
+            reader,
+            writer,
+            read_timeout_seconds=timedelta(seconds=self.tool_timeout),
+        )
         session = await session_cm.__aenter__()
         await session.initialize()
         self._sessions[server_name] = {
@@ -120,6 +146,10 @@ class McpSessionPool:
         try:
             result = await session.call_tool(tool_name, arguments)
         except Exception as exc:
+            if "timed out while waiting" in str(exc).lower():
+                raise TimeoutError(
+                    f"MCP tool '{tool_name}' timed out after {self.tool_timeout:g} seconds"
+                ) from exc
             # Session may have gone stale (e.g. container restarted between turns).
             # Drop the cached entry and retry once with a fresh connection.
             log.warning(
@@ -168,7 +198,15 @@ class McpSessionPool:
         # Block *outside* the lock. Holding a lock while waiting on a future is a
         # deadlock risk: any code path that needs self._lock while this call is
         # in-flight (e.g. a concurrent close()) would be permanently blocked.
-        return future.result()
+        try:
+            return future.result(timeout=self.tool_timeout + 5)
+        except FutureTimeoutError as exc:
+            if future.done():
+                raise
+            future.cancel()
+            raise TimeoutError(
+                f"MCP worker did not respond within {self.tool_timeout + 5:g} seconds"
+            ) from exc
 
     async def _close_async(self) -> None:
         for server_name in reversed(list(self._sessions)):
@@ -190,5 +228,8 @@ class McpSessionPool:
             self._aqueue.put_nowait,
             ("close", future),
         )
-        future.result()
+        try:
+            future.result(timeout=self.tool_timeout + 5)
+        except FutureTimeoutError:
+            log.warning("[mcp] timed out closing session pool for %s", self.conv_id)
         self._thread.join(timeout=2)

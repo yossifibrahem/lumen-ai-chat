@@ -201,16 +201,26 @@ class TestVolumeArgs:
         result = container_service._volume_args(tmp_path, extra)
         assert "/host/path:/host/path:ro" in result
 
-    def test_no_extra_volumes_only_workspace(self, tmp_path):
+    def test_no_extra_volumes_include_workspace_and_memory(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            container_service,
+            "_memory_volume_spec",
+            lambda: "/host/memory.md:/memory.md:rw",
+        )
         result = container_service._volume_args(tmp_path, [])
-        # Should be exactly ["--volume", "<workspace>:/workspace"]
-        assert len(result) == 2
+        assert result == [
+            "--volume",
+            f"{tmp_path}:/workspace",
+            "--volume",
+            "/host/memory.md:/memory.md:rw",
+        ]
 
     def test_windows_workspace_source_uses_forward_slashes(self, monkeypatch):
         import docker_path_utils
         from pathlib import PureWindowsPath
 
         monkeypatch.setattr(docker_path_utils.sys, "platform", "win32")
+        monkeypatch.setattr(container_service, "_memory_volume_spec", lambda: None)
 
         result = container_service._volume_args(
             PureWindowsPath(r"C:\Users\User\.lumen\containers\abc"),

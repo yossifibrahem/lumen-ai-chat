@@ -225,9 +225,10 @@ class TestMcpSessionPool:
                 self.exited += 1
 
         class FakeClientSession:
-            def __init__(self, reader, writer):
+            def __init__(self, reader, writer, read_timeout_seconds=None):
                 self.reader = reader
                 self.writer = writer
+                self.read_timeout_seconds = read_timeout_seconds
                 self.entered = 0
                 self.exited = 0
                 self.initialized = 0
@@ -364,6 +365,37 @@ class TestMcpSessionPool:
             "lock was still held across future.result() (deadlock regression)"
         )
 
+    def test_session_receives_configured_tool_timeout(self, monkeypatch):
+        _, created_sessions = self._install_fake_mcp(monkeypatch)
+        pool = mcp_service.McpSessionPool(conv_id="conv-1", tool_timeout=2.5)
+        try:
+            assert pool.invoke_tool("srv", {}, "tool", {"n": 1}) == "tool:1"
+        finally:
+            pool.close()
+
+        assert created_sessions[0].read_timeout_seconds.total_seconds() == 2.5
+
+    def test_sdk_timeout_is_reported_without_stale_session_retry(self, monkeypatch):
+        attempts = {"count": 0}
+
+        class TimeoutSession:
+            async def call_tool(self, tool_name, arguments):
+                attempts["count"] += 1
+                raise RuntimeError("Timed out while waiting for response")
+
+        async def get_timeout_session(self_pool, server_name, server_config):
+            return TimeoutSession()
+
+        monkeypatch.setattr(mcp_service.McpSessionPool, "_get_session", get_timeout_session)
+        pool = mcp_service.McpSessionPool(conv_id="conv-1", tool_timeout=0.02)
+        try:
+            with pytest.raises(TimeoutError, match="timed out"):
+                pool.invoke_tool("srv", {}, "stuck_tool", {})
+        finally:
+            pool.close()
+
+        assert attempts["count"] == 1
+
     def test_stale_session_retry_succeeds_on_second_attempt(self, monkeypatch):
         """
         If a cached session raises on call_tool (simulating a dead docker exec
@@ -421,7 +453,7 @@ class TestMcpSessionPool:
         def fake_stdio_client(params):
             return FakeStdioCtx(params)
 
-        def fake_client_session(reader, writer):
+        def fake_client_session(reader, writer, **kwargs):
             s = FlakySession()
             sessions_created.append(s)
             return s
@@ -470,7 +502,7 @@ class TestPersistentPool:
                 return SimpleNamespace(content=[SimpleNamespace(text="result")])
 
         mcp_module = types.ModuleType("mcp")
-        mcp_module.ClientSession = lambda r, w: FakeSession()
+        mcp_module.ClientSession = lambda r, w, **kwargs: FakeSession()
         mcp_module.StdioServerParameters = lambda **kwargs: kwargs
         mcp_client_module = types.ModuleType("mcp.client")
         mcp_stdio_module = types.ModuleType("mcp.client.stdio")
