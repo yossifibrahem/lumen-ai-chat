@@ -271,8 +271,6 @@ if sys.platform == "win32":
     class LumenTray(DesktopServer):
         def __init__(self, instance_lock: SingleInstance) -> None:
             super().__init__(instance_lock)
-            self._quit_requested = threading.Event()
-            self._shutdown_thread: threading.Thread | None = None
             self._icon = pystray.Icon(
                 "lumen-ai-chat",
                 _windows_icon_image(),
@@ -289,29 +287,6 @@ if sys.platform == "win32":
         def run(self) -> None:
             self._icon.run()
 
-        def _finish_shutdown(self) -> None:
-            """Release application resources during Windows shutdown."""
-            try:
-                self.stop_server()
-            except Exception:
-                logging.exception("desktop server cleanup failed")
-            try:
-                lumen_app._shutdown_containers()
-            except Exception:
-                logging.exception("desktop container cleanup failed")
-            try:
-                self._instance_lock.close()
-            except Exception:
-                logging.exception("desktop instance lock cleanup failed")
-
-        def _finish_shutdown_and_stop_tray(self) -> None:
-            """Complete cleanup before removing the Windows tray icon."""
-            self._finish_shutdown()
-            try:
-                self._icon.stop()
-            except Exception:
-                logging.exception("desktop tray loop shutdown failed")
-
         def docker_status(self, *_args) -> None:
             status = runtime_requirements.check_requirements()
             _windows_alert(status.title, status.message)
@@ -321,20 +296,12 @@ if sys.platform == "win32":
             os.startfile(LOG_DIR)  # type: ignore[attr-defined]
 
         def quit_lumen(self, *_args) -> None:
-            if self._quit_requested.is_set():
-                return
-            self._quit_requested.set()
-
-            # pystray invokes menu actions on the Windows message-loop thread.
-            # Run cleanup elsewhere so the menu remains responsive. Keep the
-            # icon visible while cleanup is in progress, then stop the tray
-            # loop only after all bounded shutdown work has finished.
-            self._shutdown_thread = threading.Thread(
-                target=self._finish_shutdown_and_stop_tray,
-                name="lumen-windows-shutdown",
-                daemon=False,
-            )
-            self._shutdown_thread.start()
+            try:
+                self.stop_server()
+                lumen_app._shutdown_containers()
+            finally:
+                self._instance_lock.close()
+                self._icon.stop()
 
 
 def _show_alert(title: str, message: str) -> None:

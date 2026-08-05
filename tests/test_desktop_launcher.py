@@ -159,66 +159,6 @@ def test_expected_waitress_close_race_is_suppressed():
     menu._run_server()
 
 
-@pytest.mark.skipif(sys.platform != "win32", reason="Windows system tray only")
-def test_windows_quit_keeps_tray_icon_visible_during_slow_cleanup(monkeypatch):
-    events = []
-    cleanup_started = threading.Event()
-    release_cleanup = threading.Event()
-    tray_loop_started = threading.Event()
-    tray_loop_stopped = threading.Event()
-
-    class FakeIcon:
-        def __init__(self):
-            self.visible = True
-
-        def run(self):
-            tray_loop_started.set()
-            assert tray_loop_stopped.wait(timeout=5)
-
-        def stop(self):
-            events.append("stop-icon")
-            tray_loop_stopped.set()
-
-    tray = object.__new__(desktop_launcher.LumenTray)
-    tray._quit_requested = threading.Event()
-    tray._shutdown_thread = None
-    tray._icon = FakeIcon()
-    tray._instance_lock = SimpleNamespace(close=lambda: events.append("unlock"))
-
-    def stop_server():
-        events.append("stop-server")
-        cleanup_started.set()
-        assert release_cleanup.wait(timeout=5)
-
-    tray.stop_server = stop_server
-    monkeypatch.setattr(
-        desktop_launcher.lumen_app,
-        "_shutdown_containers",
-        lambda: events.append("stop-containers"),
-    )
-
-    tray_loop = threading.Thread(target=tray.run)
-    tray_loop.start()
-    assert tray_loop_started.wait(timeout=5)
-    tray.quit_lumen()
-
-    assert cleanup_started.wait(timeout=5)
-    assert tray._icon.visible
-    assert "stop-icon" not in events
-
-    release_cleanup.set()
-    tray._shutdown_thread.join(timeout=5)
-    assert not tray._shutdown_thread.is_alive()
-    tray_loop.join(timeout=5)
-    assert not tray_loop.is_alive()
-    assert events == [
-        "stop-server",
-        "stop-containers",
-        "unlock",
-        "stop-icon",
-    ]
-
-
 def test_smoke_mode_starts_then_stops_without_entering_menu_loop(monkeypatch):
     events = []
 
