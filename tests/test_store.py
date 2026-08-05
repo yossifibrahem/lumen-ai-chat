@@ -8,12 +8,10 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import json
 import pytest
-from pathlib import Path
 
 import store
-from tests.conftest import make_png_b64, make_png_bytes
+from tests.conftest import make_png_b64
 
 
 # ---------------------------------------------------------------------------
@@ -242,6 +240,5 @@ class TestListAll:
 
         store._update_index_for("conv-1", {"title": "One"})
         store._remove_index_entry("conv-1")
-        store._rebuild_index()
 
-        assert lock.entries == 3
+        assert lock.entries == 2

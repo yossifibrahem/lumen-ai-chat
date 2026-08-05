@@ -21,17 +21,30 @@ Lumen is a self-hosted Flask chat UI for OpenAI-compatible chat-completions APIs
 
 The app is intentionally lightweight: no database, no frontend framework, no bundler/build step, and plain browser ES modules served directly by Flask.
 
+## Product and packaging direction
+
+Treat these as release invariants unless the product direction is explicitly changed:
+
+- The end-user UI stays in the default browser. The macOS `.app` is a menu-bar launcher and bundled backend runtime, not an Electron or native chat client.
+- Docker Desktop is the only end-user prerequisite. The `.app` contains Python, backend dependencies, web assets, `Dockerfile.sandbox`, and the minimal pinned computer-use MCP build source.
+- First-run setup builds `lumen-sandbox` locally after user confirmation. Do not add a prebuilt registry-image pull requirement.
+- `agent_tools` is image-managed and reserved. Keep it out of editable `mcp.json`, never infer host mounts from its container path, and retain its normal icon, enable, and approval settings.
+- User state remains in `~/.lumen/`. App replacement and image/container recreation must preserve conversations, settings, memory, and mounted workspaces.
+- The current distribution target is Apple Silicon macOS 14+ with manual DMG updates. Windows packaging and Intel macOS are deferred.
+
 ## Repository map
 
 ```text
 .
 ├── app.py                         # Flask app factory, startup checks, CORS, shutdown cleanup
+├── build_info.py                  # Source/frozen version, image, resource-root, desktop-port metadata
+├── docker_cli.py                  # Finder-safe Docker CLI discovery and invocation
+├── desktop_launcher.py            # macOS rumps menu bar + single-process Waitress launcher
 ├── app_config.py                  # Server-side API provider config and API key storage
 ├── advanced_config.py             # Server-side container/file settings; env-lock support; written by UI
 ├── runtime_requirements.py        # Docker availability + sandbox image checks; streaming build log
 ├── fs_utils.py                    # atomic_replace helper for safe temp-file writes (Windows retry logic)
 ├── docker_path_utils.py           # Cross-platform Docker volume path conversion for Windows host support
-├── routes.py                      # Thin blueprint registration shim — registers five route-group blueprints
 ├── routes_startup.py              # Setup screen, health, Docker/image checks, streaming sandbox build
 ├── routes_conversations.py        # Conversation CRUD, workspace path, container status, danger-delete
 ├── routes_chat.py                 # Streaming, cancel, approve, settings, advanced/container settings, model list
@@ -48,6 +61,10 @@ The app is intentionally lightweight: no database, no frontend framework, no bun
 ├── workspace_service.py           # Workspace listing, reading, upload, download path safety
 ├── store.py                       # Filesystem persistence for conversations/images + cached index
 ├── Dockerfile.sandbox             # Required per-chat sandbox image
+├── requirements-desktop.txt       # Waitress, rumps, and PyInstaller desktop dependencies
+├── packaging/                     # PyInstaller spec, metadata generator, DMG build script
+├── vendor/computer-use-mcp-server # Pinned built-in MCP git submodule
+├── .github/workflows/release.yml  # ARM64 sandbox smoke test and Apple Silicon DMG release pipeline
 ├── gunicorn.conf.py               # Single-worker/threaded production default
 ├── requirements.txt               # Flask, CORS, OpenAI SDK, MCP SDK
 ├── requirements-dev.txt           # Adds pytest and pytest-mock on top of requirements.txt
@@ -133,10 +150,11 @@ Open:
 http://localhost:8080
 ```
 
-Build the required sandbox image before using MCP tools:
+Build the required source-development sandbox image before using MCP tools:
 
 ```bash
-docker build -f Dockerfile.sandbox -t lumen-sandbox .
+git submodule update --init --recursive
+docker build --build-arg LUMEN_SANDBOX_VERSION=0.1.0-dev -f Dockerfile.sandbox -t lumen-sandbox .
 ```
 
 Production-ish entrypoint:
@@ -244,9 +262,8 @@ Owns Docker availability and sandbox image checks. Used by `app.py` at startup a
 Key behavior:
 
 - `check_docker()` — resolves the Docker CLI, then runs a bounded server-version probe to verify the selected Docker context can reach a usable daemon without hanging app startup.
-- `check_sandbox_image()` — verifies the configured image exists locally (`docker image inspect`).
+- `check_sandbox_image()` — verifies the configured image exists locally and its build-version label matches the app.
 - `check_requirements()` — returns the first unmet requirement, or ok.
-- `build_sandbox_image()` — blocking build; returns a `RequirementStatus`.
 - `build_sandbox_image_stream()` — generator that yields `("log", {"line": str})`, `("done", status_dict)`, or `("error", status_dict)` tuples for SSE streaming from `routes_startup.py`.
 - The sandbox image name is read from `advanced_config.load_advanced_config()["sandbox_image"]` so `LUMEN_SANDBOX_IMAGE` and UI changes take effect without code changes.
 
@@ -268,10 +285,6 @@ Key functions:
 
 `mcp_adapters.py` and `container_service.py` use these helpers wherever they build Docker volume specs or rewrite MCP server command arguments.
 
-### `routes.py`
-
-`routes.py` is now a thin registration shim. It imports the five route-group blueprints and exposes them so `app.py` can register them in one call. All streaming state that was previously module-level here now lives in `routes_chat.py`.
-
 ### `routes_startup.py`
 
 Owns all startup and runtime-environment routes. Kept separate from conversation routes because these routes are about the host environment, not user data.
@@ -280,10 +293,9 @@ Key routes:
 - `GET /` — serves the app shell or the setup screen if requirements are unmet
 - `GET /health` — liveness probe for container orchestrators
 - `GET /api/startup/requirements` — current Docker/image requirement status (JSON)
-- `POST /api/startup/build-sandbox-image` — blocking build, returns JSON result
-- `GET /api/startup/build-sandbox-image/stream` — streams `docker build` output as SSE
+- `POST /api/startup/build-sandbox-image/stream` — streams `docker build` output as SSE after same-origin token validation
 
-The SSE stream emits three event types: `log` (one build output line), `done` (build succeeded, data is `RequirementStatus` JSON), and `error` (build failed, data is `RequirementStatus` JSON). The frontend subscribes with `EventSource` and appends lines to the details panel in real time.
+The SSE stream emits three event types: `log` (one build output line), `done` (build succeeded, data is `RequirementStatus` JSON), and `error` (build failed, data is `RequirementStatus` JSON). The frontend reads the authenticated POST response as a stream and appends lines to the details panel in real time. Startup mutations require a short-lived session token and an exact same-loopback-origin request; only one image build may run at a time, and disconnecting the stream terminates its Docker client.
 
 ### `routes_conversations.py`
 
@@ -298,7 +310,7 @@ Conversation update is whitelisted. `PUT /api/conversations/<conv_id>` only acce
 
 ### `routes_chat.py`
 
-Owns streaming and all chat-adjacent routes (160 lines). Module-level streaming state dictionaries live here:
+Owns streaming and all chat-adjacent routes. Module-level streaming state dictionaries live here:
 
 - `_cancel_events`: `stream_id -> threading.Event`
 - `_active_streams`: `stream_id -> replayable stream state`
@@ -310,12 +322,12 @@ Key routes:
 - `POST /api/chat/cancel` — cancel an active stream
 - `POST /api/chat/approve` — approve or deny a pending MCP tool call
 - `GET/POST /api/settings` — read/write server-side API provider config
-- `GET/POST /api/container-settings` — read/write advanced container and file-handling config (alias: `/api/advanced-settings` for backward compatibility)
+- `GET/POST /api/container-settings` — read/write advanced container and file-handling config
 - `GET /api/models` — proxy model-list fetch
 
 ### `routes_mcp.py`
 
-Handles MCP configuration and tool operations (83 lines):
+Handles MCP configuration and tool operations:
 
 - `GET/POST /api/mcp/config` — load/save `mcp.json`
 - `GET /api/mcp/tools` — discover MCP tools from configured servers
@@ -486,7 +498,7 @@ Important safety behaviors:
 - `list_all()` uses a cached in-memory conversation summary index.
 - The cached index is protected by `_index_lock`, a `threading.RLock()`, because threaded Flask/Gunicorn can mutate the index concurrently.
 
-When editing the index, keep lock coverage around `_rebuild_index()`, `_update_index_for()`, `_remove_index_entry()`, and `list_all()` read/copy access.
+When editing the index, keep lock coverage around `_update_index_for()`, `_remove_index_entry()`, and `list_all()` read/copy access.
 
 ## Frontend architecture
 
@@ -573,7 +585,7 @@ Do not assume they have the same indices. Use helper mapping logic when editing/
 
 `mcp.js` handles:
 
-- Loading/saving raw `mcp.json` config.
+- Loading/saving the editable custom-server portion of `mcp.json`.
 - Fetching tools from `/api/mcp/tools`.
 - Caching tools in localStorage.
 - Per-server enable/disable and auto-approve toggles.
@@ -640,14 +652,16 @@ Only use `/workspace/...` links for files that already exist in the active conve
 
 ## MCP config shape
 
-All MCP servers run in the per-conversation container. A typical server configuration:
+All MCP servers run in the per-conversation container. `mcp_service.load_editable_config()` returns custom servers for the settings textarea, while `load_config()` returns the effective configuration with the image-managed `agent_tools` server added. The reserved built-in executes `/opt/lumen/mcp/computer-use/dist/index.js` and must never be converted into a host mount.
+
+A typical custom server configuration:
 
 ```json
 {
   "mcpServers": {
-    "agent_tools": {
-      "command": "node",
-      "args": ["/path/to/file-tools-mcp-server/dist/index.js"]
+    "search": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"]
     }
   }
 }
@@ -670,6 +684,19 @@ With explicit environment variables:
 ```
 
 Server-level UI settings such as enabled, auto-approve, and icon are not stored in `mcp.json`; they are stored in browser localStorage under `lumen_mcp_server_settings`.
+
+The reserved `agent_tools` key is filtered from editable configuration in memory and always replaced by `BUILTIN_SERVER_CONFIG` in effective configuration. Loading configuration does not rewrite or back up the user's file. Saves that attempt to override `agent_tools` return a validation error.
+
+## macOS desktop and releases
+
+- `desktop_launcher.py` is a menu-bar process with no native chat window. It serves one Waitress process on `127.0.0.1:38492`, opens the default browser, holds an advisory single-instance lock, and exposes Open, Docker Status, Logs, and Quit actions.
+- `build_info.resource_root()` is the only supported way to locate bundled templates/static assets and the first-run Docker build context in a frozen app. Both source and packaged runs default to `lumen-sandbox`.
+- `docker_cli.py` resolves Docker through the shell plus standard Docker Desktop/Homebrew locations because Finder applications inherit a minimal PATH. Container and requirement modules must use this helper rather than invoking a literal `docker` executable.
+- `packaging/build_macos.sh` creates an Apple Silicon, macOS 14+ `.app` and DMG. With no `MACOS_SIGN_IDENTITY` it ad-hoc signs; the release workflow can import signing credentials and notarize later.
+- The menu-bar item uses the bundled Lumen SVG artwork. Docker shutdown calls are bounded so an unresponsive daemon cannot prevent the app from quitting.
+- The packaged setup page asks before starting Docker Desktop and before locally building the tools image. It streams Docker's base-layer, dependency, and MCP compilation progress. A container image/version-label or underlying image-ID mismatch triggers recreation of the container only; mounted workspace data remains on the host.
+- Build metadata supplies both the user-facing application version and Apple-compatible `CFBundleShortVersionString`/`CFBundleVersion` values. GitHub Actions uses its monotonic run number for release builds.
+- `Dockerfile.sandbox` starts from `ubuntu:24.04`, installs Node.js inside Ubuntu, builds the MCP source from the pinned submodule commit in the same image, removes development dependencies, and overlays explicitly pinned compatible runtime dependency fixes. Keep the four-tool container smoke test and runtime audit clean when changing those pins.
 
 ## Development conventions
 
@@ -779,9 +806,9 @@ Long-term fix: move cancellation and stream event delivery to Redis/pub-sub or a
 
 The app is local-first and self-hosted. Do not expose it publicly without adding authentication, stricter CORS, rate limiting, and stronger secret handling.
 
-### 3. No database or migration layer
+### 3. No database or persistent-data upgrade layer
 
-Persistent JSON shapes should remain backward-compatible, or migration code should be added deliberately.
+Persistent JSON shapes must remain stable between releases.
 
 ## Safe editing advice for agents
 
@@ -791,7 +818,7 @@ Before editing:
 2. Read the backend service that owns the behavior, not just the route.
 3. Read the corresponding frontend module; many features span backend, JS state, and renderer code.
 4. Search for the event/type/string you plan to modify across the whole repo.
-5. Preserve persistent JSON shapes unless you add migration/backward-compatible handling.
+5. Preserve persistent JSON shapes.
 6. Run the relevant tests before and after the change.
 
 When changing chat streaming:
@@ -852,7 +879,7 @@ find . -maxdepth 1 -name 'test_*.py' -print
 ## Current non-goals / absent pieces
 
 - No database layer
-- No formal migration system
+- No persistent-data upgrade layer
 - No frontend package/build system
 - No authentication/user accounts
 - No shared backend state for multi-worker active stream reattach

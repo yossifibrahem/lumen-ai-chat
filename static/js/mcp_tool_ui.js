@@ -21,11 +21,6 @@ export function getToolUsingLabel(toolName) {
   return adapter?.usingLabel ?? '';
 }
 
-export function getToolMetaText(toolName, args = {}) {
-  const adapter = adapterFor(toolName);
-  return adapter?.getMetaText?.(args) ?? '';
-}
-
 function normalizeBlockText(value) {
   return String(value ?? '')
     .replace(/\r\n?/g, '\n')
@@ -39,31 +34,18 @@ function formatToolValue(value) {
   return normalizeBlockText(value);
 }
 
-export function visibleToolArgs(toolNameOrArgs, args) {
-  // Support legacy two-arg call (toolName, args) and original one-arg call (args).
-  let toolName, rawArgs;
-  if (typeof toolNameOrArgs === 'string') {
-    toolName = toolNameOrArgs;
-    rawArgs  = args ?? {};
-  } else {
-    toolName = null;
-    rawArgs  = toolNameOrArgs ?? {};
-  }
-
+export function visibleToolArgs(toolName, rawArgs = {}) {
   if (!rawArgs || typeof rawArgs !== 'object') return {};
 
   // Strip whichever arg is used as the UI label (default: 'description').
-  const adapter = toolName ? adapterFor(toolName) : null;
+  const adapter = adapterFor(toolName);
   const labelArg = adapter?.labelArg ?? 'description';
   const withoutDescription = Object.fromEntries(
     Object.entries(rawArgs).filter(([key]) => key !== labelArg)
   );
 
   // Delegate to the adapter's filterArgs if one is registered.
-  if (toolName) {
-    const adapter = adapterFor(toolName);
-    if (adapter?.filterArgs) return adapter.filterArgs(withoutDescription);
-  }
+  if (adapter?.filterArgs) return adapter.filterArgs(withoutDescription);
 
   return withoutDescription;
 }

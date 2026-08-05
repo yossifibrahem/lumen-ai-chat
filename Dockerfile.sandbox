@@ -1,20 +1,22 @@
-# Lumen per-chat MCP sandbox image
-# Build once per machine, or whenever this file changes:
-#   docker build -f Dockerfile.sandbox -t lumen-sandbox .
+# Lumen per-chat MCP sandbox image.
 #
-# Design goals:
-#   - Support Node.js AND Python MCP servers equally (neither is a guest)
-#   - Provide a capable bash_tool environment in /workspace
-#   - Stay lean — no GUI, no media, no document processing
-#   - Be extensible: npx, uvx, and pip work out of the box so most MCP
-#     servers can be added without rebuilding the image
+# First-run/developer build:
+#   docker build --build-arg LUMEN_SANDBOX_VERSION=0.1.0-dev \
+#     -f Dockerfile.sandbox -t lumen-sandbox .
 
 FROM ubuntu:24.04
+
+ARG LUMEN_SANDBOX_VERSION=dev
+LABEL org.opencontainers.image.title="Lumen MCP Sandbox" \
+      org.opencontainers.image.source="https://github.com/yossifibrahem/lumen-ai-chat" \
+      org.opencontainers.image.version="${LUMEN_SANDBOX_VERSION}" \
+      com.lumen.sandbox.version="${LUMEN_SANDBOX_VERSION}"
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
 
-# ── Node.js 22 via NodeSource ─────────────────────────────────────────────────
+# Install Node.js inside Ubuntu for both MCP compilation and runtime. It also
+# remains available for additional user-configured Node MCP servers.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates curl gnupg \
     && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
@@ -25,64 +27,74 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get update && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-# ── System packages ───────────────────────────────────────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    # Core shell utilities
     bash \
     bc \
+    build-essential \
     coreutils \
     diffutils \
-    findutils \
+    dnsutils \
     file \
+    findutils \
     git \
     grep \
     gzip \
+    iputils-ping \
     jq \
     less \
     make \
+    netcat-openbsd \
+    openssl \
     patch \
+    pkg-config \
     procps \
+    python3 \
+    python3-pip \
+    python3-venv \
     sed \
     tar \
     unzip \
     wget \
     xz-utils \
     zip \
-    # Build tools (needed by npm native addons and pip C-extension packages)
-    build-essential \
-    pkg-config \
-    # Python 3.12
-    python3 \
-    python3-pip \
-    python3-venv \
-    # Networking
-    dnsutils \
-    iputils-ping \
-    netcat-openbsd \
-    openssl \
     && rm -rf /var/lib/apt/lists/*
 
-
-# ── create a virtual environment and activate it system-wide ─────────────────
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# ── uv — fast Python package installer (enables uvx for Python MCP servers) ──
-RUN pip3 install --no-cache-dir uv
+RUN pip3 install --no-cache-dir uv \
+    && python -m pip install --no-cache-dir \
+        beautifulsoup4 \
+        httpx \
+        lxml \
+        openpyxl \
+        pandas \
+        python-dotenv \
+        requests
 
-# ── Common Python packages useful in bash_tool sessions ──────────────────────
-RUN python -m pip install --no-cache-dir \
-    requests \
-    httpx \
-    beautifulsoup4 \
-    lxml \
-    pandas \
-    openpyxl \
-    python-dotenv
+RUN npm install -g mcp-remote@0.1.38 \
+    && npm cache clean --force
 
-# ── npm: pre-install mcp-remote so the exa server starts without a download ──
-RUN npm install -g mcp-remote
+# Compile the bundled, pinned MCP source directly inside Ubuntu. npm's
+# development dependencies and cache are created and removed in this same
+# layer, so only the compiled server and production dependencies remain.
+COPY vendor/computer-use-mcp-server/package.json \
+     vendor/computer-use-mcp-server/package-lock.json \
+     vendor/computer-use-mcp-server/tsconfig.json \
+     /tmp/computer-use-mcp/
+COPY vendor/computer-use-mcp-server/src /tmp/computer-use-mcp/src
+RUN cd /tmp/computer-use-mcp \
+    && npm ci \
+    && npm run build \
+    && npm prune --omit=dev \
+    && npm install --no-save --package-lock=false --omit=dev \
+        @modelcontextprotocol/sdk@1.30.0 \
+        express@4.22.2 \
+    && mkdir -p /opt/lumen/mcp/computer-use \
+    && cp -R dist node_modules package.json /opt/lumen/mcp/computer-use/ \
+    && cd / \
+    && rm -rf /tmp/computer-use-mcp \
+    && npm cache clean --force
 
-# ── Working directory ─────────────────────────────────────────────────────────
 WORKDIR /workspace
 CMD ["sleep", "infinity"]

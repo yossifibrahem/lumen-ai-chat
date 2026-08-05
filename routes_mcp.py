@@ -18,7 +18,7 @@ def _body() -> dict:
 
 @blueprint.route("/api/mcp/config", methods=["GET"])
 def get_mcp_config():
-    return jsonify(mcp_service.load_config())
+    return jsonify(mcp_service.load_editable_config())
 
 
 @blueprint.route("/api/mcp/config", methods=["POST"])

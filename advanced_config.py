@@ -17,6 +17,7 @@ import time
 import uuid
 from pathlib import Path
 
+import build_info
 from fs_utils import atomic_replace
 
 CONFIG_DIR = Path.home() / ".lumen"
@@ -42,7 +43,7 @@ _INT_KEYS: frozenset[str] = frozenset({
 
 # Hardcoded defaults (lowest priority).
 _HARDCODED_DEFAULTS: dict = {
-    "sandbox_image":          "lumen-sandbox",
+    "sandbox_image":          build_info.DEFAULT_SANDBOX_IMAGE,
     "container_memory":       "512m",
     "container_cpus":         "1",
     "container_network":      "bridge",

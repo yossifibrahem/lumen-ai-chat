@@ -198,10 +198,6 @@ registerAdapter({
   usingLabel: 'Searching the web',
   labelArg: 'query',
 
-  getMetaText(args) {
-    return args.query ? String(args.query) : '';
-  },
-
   renderResult(result) {
     return renderCards(result, false);
   },
@@ -212,19 +208,7 @@ registerAdapter({
 
   usingLabel: 'Fetching pages',
 
-  getMetaText(args) {
-    const list = Array.isArray(args.urls)
-      ? args.urls
-      : (typeof args.urls === 'string' ? tryParseUrls(args.urls) : []);
-    if (!list.length) return '';
-    return list.length === 1 ? String(list[0]) : `${list[0]}  +${list.length - 1} more`;
-  },
-
   renderResult(result) {
     return renderCards(result, true);
   },
 });
-
-function tryParseUrls(str) {
-  try { return JSON.parse(str); } catch { return []; }
-}

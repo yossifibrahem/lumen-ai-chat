@@ -1,0 +1,3 @@
+[submodule "vendor/computer-use-mcp-server"]
+	path = vendor/computer-use-mcp-server
+	url = https://github.com/yossifibrahem/computer-use-mcp-server.git

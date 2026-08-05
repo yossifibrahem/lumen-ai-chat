@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import json
 import logging
 import os
@@ -9,7 +10,6 @@ import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -29,18 +29,41 @@ _config_cache_path: Path | None = None
 _config_cache_lock = threading.Lock()
 _CONFIG_TTL_SECONDS = float(os.getenv("LUMEN_MCP_CONFIG_CACHE_TTL", "5"))
 
+BUILTIN_SERVER_NAME = "agent_tools"
+BUILTIN_SERVER_CONFIG = {
+    "command": "node",
+    "args": ["/opt/lumen/mcp/computer-use/dist/index.js"],
+    "_lumen_builtin": True,
+}
 
-def _mcp_timeout_delta() -> timedelta:
+
+def _mcp_timeout_seconds() -> float:
     try:
         value = float(os.getenv("LUMEN_MCP_TOOL_TIMEOUT", "120"))
     except (TypeError, ValueError):
         value = 120.0
-    return timedelta(seconds=value if value > 0 else 120.0)
+    return value if value > 0 else 120.0
+
+
+def _tool_input_schema(tool: Any) -> dict:
+    """Read a tool schema through either MCP model field spelling."""
+    schema = getattr(tool, "inputSchema", None)
+    if not schema:
+        schema = getattr(tool, "input_schema", None)
+    return schema if isinstance(schema, dict) else {}
 
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-def load_config(*, refresh: bool = False) -> dict:
+def _write_config_file(config: dict) -> None:
+    MCP_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = MCP_CONFIG_FILE.with_suffix(f".tmp-{uuid.uuid4().hex}")
+    tmp_path.write_text(json.dumps(config, indent=2))
+    atomic_replace(tmp_path, MCP_CONFIG_FILE)
+
+
+def load_editable_config(*, refresh: bool = False) -> dict:
+    """Load only user-editable MCP servers from disk."""
     global _config_cache, _config_cache_at, _config_cache_path
     now = time.monotonic()
     with _config_cache_lock:
@@ -63,12 +86,25 @@ def load_config(*, refresh: bool = False) -> dict:
 
     if not isinstance(config, dict) or not isinstance(config.get("mcpServers", {}), dict):
         config = {"mcpServers": {}}
+    else:
+        config.setdefault("mcpServers", {})
+        # The reserved built-in is never editable and disk content cannot
+        # override it. Filtering does not rewrite the user's file.
+        config["mcpServers"].pop(BUILTIN_SERVER_NAME, None)
 
     with _config_cache_lock:
         _config_cache = config
         _config_cache_at = time.monotonic()
         _config_cache_path = MCP_CONFIG_FILE
         return config
+
+
+def load_config(*, refresh: bool = False) -> dict:
+    """Return the effective config: editable servers plus Lumen built-ins."""
+    config = copy.deepcopy(load_editable_config(refresh=refresh))
+    servers = config.setdefault("mcpServers", {})
+    servers[BUILTIN_SERVER_NAME] = copy.deepcopy(BUILTIN_SERVER_CONFIG)
+    return config
 
 
 def save_config(config: dict) -> None:
@@ -78,12 +114,15 @@ def save_config(config: dict) -> None:
     config.setdefault("mcpServers", {})
     if not isinstance(config["mcpServers"], dict):
         raise ValueError("mcpServers must be a JSON object")
+    if BUILTIN_SERVER_NAME in config["mcpServers"]:
+        raise ValueError(
+            f"MCP server '{BUILTIN_SERVER_NAME}' is built into Lumen and cannot be overridden"
+        )
 
-    tmp_path = MCP_CONFIG_FILE.with_suffix(f".tmp-{uuid.uuid4().hex}")
-    tmp_path.write_text(json.dumps(config, indent=2))
+    saved = copy.deepcopy(config)
     with _config_cache_lock:
-        atomic_replace(tmp_path, MCP_CONFIG_FILE)
-        _config_cache = config
+        _write_config_file(saved)
+        _config_cache = saved
         _config_cache_at = time.monotonic()
         _config_cache_path = MCP_CONFIG_FILE
 
@@ -151,7 +190,7 @@ async def fetch_tools(server_name: str, server_config: dict, conv_id: str = "") 
             async with ClientSession(
                 reader,
                 writer,
-                read_timeout_seconds=_mcp_timeout_delta(),
+                read_timeout_seconds=_mcp_timeout_seconds(),
             ) as session:
                 await session.initialize()
                 for tool in (await session.list_tools()).tools:
@@ -159,10 +198,10 @@ async def fetch_tools(server_name: str, server_config: dict, conv_id: str = "") 
                         "server":      server_name,
                         "name":        tool.name,
                         "description": tool.description or "",
-                        "inputSchema": getattr(tool, "inputSchema", {}),
+                        "inputSchema": _tool_input_schema(tool),
                     })
-    except Exception as exc:
-        log.warning("[mcp] failed to list tools from %r: %s", server_name, exc)
+    except Exception:
+        log.exception("[mcp] failed to list tools from %r", server_name)
     return tools
 
 
@@ -177,7 +216,7 @@ async def invoke_tool(server_name: str, server_config: dict, tool_name: str, arg
             async with ClientSession(
                 reader,
                 writer,
-                read_timeout_seconds=_mcp_timeout_delta(),
+                read_timeout_seconds=_mcp_timeout_seconds(),
             ) as session:
                 await session.initialize()
                 result = await session.call_tool(tool_name, arguments)

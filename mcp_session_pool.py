@@ -27,7 +27,6 @@ import logging
 import os
 import threading
 from concurrent.futures import TimeoutError as FutureTimeoutError
-from datetime import timedelta
 
 log = logging.getLogger(__name__)
 
@@ -130,7 +129,7 @@ class McpSessionPool:
         session_cm = ClientSession(
             reader,
             writer,
-            read_timeout_seconds=timedelta(seconds=self.tool_timeout),
+            read_timeout_seconds=self.tool_timeout,
         )
         session = await session_cm.__aenter__()
         await session.initialize()

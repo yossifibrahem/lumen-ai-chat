@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="lumen-startup-token" content="{{ startup_token }}" />
 <title>Lumen · Setup Required</title>
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml" />
 <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml" />
@@ -125,7 +126,8 @@
         <pre id="details"{% if not status.details %} hidden{% endif %}>{{ status.details or '' }}</pre>
       </div>
       <div class="setup-actions">
-        <button id="build" class="btn-secondary" type="button">Build Sandbox Image</button>
+        <button id="start-docker" class="btn-secondary" type="button">Start Docker</button>
+        <button id="build" class="btn-primary" type="button">Install Lumen Tools</button>
         <button id="retry" class="btn-primary" type="button">Retry</button>
       </div>
     </section>
@@ -138,6 +140,9 @@ const message = document.getElementById('message');
 const details = document.getElementById('details');
 const retry = document.getElementById('retry');
 const build = document.getElementById('build');
+const startDocker = document.getElementById('start-docker');
+const startupToken = document.querySelector('meta[name="lumen-startup-token"]').content;
+const startupHeaders = { 'X-Lumen-Startup-Token': startupToken };
 
 function render(status) {
   if (status.ok) return location.reload();
@@ -146,6 +151,7 @@ function render(status) {
   details.textContent = status.details || '';
   details.hidden = !status.details;
   build.hidden = status.action !== 'build';
+  startDocker.hidden = status.action !== 'start_docker';
 }
 
 async function check() {
@@ -153,44 +159,114 @@ async function check() {
   render(await response.json());
 }
 
-function buildImage() {
+async function startDockerDesktop() {
+  startDocker.disabled = retry.disabled = true;
+  startDocker.textContent = 'Starting Docker…';
+  try {
+    const response = await fetch('/api/startup/start-docker', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: startupHeaders,
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || payload.message || 'Docker could not be started');
+    render(payload);
+    for (let attempt = 0; attempt < 80; attempt += 1) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      const statusResponse = await fetch('/api/startup/requirements');
+      const status = await statusResponse.json();
+      render(status);
+      if (status.ok || status.code !== 'docker_not_running') break;
+    }
+  } catch (error) {
+    render({
+      title: 'Docker could not be started',
+      message: 'Open Docker Desktop manually, then click Retry.',
+      details: error.message,
+      action: 'retry',
+    });
+  } finally {
+    startDocker.disabled = retry.disabled = false;
+    startDocker.textContent = 'Start Docker';
+  }
+}
+
+function processBuildEvent(block) {
+  let eventType = 'message';
+  const dataLines = [];
+  for (const line of block.split(/\r?\n/)) {
+    if (line.startsWith('event:')) eventType = line.slice(6).trim();
+    if (line.startsWith('data:')) dataLines.push(line.slice(5).trimStart());
+  }
+  if (!dataLines.length) return false;
+
+  const payload = JSON.parse(dataLines.join('\n'));
+  if (eventType === 'log') {
+    details.textContent += (payload.line || '') + '\n';
+    details.scrollTop = details.scrollHeight;
+    return false;
+  }
+  if (eventType === 'done' || eventType === 'error') {
+    render(payload);
+    return true;
+  }
+  return false;
+}
+
+async function buildImage() {
   build.disabled = retry.disabled = true;
-  build.textContent = 'Building...';
+  build.textContent = 'Installing…';
   details.hidden = false;
   details.textContent = '';
 
-  const es = new EventSource('/api/startup/build-sandbox-image/stream');
-
-  es.addEventListener('log', e => {
-    const line = JSON.parse(e.data).line;
-    details.textContent += line + '\n';
-    details.scrollTop = details.scrollHeight;
-  });
-
-  es.addEventListener('done', e => {
-    es.close();
-    build.disabled = retry.disabled = false;
-    build.textContent = 'Build Sandbox Image';
-    render(JSON.parse(e.data));
-  });
-
-  es.addEventListener('error', e => {
-    es.close();
-    build.disabled = retry.disabled = false;
-    build.textContent = 'Build Sandbox Image';
-    // e.data is set on application-level error events; absent on transport errors
-    if (e.data) {
-      render(JSON.parse(e.data));
-    } else {
-      title.textContent = 'Build failed';
-      message.textContent = 'Connection to server lost. Check the terminal for details.';
+  try {
+    const response = await fetch('/api/startup/build-sandbox-image/stream', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        ...startupHeaders,
+        Accept: 'text/event-stream',
+      },
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.error || 'Lumen Tools installation was refused');
     }
-  });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let terminalEvent = false;
+    while (true) {
+      const { value, done } = await reader.read();
+      buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+      let boundary;
+      while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+        terminalEvent = processBuildEvent(buffer.slice(0, boundary)) || terminalEvent;
+        buffer = buffer.slice(boundary + 2);
+      }
+      if (done) break;
+    }
+    if (buffer.trim()) terminalEvent = processBuildEvent(buffer) || terminalEvent;
+    if (!terminalEvent) throw new Error('The installation stream ended unexpectedly');
+  } catch (error) {
+    render({
+      title: 'Build failed',
+      message: 'Lumen Tools could not be installed. Reload this page before trying again.',
+      details: error.message,
+      action: 'retry',
+    });
+  } finally {
+    build.disabled = retry.disabled = false;
+    build.textContent = 'Install Lumen Tools';
+  }
 }
 
 retry.addEventListener('click', check);
 build.addEventListener('click', buildImage);
+startDocker.addEventListener('click', startDockerDesktop);
 build.hidden = card.dataset.action !== 'build';
+startDocker.hidden = card.dataset.action !== 'start_docker';
 </script>
 </body>
 </html>

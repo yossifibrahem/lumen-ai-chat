@@ -12,8 +12,7 @@ from __future__ import annotations
 
 import json
 import threading
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import streaming
 
@@ -21,27 +20,6 @@ import streaming
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def _parse_events(raw_events: list[dict | str]) -> list[dict]:
-    """Normalize typed stream events, with backwards support for SSE strings."""
-    events = []
-    for raw in raw_events:
-        if isinstance(raw, dict):
-            events.append(raw)
-            continue
-        raw = raw.strip()
-        if not raw.startswith("data:"):
-            continue
-        payload = raw[len("data:"):].strip()
-        if payload == "[DONE]":
-            events.append({"type": "done"})
-        else:
-            try:
-                events.append(json.loads(payload))
-            except Exception:
-                pass
-    return events
-
 
 def _make_delta(
     *,
@@ -94,14 +72,13 @@ def _run_stream(chunks: list, cancel: bool = False) -> list[dict]:
     mock_stream.close = MagicMock()
     client.chat.completions.create.return_value = mock_stream
 
-    raw = list(streaming.stream_chat_completion(
+    return list(streaming.stream_chat_completion(
         client=client,
         model="gpt-4o",
         messages=[{"role": "user", "content": "hi"}],
         tools=[],
         cancel_event=cancel_event,
     ))
-    return _parse_events(raw)
 
 
 # ---------------------------------------------------------------------------
@@ -280,7 +257,7 @@ class TestCancellation:
         raw = list(streaming.stream_chat_completion(
             client, "gpt-4o", [], [], cancel_event
         ))
-        events = _parse_events(raw)
+        events = raw
 
         # The cancel fires after "first", so "second" might or might not appear,
         # but close() must have been called.
@@ -301,7 +278,7 @@ class TestErrorHandling:
         raw = list(streaming.stream_chat_completion(
             client, "gpt-4o", [], [], cancel_event
         ))
-        events = _parse_events(raw)
+        events = raw
 
         error_events = [e for e in events if e.get("type") == "error"]
         assert len(error_events) == 1
@@ -315,7 +292,7 @@ class TestErrorHandling:
         raw = list(streaming.stream_chat_completion(
             client, "gpt-4o", [], [], cancel_event
         ))
-        events = _parse_events(raw)
+        events = raw
         types = [e["type"] for e in events]
         assert "error" in types
         assert "done" in types

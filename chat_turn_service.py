@@ -51,7 +51,7 @@ def _inject_memory(api_messages: list) -> list:
 
 Publish = Callable[[dict], None]
 
-# Re-export resolve_tool_approval so routes.py keeps its existing import path.
+# Keep approval resolution on the service API used by the chat routes.
 resolve_tool_approval = tool_approval.resolve_tool_approval
 
 

@@ -94,7 +94,6 @@ export async function sendMessage(userText, deps) {
     ? {
         text: textToSend,
         attachments: displayAttachments,
-        // Legacy fields keep older renderer/history paths working.
         imageUrls: imageAttachments.map(entry => entry.url),
         files: uploadedFiles,
       }

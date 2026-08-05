@@ -22,9 +22,7 @@ module directly, matching their new home after the split.
 from __future__ import annotations
 
 import json
-import threading
-import time
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -37,7 +35,7 @@ import title_service
 # ---------------------------------------------------------------------------
 
 class TestParseStreamPayload:
-    """Streaming internals are dict-based; SSE encoding happens only in routes.py."""
+    """Streaming internals are dict-based; SSE encoding happens only at the route boundary."""
 
     def test_dict_event_is_returned(self):
         payload = {"type": "text", "content": "hi"}
@@ -307,4 +305,3 @@ class TestTurnRecorder:
             recorder.save([], force=True)
         _, title_arg, *_ = mock_save.call_args.args
         assert title_arg == "New Title"
-

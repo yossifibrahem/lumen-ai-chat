@@ -3,4 +3,9 @@ conversations
 mcp.json
 __pycache__
 .venv
+.venv312/
+.python-build/
 test.md
+build/
+dist/
+*.spec.bak

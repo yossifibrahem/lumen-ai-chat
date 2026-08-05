@@ -2,16 +2,19 @@
 from __future__ import annotations
 
 import logging
-import shutil
 import subprocess
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
 import advanced_config
+import build_info
+import docker_cli
 
 log = logging.getLogger(__name__)
-PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = build_info.resource_root()
 DOCKER_PROBE_TIMEOUT_SECONDS = 5
+_SANDBOX_BUILD_LOCK = threading.Lock()
 
 
 @dataclass(frozen=True)
@@ -48,13 +51,8 @@ def _run(
     cwd: Path | None = None,
     timeout: float | None = None,
 ) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        args,
-        capture_output=True,
-        text=True,
-        cwd=cwd,
-        timeout=timeout,
-    )
+    docker_args = args[1:] if args and args[0] == "docker" else args
+    return docker_cli.run(docker_args, cwd=cwd, timeout=timeout)
 
 
 def _docker_unavailable(image: str, details: str) -> RequirementStatus:
@@ -62,7 +60,7 @@ def _docker_unavailable(image: str, details: str) -> RequirementStatus:
         ok=False,
         code="docker_unavailable",
         title="Docker is not available",
-        message="Install Docker and ensure the docker command is on PATH, then click Retry.",
+        message="Install Docker Desktop, then return to Lumen and click Retry.",
         action="retry",
         image=image,
         details=details,
@@ -78,13 +76,13 @@ def check_docker() -> RequirementStatus:
     Docker Desktop or remote context from hanging app startup indefinitely.
     """
     image = _image_name()
-    docker = shutil.which("docker")
+    docker = docker_cli.resolve()
     if docker is None:
         return _docker_unavailable(image, "The docker executable was not found on PATH.")
 
     try:
         result = _run(
-            [docker, "version", "--format", "{{.Server.Version}}"],
+            ["version", "--format", "{{.Server.Version}}"],
             timeout=DOCKER_PROBE_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired:
@@ -101,12 +99,17 @@ def check_docker() -> RequirementStatus:
         return _docker_unavailable(image, str(exc))
 
     if result.returncode != 0:
+        can_start = docker_cli.docker_desktop_installed()
         return RequirementStatus(
             ok=False,
             code="docker_not_running",
             title="Docker is not ready",
-            message="Start Docker and make sure this user can access it, then click Retry.",
-            action="retry",
+            message=(
+                "Docker Desktop is installed but is not running. Click Start Docker."
+                if can_start
+                else "Start Docker and make sure this user can access it, then click Retry."
+            ),
+            action="start_docker" if can_start else "retry",
             image=image,
             details=(result.stderr or result.stdout).strip(),
         )
@@ -128,16 +131,41 @@ def check_sandbox_image() -> RequirementStatus:
     if not docker_status.ok:
         return docker_status
 
-    result = _run(["docker", "image", "inspect", image])
+    result = _run(["image", "inspect", image])
     if result.returncode != 0:
         return RequirementStatus(
             ok=False,
             code="sandbox_image_missing",
-            title="The Lumen sandbox image has not been built",
-            message="Click Build Sandbox Image.",
+            title="Lumen tools need to be installed",
+            message=(
+                "Click Install Lumen Tools. Docker will download the required "
+                "components and build the sandbox on this device."
+            ),
             action="build",
             image=image,
             details=(result.stderr or result.stdout).strip(),
+        )
+
+    version_result = _run([
+        "image",
+        "inspect",
+        "--format",
+        f'{{{{index .Config.Labels "{build_info.CONTAINER_VERSION_LABEL}"}}}}',
+        image,
+    ])
+    image_version = version_result.stdout.strip() if version_result.returncode == 0 else ""
+    if image_version != build_info.APP_VERSION:
+        return RequirementStatus(
+            ok=False,
+            code="sandbox_image_outdated",
+            title="Lumen tools need to be updated",
+            message="Click Install Lumen Tools to rebuild them for this version of Lumen.",
+            action="build",
+            image=image,
+            details=(
+                f"Installed tools version: {image_version or 'unknown'}\n"
+                f"Required tools version: {build_info.APP_VERSION}"
+            ),
         )
 
     return RequirementStatus(
@@ -155,29 +183,6 @@ def check_requirements() -> RequirementStatus:
     return check_sandbox_image()
 
 
-def build_sandbox_image() -> RequirementStatus:
-    """Build the configured Lumen sandbox image from Dockerfile.sandbox."""
-    docker_status = check_docker()
-    if not docker_status.ok:
-        return docker_status
-
-    image = _image_name()
-    result = _run(["docker", "build", "-f", "Dockerfile.sandbox", "-t", image, "."], cwd=PROJECT_ROOT)
-    if result.returncode != 0:
-        return RequirementStatus(
-            ok=False,
-            code="sandbox_image_build_failed",
-            title="Sandbox image build failed",
-            message="The sandbox image could not be built. Check the details below, then try again.",
-            action="build",
-            image=image,
-            details=(result.stderr or result.stdout).strip(),
-        )
-
-    log.info("[startup] sandbox image '%s' built successfully", image)
-    return check_requirements()
-
-
 def build_sandbox_image_stream():
     """Stream docker build output as (event, data) tuples for SSE.
 
@@ -186,53 +191,119 @@ def build_sandbox_image_stream():
         ("done",  RequirementStatus.as_dict())  – build succeeded
         ("error", RequirementStatus.as_dict())  – build failed
     """
-    docker_status = check_docker()
-    if not docker_status.ok:
-        yield "error", docker_status.as_dict()
-        return
-
-    image = _image_name()
-    cmd = ["docker", "build", "--progress=plain", "-f", "Dockerfile.sandbox", "-t", image, "."]
-
-    try:
-        proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            cwd=PROJECT_ROOT,
-        )
-    except FileNotFoundError as exc:
+    if not _SANDBOX_BUILD_LOCK.acquire(blocking=False):
         yield "error", RequirementStatus(
             ok=False,
-            code="docker_unavailable",
-            title="Docker is not available",
-            message="Please install/start Docker, then try again.",
+            code="sandbox_image_build_in_progress",
+            title="Lumen tools are already being installed",
+            message="Wait for the current installation to finish, then click Retry.",
+            action="retry",
+            image=_image_name(),
+        ).as_dict()
+        return
+
+    proc = None
+    try:
+        initial_status = check_requirements()
+        if initial_status.ok:
+            yield "done", initial_status.as_dict()
+            return
+        if initial_status.code not in {"sandbox_image_missing", "sandbox_image_outdated"}:
+            yield "error", initial_status.as_dict()
+            return
+
+        image = _image_name()
+        cmd = [
+            "build",
+            "--progress=plain",
+            "--build-arg", f"LUMEN_SANDBOX_VERSION={build_info.APP_VERSION}",
+            "-f", "Dockerfile.sandbox",
+            "-t", image,
+            ".",
+        ]
+
+        try:
+            proc = docker_cli.popen(cmd, cwd=PROJECT_ROOT)
+        except OSError as exc:
+            yield "error", RequirementStatus(
+                ok=False,
+                code="docker_unavailable",
+                title="Docker is not available",
+                message="Please install/start Docker, then try again.",
+                action="retry",
+                image=image,
+                details=str(exc),
+            ).as_dict()
+            return
+
+        output_lines: list[str] = []
+        if proc.stdout is None:
+            raise RuntimeError("Docker build output stream was not created")
+        for line in proc.stdout:
+            line = line.rstrip("\n")
+            output_lines.append(line)
+            yield "log", {"line": line}
+
+        proc.wait()
+
+        if proc.returncode != 0:
+            yield "error", RequirementStatus(
+                ok=False,
+                code="sandbox_image_build_failed",
+                title="Sandbox image build failed",
+                message="The sandbox image could not be built. Check the details below, then try again.",
+                action="build",
+                image=image,
+                details="\n".join(output_lines[-50:]),
+            ).as_dict()
+            return
+
+        log.info("[startup] sandbox image '%s' built successfully", image)
+        yield "done", check_requirements().as_dict()
+    finally:
+        if proc is not None and proc.poll() is None:
+            log.warning("[startup] sandbox installation stream ended early; terminating docker build")
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=5)
+        if proc is not None and proc.stdout is not None:
+            proc.stdout.close()
+        _SANDBOX_BUILD_LOCK.release()
+
+
+def start_docker_desktop() -> RequirementStatus:
+    """Launch Docker Desktop after an explicit user action."""
+    image = _image_name()
+    try:
+        result = docker_cli.start_docker_desktop()
+    except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
+        return RequirementStatus(
+            ok=False,
+            code="docker_start_failed",
+            title="Docker could not be started",
+            message="Open Docker Desktop manually, then click Retry.",
             action="retry",
             image=image,
             details=str(exc),
-        ).as_dict()
-        return
-
-    output_lines: list[str] = []
-    for line in proc.stdout:
-        line = line.rstrip("\n")
-        output_lines.append(line)
-        yield "log", {"line": line}
-
-    proc.wait()
-
-    if proc.returncode != 0:
-        yield "error", RequirementStatus(
+        )
+    if result.returncode != 0:
+        return RequirementStatus(
             ok=False,
-            code="sandbox_image_build_failed",
-            title="Sandbox image build failed",
-            message="The sandbox image could not be built. Check the details below, then try again.",
-            action="build",
+            code="docker_start_failed",
+            title="Docker could not be started",
+            message="Open Docker Desktop manually, then click Retry.",
+            action="retry",
             image=image,
-            details="\n".join(output_lines[-50:]),
-        ).as_dict()
-        return
-
-    log.info("[startup] sandbox image '%s' built successfully", image)
-    yield "done", check_requirements().as_dict()
+            details=(result.stderr or result.stdout).strip(),
+        )
+    return RequirementStatus(
+        ok=False,
+        code="docker_starting",
+        title="Docker is starting",
+        message="Lumen is waiting for Docker Desktop to become ready.",
+        action="retry",
+        image=image,
+    )

@@ -66,13 +66,6 @@ def _build_index_summaries() -> list[dict]:
     return summaries
 
 
-def _rebuild_index() -> None:
-    global _index
-    summaries = _build_index_summaries()
-    with _index_lock:
-        _index = summaries
-
-
 def _update_index_for(conv_id: str, data: dict) -> None:
     global _index
     with _index_lock:

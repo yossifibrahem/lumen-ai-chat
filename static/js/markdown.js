@@ -138,16 +138,6 @@ function renderMarkdown(text) {
   return DOMPurify.sanitize(html, PURIFY_CONFIG);
 }
 
-function longestRun(text, char) {
-  return Math.max(0, ...[...String(text || '').matchAll(new RegExp(`${char}+`, 'g'))].map(match => match[0].length));
-}
-
-export function codeFenceFor(content, language = '') {
-  const fence = '~'.repeat(Math.max(3, longestRun(content, '~') + 1));
-  const lang = String(language || '').replace(/[^\w#+.-]/g, '');
-  return `${fence}${lang}\n${content || ''}\n${fence}`;
-}
-
 function addCodeCopyButton(block) {
   const btn = document.createElement('button');
   btn.className = 'code-copy';

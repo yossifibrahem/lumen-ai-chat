@@ -10,8 +10,6 @@ Docker subprocess calls are never made here. The functions under test are:
 """
 from __future__ import annotations
 
-import pytest
-
 import container_service
 
 
@@ -90,9 +88,10 @@ class TestWrapCommandForExec:
     tool calls.
     """
 
-    def test_returns_docker_as_command(self):
+    def test_returns_resolved_docker_as_command(self, monkeypatch):
+        monkeypatch.setattr(container_service.docker_cli, "executable", lambda: "/opt/docker/bin/docker")
         cmd, _ = container_service.wrap_command_for_exec("c1", "npx", ["-y", "@fs"])
-        assert cmd == "docker"
+        assert cmd == "/opt/docker/bin/docker"
 
     def test_first_arg_is_exec(self):
         _, args = container_service.wrap_command_for_exec("c1", "npx", [])
@@ -231,6 +230,116 @@ class TestVolumeArgs:
             "--volume",
             "C:/Users/User/.lumen/containers/abc:/workspace",
         ]
+
+
+class TestContainerImageVersion:
+    def test_run_command_labels_container_with_configured_image(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(container_service, "_memory_volume_spec", lambda: None)
+        monkeypatch.setattr(container_service._adv_cfg, "load_advanced_config", lambda: {
+            "sandbox_image": "registry.example/lumen:1.2.3",
+            "container_memory": "512m",
+            "container_cpus": "1",
+            "container_network": "bridge",
+        })
+
+        command = container_service._docker_run_command("lumen-chat-test", tmp_path, [])
+
+        label = f"{container_service.build_info.CONTAINER_BUILD_LABEL}=registry.example/lumen:1.2.3"
+        assert ["--label", label] == command[command.index("--label"):command.index("--label") + 2]
+        version_label = (
+            f"{container_service.build_info.CONTAINER_VERSION_LABEL}="
+            f"{container_service.build_info.APP_VERSION}"
+        )
+        assert version_label in command
+
+    def test_existing_container_with_old_image_is_recreated(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(container_service, "_workspace", lambda _conv: tmp_path)
+        monkeypatch.setattr(container_service, "get_status", lambda _conv: "running")
+        monkeypatch.setattr(container_service, "_get_mounted_sources", lambda _name: set())
+        monkeypatch.setattr(container_service, "_get_container_image_marker", lambda _name: "old-image")
+        monkeypatch.setattr(
+            container_service,
+            "_get_container_version_marker",
+            lambda _name: container_service.build_info.APP_VERSION,
+        )
+        monkeypatch.setattr(container_service._adv_cfg, "load_advanced_config", lambda: {
+            "sandbox_image": "new-image",
+            "container_memory": "512m",
+            "container_cpus": "1",
+            "container_network": "bridge",
+        })
+        removed = []
+        monkeypatch.setattr(container_service, "stop_container", lambda conv: removed.append(conv))
+        monkeypatch.setattr(
+            container_service,
+            "_run",
+            lambda args: __import__("subprocess").CompletedProcess(args, 0, stdout="container-id", stderr=""),
+        )
+
+        info = container_service._ensure_container_locked("conversation", [])
+
+        assert removed == ["conversation"]
+        assert info.status == "running"
+
+    def test_existing_container_with_rebuilt_same_tag_is_recreated(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(container_service, "_workspace", lambda _conv: tmp_path)
+        monkeypatch.setattr(container_service, "get_status", lambda _conv: "running")
+        monkeypatch.setattr(container_service, "_get_mounted_sources", lambda _name: set())
+        monkeypatch.setattr(container_service, "_get_container_image_marker", lambda _name: "lumen-sandbox")
+        monkeypatch.setattr(
+            container_service,
+            "_get_container_version_marker",
+            lambda _name: container_service.build_info.APP_VERSION,
+        )
+        monkeypatch.setattr(container_service, "_get_container_image_id", lambda _name: "sha256:old")
+        monkeypatch.setattr(container_service, "_get_tagged_image_id", lambda _image: "sha256:new")
+        monkeypatch.setattr(container_service._adv_cfg, "load_advanced_config", lambda: {
+            "sandbox_image": "lumen-sandbox",
+            "container_memory": "512m",
+            "container_cpus": "1",
+            "container_network": "bridge",
+        })
+        removed = []
+        monkeypatch.setattr(container_service, "stop_container", lambda conv: removed.append(conv))
+        monkeypatch.setattr(
+            container_service,
+            "_run",
+            lambda args: __import__("subprocess").CompletedProcess(args, 0, stdout="container-id", stderr=""),
+        )
+
+        info = container_service._ensure_container_locked("conversation", [])
+
+        assert removed == ["conversation"]
+        assert info.status == "running"
+
+
+class TestShutdownTimeouts:
+    def test_stop_all_uses_bounded_docker_calls(self, monkeypatch):
+        import subprocess
+
+        calls = []
+
+        def fake_run(args, *, timeout=None):
+            calls.append((args, timeout))
+            return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+        monkeypatch.setattr(container_service, "_run", fake_run)
+
+        assert container_service.stop_all_containers() == []
+        assert calls == [(
+            ["docker", "ps", "--filter", f"name={container_service.CONTAINER_PREFIX}", "--format", "{{.Names}}"],
+            container_service.DOCKER_SHUTDOWN_TIMEOUT_SECONDS,
+        )]
+
+    def test_stop_all_returns_when_docker_times_out(self, monkeypatch):
+        import subprocess
+
+        def time_out(args, *, timeout=None):
+            raise subprocess.TimeoutExpired(args, timeout)
+
+        monkeypatch.setattr(container_service, "_run", time_out)
+
+        assert container_service.stop_all_containers() == []
 
 
 # ---------------------------------------------------------------------------

@@ -154,14 +154,16 @@ function toolsEndpoint() {
 export function loadCachedTools() {
   loadServerSettings();
   const cached = storage.get(STORAGE_KEYS.mcpTools);
-  if (!cached) return;
+  if (!cached) return false;
 
   try {
     state.mcpTools = normalizeToolsResponse(cached).tools;
     if (state.mcpTools.length) renderToolList();
+    return state.mcpTools.length > 0;
   } catch {
     state.mcpTools = [];
     storage.remove(STORAGE_KEYS.mcpTools);
+    return false;
   }
 }
 

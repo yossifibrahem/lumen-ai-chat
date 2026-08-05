@@ -12,20 +12,20 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Literal
 
+import advanced_config as _adv_cfg
+import build_info
+import docker_cli
+import memory_service
+from docker_path_utils import host_path_to_docker_src, parse_volume_source
+
 log = logging.getLogger(__name__)
 
-SANDBOX_IMAGE = os.getenv("LUMEN_SANDBOX_IMAGE", "lumen-sandbox")
 CONTAINERS_ROOT = Path(os.path.expanduser(os.getenv("LUMEN_CONTAINERS_ROOT", "~/.lumen/containers")))
 CONTAINERS_ROOT.mkdir(parents=True, exist_ok=True)
 
-CONTAINER_MEMORY = os.getenv("LUMEN_CONTAINER_MEMORY", "512m")
-CONTAINER_CPUS = os.getenv("LUMEN_CONTAINER_CPUS", "1")
-CONTAINER_NETWORK = os.getenv("LUMEN_CONTAINER_NETWORK", "bridge")
 CONTAINER_PREFIX = os.getenv("LUMEN_CONTAINER_PREFIX", "lumen-chat-")
 DISCOVERY_CONTAINER_ID = "mcp-discovery"
-# Seconds of inactivity before a conversation container is stopped.
-# Set to 0 to disable idle reaping entirely.
-IDLE_TIMEOUT = int(os.getenv("LUMEN_CONTAINER_IDLE_TIMEOUT", "600"))  # default 10 min
+DOCKER_SHUTDOWN_TIMEOUT_SECONDS = 5
 
 ContainerStatus = Literal["running", "stopped", "missing"]
 
@@ -65,13 +65,13 @@ def _workspace(conv_id: str) -> Path:
     return path
 
 
-def _run(args: list[str]) -> subprocess.CompletedProcess:
-    return subprocess.run(args, capture_output=True, text=True)
-
-
-from docker_path_utils import host_path_to_docker_src, parse_volume_source
-import advanced_config as _adv_cfg
-import memory_service
+def _run(
+    args: list[str],
+    *,
+    timeout: float | None = None,
+) -> subprocess.CompletedProcess:
+    docker_args = args[1:] if args and args[0] == "docker" else args
+    return docker_cli.run(docker_args, timeout=timeout)
 
 # mcp_service is imported lazily to avoid the circular import:
 # mcp_service → mcp_adapters → container_service → mcp_service.
@@ -101,6 +101,44 @@ def _get_mounted_sources(name: str) -> set[str]:
     if result.returncode != 0:
         return set()
     return {line.strip() for line in result.stdout.splitlines() if line.strip()}
+
+
+def _get_container_image_marker(name: str) -> str:
+    result = _run([
+        "docker", "inspect",
+        "--format", f'{{{{index .Config.Labels "{build_info.CONTAINER_BUILD_LABEL}"}}}}',
+        name,
+    ])
+    return result.stdout.strip() if result.returncode == 0 else ""
+
+
+def _get_container_version_marker(name: str) -> str:
+    result = _run([
+        "docker", "inspect",
+        "--format", f'{{{{index .Config.Labels "{build_info.CONTAINER_VERSION_LABEL}"}}}}',
+        name,
+    ])
+    return result.stdout.strip() if result.returncode == 0 else ""
+
+
+def _get_container_image_id(name: str) -> str:
+    result = _run(["docker", "inspect", "--format", "{{.Image}}", name])
+    return result.stdout.strip() if result.returncode == 0 else ""
+
+
+def _get_tagged_image_id(image: str) -> str:
+    result = _run(["docker", "image", "inspect", "--format", "{{.Id}}", image])
+    return result.stdout.strip() if result.returncode == 0 else ""
+
+
+def _container_image_changed(name: str, expected_image: str) -> bool:
+    tagged_image_id = _get_tagged_image_id(expected_image)
+    return (
+        _get_container_image_marker(name) != expected_image
+        or _get_container_version_marker(name) != build_info.APP_VERSION
+        or not tagged_image_id
+        or _get_container_image_id(name) != tagged_image_id
+    )
 
 
 def _memory_volume_spec() -> str | None:
@@ -143,8 +181,13 @@ def _ensure_container_locked(conv_id: str, extra_volumes: list[str]) -> Containe
     status = get_status(conv_id)
     if status in {"running", "stopped"}:
         missing = required_sources - _get_mounted_sources(name)
-        if missing:
-            log.info("[container] %s missing volume(s) %s; recreating", name, sorted(missing))
+        expected_image = str(_adv_cfg.load_advanced_config()["sandbox_image"])
+        image_changed = _container_image_changed(name, expected_image)
+        if missing or image_changed:
+            if missing:
+                log.info("[container] %s missing volume(s) %s; recreating", name, sorted(missing))
+            if image_changed:
+                log.info("[container] %s uses an outdated sandbox image; recreating", name)
             stop_container(conv_id)
             status = "missing"
         elif status == "stopped":
@@ -172,6 +215,8 @@ def _docker_run_command(name: str, workspace: Path, extra_volumes: list[str]) ->
         "docker", "run",
         "--detach",
         "--name", name,
+        "--label", f"{build_info.CONTAINER_BUILD_LABEL}={cfg['sandbox_image']}",
+        "--label", f"{build_info.CONTAINER_VERSION_LABEL}={build_info.APP_VERSION}",
         *_volume_args(workspace, extra_volumes),
         "--workdir", "/workspace",
         "--memory", str(cfg["container_memory"]),
@@ -209,6 +254,11 @@ def _reuse_conflicting_container(conv_id: str, required_sources: set[str]) -> Co
     if missing:
         raise RuntimeError(
             f"Container {name} already exists but is missing required volume(s): {sorted(missing)}"
+        )
+    expected_image = str(_adv_cfg.load_advanced_config()["sandbox_image"])
+    if _container_image_changed(name, expected_image):
+        raise RuntimeError(
+            f"Container {name} already exists but uses a different sandbox image"
         )
     if status == "stopped":
         _start_existing(name)
@@ -281,7 +331,7 @@ def wrap_command_for_exec(
     for key, value in (env or {}).items():
         docker_args += ["--env", f"{key}={value}"]
     docker_args += [container_name(conv_id), command, *args]
-    return "docker", docker_args
+    return docker_cli.executable(), docker_args
 
 
 def conversation_workspace(conv_id: str) -> Path:
@@ -309,11 +359,15 @@ def stop_all_containers() -> list[str]:
     that ``ensure_container()`` can restart them quickly on the next launch;
     ``cleanup_stale()`` at startup handles any orphaned ones.
     """
-    result = _run([
-        "docker", "ps",
-        "--filter", f"name={CONTAINER_PREFIX}",
-        "--format", "{{.Names}}",
-    ])
+    try:
+        result = _run([
+            "docker", "ps",
+            "--filter", f"name={CONTAINER_PREFIX}",
+            "--format", "{{.Names}}",
+        ], timeout=DOCKER_SHUTDOWN_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        log.warning("[container] shutdown cleanup timed out while listing containers")
+        return []
     if result.returncode != 0:
         log.warning("[container] shutdown cleanup skipped: %s", result.stderr.strip())
         return []
@@ -327,7 +381,14 @@ def stop_all_containers() -> list[str]:
         return []
 
     print(f"Stopping {len(names)} container(s)...", flush=True)
-    r = _run(["docker", "kill", *names])
+    try:
+        r = _run(
+            ["docker", "kill", *names],
+            timeout=DOCKER_SHUTDOWN_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        log.warning("[container] shutdown timed out while killing containers")
+        return []
     if r.returncode == 0:
         log.info("[container] shutdown: killed %s", names)
     else:

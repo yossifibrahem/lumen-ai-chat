@@ -14,7 +14,6 @@ from __future__ import annotations
 import asyncio
 import json
 import pytest
-from pathlib import Path
 
 import mcp_service
 
@@ -41,35 +40,53 @@ def isolated_mcp_config(tmp_path, monkeypatch):
 class TestLoadConfig:
 
     def test_returns_empty_servers_when_file_absent(self):
-        result = mcp_service.load_config()
+        result = mcp_service.load_editable_config()
         assert result == {"mcpServers": {}}
 
     def test_returns_config_dict_when_file_exists(self, isolated_mcp_config):
         config = {"mcpServers": {"fs": {"command": "npx", "args": ["-y", "@fs"]}}}
         isolated_mcp_config.write_text(json.dumps(config))
-        assert mcp_service.load_config() == config
+        assert mcp_service.load_editable_config() == config
 
     def test_returns_empty_on_corrupt_json(self, isolated_mcp_config):
         isolated_mcp_config.write_text("not valid json {{{")
-        assert mcp_service.load_config() == {"mcpServers": {}}
+        assert mcp_service.load_editable_config() == {"mcpServers": {}}
 
     def test_returns_empty_when_file_is_a_list(self, isolated_mcp_config):
         isolated_mcp_config.write_text(json.dumps(["not", "a", "dict"]))
-        assert mcp_service.load_config() == {"mcpServers": {}}
+        assert mcp_service.load_editable_config() == {"mcpServers": {}}
 
     def test_returns_empty_when_mcp_servers_is_list(self, isolated_mcp_config):
         isolated_mcp_config.write_text(json.dumps({"mcpServers": ["bad"]}))
-        assert mcp_service.load_config() == {"mcpServers": {}}
+        assert mcp_service.load_editable_config() == {"mcpServers": {}}
 
     def test_returns_empty_when_file_is_empty(self, isolated_mcp_config):
         isolated_mcp_config.write_text("")
-        assert mcp_service.load_config() == {"mcpServers": {}}
+        assert mcp_service.load_editable_config() == {"mcpServers": {}}
 
     def test_preserves_extra_top_level_keys(self, isolated_mcp_config):
         config = {"mcpServers": {}, "globalEnv": {"FOO": "bar"}}
         isolated_mcp_config.write_text(json.dumps(config))
-        result = mcp_service.load_config()
+        result = mcp_service.load_editable_config()
         assert result.get("globalEnv") == {"FOO": "bar"}
+
+    def test_effective_config_always_includes_built_in(self):
+        result = mcp_service.load_config()
+        assert result["mcpServers"][mcp_service.BUILTIN_SERVER_NAME] == mcp_service.BUILTIN_SERVER_CONFIG
+
+
+def test_tool_input_schema_supports_mcp_2_field_name():
+    from types import SimpleNamespace
+
+    schema = {"type": "object", "properties": {"path": {"type": "string"}}}
+    assert mcp_service._tool_input_schema(SimpleNamespace(input_schema=schema)) == schema
+
+
+def test_tool_input_schema_supports_camel_case_field_name():
+    from types import SimpleNamespace
+
+    schema = {"type": "object", "properties": {"command": {"type": "string"}}}
+    assert mcp_service._tool_input_schema(SimpleNamespace(inputSchema=schema)) == schema
 
 
 # ---------------------------------------------------------------------------
@@ -101,6 +118,12 @@ class TestSaveConfig:
         with pytest.raises(ValueError, match="mcpServers"):
             mcp_service.save_config({"mcpServers": [1, 2, 3]})
 
+    def test_rejects_built_in_server_override(self):
+        with pytest.raises(ValueError, match="built into Lumen"):
+            mcp_service.save_config({
+                "mcpServers": {mcp_service.BUILTIN_SERVER_NAME: {"command": "host-node"}}
+            })
+
     def test_write_is_atomic_no_tmp_files_left(self, isolated_mcp_config):
         mcp_service.save_config({"mcpServers": {}})
         residual = list(isolated_mcp_config.parent.glob("*.tmp-*"))
@@ -109,7 +132,7 @@ class TestSaveConfig:
     def test_save_then_load_roundtrip(self, isolated_mcp_config):
         config = {"mcpServers": {"bash": {"command": "bash", "args": ["-c"]}}}
         mcp_service.save_config(config)
-        assert mcp_service.load_config() == config
+        assert mcp_service.load_editable_config() == config
 
     def test_overwrites_existing_file(self, isolated_mcp_config):
         mcp_service.save_config({"mcpServers": {"old": {}}})
@@ -147,9 +170,19 @@ class TestFindServer:
             "args": ["/path/to/file-tools-mcp-server/dist/index.js"],
             "env": {"SOME_VAR": "some_val"},
         }
-        isolated_mcp_config.write_text(json.dumps({"mcpServers": {"agent_tools": server_cfg}}))
-        result = mcp_service.find_server("agent_tools")
+        isolated_mcp_config.write_text(json.dumps({"mcpServers": {"custom_tools": server_cfg}}))
+        result = mcp_service.find_server("custom_tools")
         assert result == server_cfg
+
+    def test_built_in_server_cannot_be_replaced_by_disk_config(self, isolated_mcp_config):
+        disk_config = {
+            "mcpServers": {"agent_tools": {"command": "host-node", "args": ["/tmp/server.js"]}}
+        }
+        isolated_mcp_config.write_text(json.dumps(disk_config))
+
+        assert mcp_service.find_server("agent_tools") == mcp_service.BUILTIN_SERVER_CONFIG
+        assert "agent_tools" not in mcp_service.load_editable_config()["mcpServers"]
+        assert json.loads(isolated_mcp_config.read_text()) == disk_config
 
 
 # ---------------------------------------------------------------------------
@@ -188,10 +221,10 @@ class TestConfigCache:
         isolated_mcp_config.write_text(json.dumps(first))
         monkeypatch.setattr("mcp_service._CONFIG_TTL_SECONDS", 60)
 
-        assert mcp_service.load_config() == first
+        assert mcp_service.load_editable_config() == first
         isolated_mcp_config.write_text(json.dumps(second))
-        assert mcp_service.load_config() == first
-        assert mcp_service.load_config(refresh=True) == second
+        assert mcp_service.load_editable_config() == first
+        assert mcp_service.load_editable_config(refresh=True) == second
 
 
 # ---------------------------------------------------------------------------
@@ -373,7 +406,7 @@ class TestMcpSessionPool:
         finally:
             pool.close()
 
-        assert created_sessions[0].read_timeout_seconds.total_seconds() == 2.5
+        assert created_sessions[0].read_timeout_seconds == 2.5
 
     def test_sdk_timeout_is_reported_without_stale_session_retry(self, monkeypatch):
         attempts = {"count": 0}

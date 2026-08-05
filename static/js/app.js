@@ -290,10 +290,14 @@ function bindEvents() {
   bindEvents();
   loadSettings();
   loadCustomization();
-  loadCachedTools();
+  const hasCachedTools = loadCachedTools();
   await loadContainerSettings();
   await loadConversationList();
   await loadMcpConfig();
+  // Render a cache immediately, but always refresh it so newly bundled tools
+  // and MCP config changes cannot remain hidden after an app upgrade.
+  const toolRefresh = reloadTools();
+  if (!hasCachedTools) await toolRefresh;
 
   const lastConvId = storage.get(STORAGE_KEYS.lastConv);
   if (lastConvId) {

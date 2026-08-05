@@ -9,16 +9,13 @@ tool_approval was split out of chat_turn_service.py.  It owns:
 All tests are threaded to exercise the actual blocking/unblocking behavior.
 No Flask context, network, or filesystem is needed.
 
-Note: chat_turn_service re-exports resolve_tool_approval at module level so
-routes_chat.py keeps its existing import path.  That re-export is verified in
-test_chat_turn_service_reexport below.
+`chat_turn_service` exposes `resolve_tool_approval` as part of the service API
+used by `routes_chat.py`. That export is verified below.
 """
 from __future__ import annotations
 
 import threading
 import time
-
-import pytest
 
 import tool_approval as svc
 

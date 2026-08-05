@@ -15,14 +15,6 @@ export function showToast(message) {
   _toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
 }
 
-export function showStatus(elementId, message, type) {
-  const el = document.getElementById(elementId);
-  el.textContent = message;
-  el.className   = `status-msg ${type}`;
-  el.style.display = 'block';
-  setTimeout(() => { el.style.display = 'none'; }, 4000);
-}
-
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
 const sidebarMedia = window.matchMedia('(max-width: 768px)');

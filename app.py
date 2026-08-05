@@ -10,11 +10,13 @@ import atexit
 import logging
 import signal
 import os
+import secrets
 import sys
 
 from flask import Flask
 from flask_cors import CORS
 
+import build_info
 import routes_conversations
 import routes_chat
 import routes_mcp
@@ -35,13 +37,24 @@ _shutdown_done = False
 def create_app() -> Flask:
     startup_status = runtime_requirements.check_requirements()
     _log_startup_requirement_status(startup_status)
-    app = Flask(__name__)
+    assets_root = build_info.resource_root()
+    app = Flask(
+        __name__,
+        template_folder=str(assets_root / "templates"),
+        static_folder=str(assets_root / "static"),
+    )
+    app.config.update(
+        SECRET_KEY=os.getenv("LUMEN_SECRET_KEY") or secrets.token_bytes(32),
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Strict",
+    )
     app.config["MAX_CONTENT_LENGTH"] = int(os.getenv("LUMEN_MAX_CONTENT_LENGTH", str(60 * 1024 * 1024)))
     allowed_origins = [
         origin.strip()
         for origin in os.getenv(
             "LUMEN_CORS_ORIGINS",
-            "http://localhost:8080,http://127.0.0.1:8080",
+            "http://localhost:8080,http://127.0.0.1:8080,"
+            "http://localhost:38492,http://127.0.0.1:38492",
         ).split(",")
         if origin.strip()
     ]

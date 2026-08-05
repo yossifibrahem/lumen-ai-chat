@@ -14,8 +14,8 @@ Coverage:
 """
 from __future__ import annotations
 
-import json
 import os
+import re
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
@@ -242,6 +242,15 @@ class TestMcpConfigRoutes:
                            content_type="application/json")
         assert resp.status_code == 400
         assert "error" in resp.json
+
+    def test_post_rejects_built_in_server_override(self, client, tmp_lumen):
+        resp = client.post(
+            "/api/mcp/config",
+            json={"mcpServers": {"agent_tools": {"command": "host-node"}}},
+            content_type="application/json",
+        )
+        assert resp.status_code == 400
+        assert "built into Lumen" in resp.json["error"]
 
 
 # ===========================================================================
@@ -492,6 +501,7 @@ class TestIndexRoute:
         assert resp.status_code == 200
         assert b"Docker is not running" in resp.data
         assert b"Please start Docker, then click Retry." in resp.data
+        assert b'name="lumen-startup-token"' in resp.data
 
 
 # ===========================================================================
@@ -499,6 +509,39 @@ class TestIndexRoute:
 # ===========================================================================
 
 class TestStartupRequirementRoutes:
+
+    @staticmethod
+    def _issue_startup_token(client, monkeypatch):
+        import runtime_requirements
+
+        missing = runtime_requirements.RequirementStatus(
+            ok=False,
+            code="docker_not_running",
+            title="Docker is not running",
+            message="Please start Docker.",
+            action="start_docker",
+            image="lumen-sandbox",
+        )
+        monkeypatch.setattr(runtime_requirements, "check_requirements", lambda: missing)
+        response = client.get("/")
+        match = re.search(rb'name="lumen-startup-token" content="([^"]+)"', response.data)
+        assert match is not None
+        return match.group(1).decode()
+
+    @staticmethod
+    def _startup_headers(token, origin="http://localhost"):
+        return {
+            "Origin": origin,
+            "Sec-Fetch-Site": "same-origin" if origin == "http://localhost" else "cross-site",
+            "X-Lumen-Startup-Token": token,
+        }
+
+    def test_health_identifies_lumen_and_version(self, client):
+        resp = client.get("/health")
+        assert resp.status_code == 200
+        assert resp.json["ok"] is True
+        assert resp.json["app"] == "lumen-ai-chat"
+        assert resp.json["version"]
 
     def test_requirements_returns_503_when_not_ready(self, client, monkeypatch):
         import runtime_requirements
@@ -519,25 +562,99 @@ class TestStartupRequirementRoutes:
         assert resp.json["code"] == "sandbox_image_missing"
         assert resp.json["action"] == "build"
 
-    def test_build_sandbox_image_returns_build_status(self, client, monkeypatch):
+    def test_start_docker_route_returns_accepted(self, client, monkeypatch):
         import runtime_requirements
 
-        built = runtime_requirements.RequirementStatus(
+        token = self._issue_startup_token(client, monkeypatch)
+        starting = runtime_requirements.RequirementStatus(
+            ok=False,
+            code="docker_starting",
+            title="Docker is starting",
+            message="Waiting for Docker.",
+            action="retry",
+            image="lumen-sandbox",
+        )
+        monkeypatch.setattr(runtime_requirements, "start_docker_desktop", lambda: starting)
+
+        resp = client.post(
+            "/api/startup/start-docker",
+            headers=self._startup_headers(token),
+        )
+
+        assert resp.status_code == 202
+        assert resp.json["code"] == "docker_starting"
+
+    def test_start_docker_rejects_missing_confirmation(self, client, monkeypatch):
+        import runtime_requirements
+
+        start = MagicMock()
+        monkeypatch.setattr(runtime_requirements, "start_docker_desktop", start)
+
+        response = client.post("/api/startup/start-docker")
+
+        assert response.status_code == 403
+        start.assert_not_called()
+
+    def test_start_docker_rejects_cross_origin_request(self, client, monkeypatch):
+        import runtime_requirements
+
+        token = self._issue_startup_token(client, monkeypatch)
+        start = MagicMock()
+        monkeypatch.setattr(runtime_requirements, "start_docker_desktop", start)
+
+        response = client.post(
+            "/api/startup/start-docker",
+            headers=self._startup_headers(token, origin="https://attacker.example"),
+        )
+
+        assert response.status_code == 403
+        start.assert_not_called()
+
+    def test_build_stream_rejects_get(self, client):
+        response = client.get("/api/startup/build-sandbox-image/stream")
+        assert response.status_code == 405
+
+    def test_build_stream_requires_confirmation_token(self, client, monkeypatch):
+        import runtime_requirements
+
+        build = MagicMock()
+        monkeypatch.setattr(runtime_requirements, "build_sandbox_image_stream", build)
+
+        response = client.post(
+            "/api/startup/build-sandbox-image/stream",
+            headers={"Origin": "http://localhost", "Sec-Fetch-Site": "same-origin"},
+        )
+
+        assert response.status_code == 403
+        build.assert_not_called()
+
+    def test_build_stream_accepts_confirmed_same_origin_post(self, client, monkeypatch):
+        import runtime_requirements
+
+        token = self._issue_startup_token(client, monkeypatch)
+        done = runtime_requirements.RequirementStatus(
             ok=True,
             code="ok",
             title="Lumen is ready",
-            message="Docker is running and the sandbox image is available.",
+            message="Ready.",
             action="continue",
             image="lumen-sandbox",
         )
-        monkeypatch.setattr(runtime_requirements, "build_sandbox_image", lambda: built)
+        monkeypatch.setattr(
+            runtime_requirements,
+            "build_sandbox_image_stream",
+            lambda: iter([("log", {"line": "building"}), ("done", done.as_dict())]),
+        )
 
-        resp = client.post("/api/startup/build-sandbox-image")
+        response = client.post(
+            "/api/startup/build-sandbox-image/stream",
+            headers=self._startup_headers(token),
+        )
 
-        assert resp.status_code == 200
-        assert resp.json["ok"] is True
-        assert resp.json["code"] == "ok"
-
+        assert response.status_code == 200
+        assert response.mimetype == "text/event-stream"
+        assert b"event: log" in response.data
+        assert b"event: done" in response.data
 
 # ===========================================================================
 # MCP tools discovery

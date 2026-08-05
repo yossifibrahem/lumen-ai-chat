@@ -13,11 +13,6 @@
  *     Static label shown in the "using" strip state before any arguments are known.
  *     Falls back to the bare tool name when omitted.
  *
- *   getMetaText(args)          → string
- *     Short inline preview shown next to the label in the strip header
- *     (e.g. the command for bash, the file path for filesystem tools).
- *     Return '' to show nothing.
- *
  *   filterArgs(args)           → object
  *     Return a subset/transformation of the raw args object for display.
  *     The default strips nothing (all args shown).
@@ -28,7 +23,7 @@
  *
  * Registration:
  *   import { registerAdapter } from './registry.js';
- *   registerAdapter({ tools: ['my_tool'], getMetaText(args) { … } });
+ *   registerAdapter({ tools: ['my_tool'], usingLabel: 'Using tool' });
  *
  * Lookup (used by mcp_tool_ui.js):
  *   import { adapterFor } from './registry.js';
@@ -49,7 +44,6 @@ const _registry = new Map();
  * @param {string}   [adapter.labelArg]     - Arg name used as the strip header label (default: 'description').
  *                                            That arg is also hidden from the expanded args block.
  *                                            Set this when your tool uses a different key, e.g. 'query', 'command', 'url'.
- * @param {Function} [adapter.getMetaText]  - (args) => string
  * @param {Function} [adapter.filterArgs]   - (args) => object
  * @param {Function} [adapter.renderResult] - (result, args) => string | null
  */
@@ -72,14 +66,6 @@ export function registerAdapter(adapter) {
  */
 export function adapterFor(toolName) {
   return _registry.get(toolName) ?? null;
-}
-
-/**
- * Return all registered tool names (useful for debugging / inspection).
- * @returns {string[]}
- */
-export function registeredTools() {
-  return [..._registry.keys()];
 }
 
 /**
