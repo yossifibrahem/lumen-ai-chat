@@ -14,33 +14,8 @@ from __future__ import annotations
 import asyncio
 import json
 import pytest
-import sys
-import types
 
 import mcp_service
-
-
-def test_windowed_app_routes_mcp_stderr_to_valid_sink(monkeypatch):
-    captured = {}
-
-    def fake_stdio_client(params, **kwargs):
-        captured["params"] = params
-        captured.update(kwargs)
-        return object()
-
-    fake_module = types.ModuleType("mcp.client.stdio")
-    fake_module.stdio_client = fake_stdio_client
-    monkeypatch.setitem(sys.modules, "mcp.client.stdio", fake_module)
-    monkeypatch.setattr(mcp_service.sys, "stderr", None)
-    monkeypatch.setattr(mcp_service, "_mcp_stderr_handle", None)
-
-    transport = mcp_service._stdio_client({"command": "docker"})
-
-    assert transport is not None
-    assert captured["params"] == {"command": "docker"}
-    assert captured["errlog"].fileno() >= 0
-    assert captured["errlog"].name == mcp_service.os.devnull
-    captured["errlog"].close()
 
 
 # ---------------------------------------------------------------------------

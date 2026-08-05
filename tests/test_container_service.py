@@ -190,13 +190,9 @@ class TestVolumeArgs:
     from pathlib import Path
 
     def test_workspace_volume_always_first(self, tmp_path):
-        import docker_path_utils
-
         result = container_service._volume_args(tmp_path, [])
         assert result[0] == "--volume"
-        assert result[1].startswith(
-            docker_path_utils.host_path_to_docker_src(str(tmp_path))
-        )
+        assert result[1].startswith(str(tmp_path))
         assert ":/workspace" in result[1]
 
     def test_extra_volumes_appended(self, tmp_path):
@@ -205,8 +201,6 @@ class TestVolumeArgs:
         assert "/host/path:/host/path:ro" in result
 
     def test_no_extra_volumes_include_workspace_and_memory(self, tmp_path, monkeypatch):
-        import docker_path_utils
-
         monkeypatch.setattr(
             container_service,
             "_memory_volume_spec",
@@ -215,7 +209,7 @@ class TestVolumeArgs:
         result = container_service._volume_args(tmp_path, [])
         assert result == [
             "--volume",
-            f"{docker_path_utils.host_path_to_docker_src(str(tmp_path))}:/workspace",
+            f"{tmp_path}:/workspace",
             "--volume",
             "/host/memory.md:/memory.md:rw",
         ]

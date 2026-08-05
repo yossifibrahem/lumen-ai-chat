@@ -1,4 +1,4 @@
-"""Resolve and invoke Docker reliably from shells and desktop applications."""
+"""Resolve and invoke Docker reliably from shells and macOS GUI applications."""
 from __future__ import annotations
 
 import os
@@ -10,38 +10,6 @@ from typing import Iterable
 
 
 MAC_DOCKER_APP = Path("/Applications/Docker.app")
-
-
-def _windowless_process_kwargs() -> dict:
-    """Prevent console executables from flashing a terminal in the Windows app."""
-    if sys.platform != "win32":
-        return {}
-    startupinfo = subprocess.STARTUPINFO()
-    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    startupinfo.wShowWindow = subprocess.SW_HIDE
-    return {
-        "creationflags": subprocess.CREATE_NO_WINDOW,
-        "startupinfo": startupinfo,
-    }
-
-
-def windows_docker_app_candidates() -> list[Path]:
-    candidates: list[Path] = []
-    program_files = os.getenv("ProgramFiles", "").strip()
-    local_app_data = os.getenv("LOCALAPPDATA", "").strip()
-    if program_files:
-        candidates.append(Path(program_files) / "Docker" / "Docker" / "Docker Desktop.exe")
-    if local_app_data:
-        candidates.append(Path(local_app_data) / "Docker" / "Docker Desktop.exe")
-    return candidates
-
-
-def docker_desktop_path() -> Path | None:
-    if sys.platform == "darwin":
-        return MAC_DOCKER_APP if MAC_DOCKER_APP.is_dir() else None
-    if sys.platform == "win32":
-        return next((path for path in windows_docker_app_candidates() if path.is_file()), None)
-    return None
 
 
 def candidate_paths() -> list[str]:
@@ -61,18 +29,11 @@ def candidate_paths() -> list[str]:
             "/Applications/Docker.app/Contents/Resources/bin/docker",
             str(Path.home() / ".docker" / "bin" / "docker"),
         ])
-    elif sys.platform == "win32":
-        program_files = os.getenv("ProgramFiles", "").strip()
-        if program_files:
-            candidates.append(
-                str(Path(program_files) / "Docker" / "Docker" / "resources" / "bin" / "docker.exe")
-            )
-        candidates.append(str(Path.home() / ".docker" / "bin" / "docker.exe"))
 
     unique: list[str] = []
     seen: set[str] = set()
     for candidate in candidates:
-        expanded = os.path.expanduser(candidate)
+        expanded = str(Path(candidate).expanduser())
         if expanded not in seen:
             seen.add(expanded)
             unique.append(expanded)
@@ -110,7 +71,6 @@ def run(
         text=True,
         timeout=timeout,
         cwd=cwd,
-        **_windowless_process_kwargs(),
     )
 
 
@@ -125,36 +85,21 @@ def popen(
         stderr=subprocess.STDOUT,
         text=True,
         cwd=cwd,
-        **_windowless_process_kwargs(),
     )
 
 
 def docker_desktop_installed() -> bool:
-    return docker_desktop_path() is not None
+    return sys.platform == "darwin" and MAC_DOCKER_APP.is_dir()
 
 
 def start_docker_desktop() -> subprocess.CompletedProcess:
-    app_path = docker_desktop_path()
-    if app_path is None:
-        if sys.platform == "darwin":
-            raise FileNotFoundError("Docker Desktop is not installed in /Applications.")
-        if sys.platform == "win32":
-            raise FileNotFoundError("Docker Desktop is not installed in a standard location.")
-        raise RuntimeError("Starting Docker Desktop is only supported on macOS and Windows.")
-    if sys.platform == "darwin":
-        return subprocess.run(
-            ["/usr/bin/open", "-a", "Docker"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-
-    command = [str(app_path)]
-    subprocess.Popen(
-        command,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        close_fds=True,
-        **_windowless_process_kwargs(),
+    if sys.platform != "darwin":
+        raise RuntimeError("Starting Docker Desktop is only supported on macOS.")
+    if not docker_desktop_installed():
+        raise FileNotFoundError("Docker Desktop is not installed in /Applications.")
+    return subprocess.run(
+        ["/usr/bin/open", "-a", "Docker"],
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
-    return subprocess.CompletedProcess(command, 0, "", "")

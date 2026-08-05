@@ -8,11 +8,11 @@ Lumen is distributed as an installable desktop application for normal users whil
 
 ## Current Product Direction
 
-- **Desktop experience:** a small macOS menu-bar or Windows system-tray application runs Lumen locally and opens the chat in the user's default browser.
+- **Desktop experience:** a small macOS menu-bar application runs Lumen locally and opens the chat in the user's default browser.
 - **User prerequisite:** Docker Desktop is the only external runtime users install. Python, Node.js, npm, Git, and the Lumen source tree are included or handled internally.
 - **Tool installation:** the app bundles `Dockerfile.sandbox` and the computer-use MCP source pinned at commit `8a96eab`. After explicit confirmation on first run, Docker pulls the official `ubuntu:24.04` image, installs the required packages, compiles the MCP server inside Ubuntu, and creates the local `lumen-sandbox` image.
 - **MCP boundary:** the built-in `agent_tools` server runs only inside Lumen's containers. Its JSON definition is hidden and non-removable, while its icon, enable, and approval controls remain available.
-- **Distribution:** desktop builds target Apple Silicon on macOS 14+ through a DMG and x64 Windows through a portable ZIP. Intel macOS, automatic updates, code signing, and a native chat window are later work.
+- **Distribution:** the current release target is Apple Silicon on macOS 14+ through an ad-hoc-signed DMG. Windows, Intel macOS, automatic updates, and a native chat window are later work.
 - **Data ownership:** chats, settings, memory, and workspaces remain under `~/.lumen/`; replacing or uninstalling the app does not remove them.
 - **Image delivery:** Lumen does not pull a prebuilt application image from a container registry. The release workflow verifies the same Dockerfile, and each user builds the pinned image locally.
 
@@ -110,17 +110,6 @@ Internet access is required during the first tools installation for the Ubuntu i
 
 To uninstall, quit Lumen and move `Lumen AI Chat.app` to Trash. Remove `~/.lumen/` separately only if you also want to permanently delete chats, settings, memory, and workspace files. Docker images can be removed separately through Docker Desktop.
 
-## Windows Alpha Installation
-
-The prebuilt Windows alpha targets **64-bit Windows 10 or 11**. It runs from the system tray, opens Lumen in the default browser, and includes Python and all application dependencies.
-
-1. Install and start [Docker Desktop](https://www.docker.com/products/docker-desktop/) using Linux containers.
-2. Download `Lumen-AI-Chat-<version>-windows-x64.zip` from the GitHub release and extract the whole archive to a writable folder.
-3. Run `Lumen AI Chat.exe` inside the extracted `Lumen AI Chat` folder. Windows SmartScreen may show an unknown-publisher warning because alpha builds are not code-signed.
-4. If Docker is stopped, click **Start Docker** on Lumen's setup page. When prompted, click **Install Lumen Tools** to build the bundled sandbox locally.
-
-Lumen remains in the system tray with **Open Lumen**, **Docker Status**, **Open Logs**, and **Quit Lumen** actions. Keep the `_internal` folder beside the executable. Updates are manual: quit Lumen and replace the extracted application folder. User data remains under `%USERPROFILE%\.lumen`.
-
 ## Developer Quick Start
 
 ```bash
@@ -158,7 +147,7 @@ The sandbox image includes the [computer-use MCP server](https://github.com/yoss
 
 | Requirement | Version | Notes |
 |---|---|---|
-| Python | 3.10+ | Needed only for source development; included in desktop builds |
+| Python | 3.10+ | Needed only for source development; included in the macOS app |
 | Docker | 20.10+ | Required for MCP sandbox containers |
 | Git submodules | — | Supplies the pinned built-in MCP source to Docker builds |
 | OpenAI-compatible API | — | OpenAI, Ollama, LM Studio, or a compatible proxy |
@@ -203,20 +192,6 @@ LUMEN_BUILD_VERSION=0.1.0-alpha.1 packaging/build_macos.sh
 The script renders the current favicon into an `.icns`, generates Finder bundle/build versions from `LUMEN_BUILD_VERSION`, freezes the one-process Waitress/menu-bar app, ad-hoc signs it when no identity is configured, and creates `dist/Lumen-AI-Chat-<version>-apple-silicon.dmg` with a SHA-256 checksum. Set `MACOS_SIGN_IDENTITY` after importing a Developer ID certificate to produce a distribution-signed app.
 
 The release workflow builds and smoke-tests the ARM64 sandbox without publishing it, runs the Python tests, and publishes the DMG. End users build the same pinned sandbox locally on first run, so no container registry account is required.
-
-### Build the Windows application
-
-On 64-bit Windows, use Python 3.12 in a virtual environment:
-
-```powershell
-py -3.12 -m venv .venv-windows
-.\.venv-windows\Scripts\Activate.ps1
-python -m pip install -r requirements-dev.txt -r requirements-desktop.txt
-$env:LUMEN_BUILD_VERSION = "0.1.0-alpha.1"
-powershell -NoProfile -ExecutionPolicy Bypass -File .\packaging\build_windows.ps1
-```
-
-The script generates version metadata and a multi-resolution icon, freezes the Waitress/system-tray application in PyInstaller `onedir` mode, and creates `dist\Lumen-AI-Chat-<version>-windows-x64.zip` plus a SHA-256 checksum. The Windows build is currently unsigned, so distribute the ZIP and its checksum together.
 
 To exercise the local development image through the same Docker/MCP boundary
 used by Lumen, run `python packaging/smoke_sandbox.py --image lumen-sandbox`.
