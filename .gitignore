@@ -4,6 +4,7 @@ mcp.json
 __pycache__
 .venv
 .venv312/
+.venv-windows/
 .python-build/
 test.md
 build/

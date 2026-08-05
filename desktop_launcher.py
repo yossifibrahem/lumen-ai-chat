@@ -1,7 +1,6 @@
-"""macOS menu-bar launcher for the frozen Lumen web application."""
+"""Native desktop launcher for the frozen Lumen web application."""
 from __future__ import annotations
 
-import fcntl
 import errno
 import json
 import logging
@@ -10,13 +9,25 @@ import os
 from pathlib import Path
 import socket
 import subprocess
+import sys
 import threading
 import time
 import urllib.error
 import urllib.request
 import webbrowser
 
-import rumps
+if sys.platform == "win32":
+    import ctypes
+    import msvcrt
+
+    import pystray
+    from PIL import Image, ImageDraw
+else:
+    import fcntl
+
+if sys.platform == "darwin":
+    import rumps
+
 from waitress import create_server
 
 import app as lumen_app
@@ -27,13 +38,16 @@ import runtime_requirements
 HOST = "127.0.0.1"
 PORT = build_info.DESKTOP_PORT
 BASE_URL = f"http://{HOST}:{PORT}"
-LUMEN_DIR = Path.home() / ".lumen"
+LUMEN_DIR = Path(
+    os.getenv("LUMEN_DESKTOP_DATA_DIR", str(Path.home() / ".lumen"))
+)
 LOG_DIR = LUMEN_DIR / "logs"
 LOG_FILE = LOG_DIR / "lumen.log"
 LOCK_FILE = Path(
     os.getenv("LUMEN_DESKTOP_LOCK_FILE", str(LUMEN_DIR / "desktop.lock"))
 )
 MENU_BAR_ICON = build_info.resource_root() / "static" / "favicon.svg"
+WINDOWS_ICON = build_info.resource_root() / "Lumen.ico"
 
 
 def configure_logging() -> None:
@@ -93,53 +107,62 @@ def _validate_frozen_runtime() -> None:
         root / "vendor" / "computer-use-mcp-server" / "tsconfig.json",
         root / "vendor" / "computer-use-mcp-server" / "src" / "index.ts",
     ]
+    if sys.platform == "win32" and build_info.is_frozen():
+        required.append(WINDOWS_ICON)
     missing = [str(path) for path in required if not path.is_file()]
     if missing:
         raise RuntimeError(f"Frozen application resources are missing: {', '.join(missing)}")
 
 
 class SingleInstance:
+    """Hold a non-blocking, process-scoped lock for the desktop application."""
+
     def __init__(self) -> None:
         LUMEN_DIR.mkdir(parents=True, exist_ok=True)
         self._handle = LOCK_FILE.open("a+")
+        self._locked = False
 
     def acquire(self) -> bool:
         try:
-            fcntl.flock(self._handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            self._handle.seek(0)
-            self._handle.truncate()
+            if sys.platform == "win32":
+                self._handle.seek(0)
+                if not self._handle.read(1):
+                    self._handle.seek(0)
+                    self._handle.write(" ")
+                    self._handle.flush()
+                self._handle.seek(0)
+                msvcrt.locking(self._handle.fileno(), msvcrt.LK_NBLCK, 1)
+                self._handle.seek(1)
+            else:
+                fcntl.flock(self._handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                self._handle.seek(0)
+                self._handle.truncate()
             self._handle.write(str(os.getpid()))
             self._handle.flush()
+            self._locked = True
             return True
-        except BlockingIOError:
+        except (BlockingIOError, OSError):
             return False
 
     def close(self) -> None:
         try:
-            fcntl.flock(self._handle.fileno(), fcntl.LOCK_UN)
+            if self._locked:
+                if sys.platform == "win32":
+                    self._handle.seek(0)
+                    msvcrt.locking(self._handle.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    fcntl.flock(self._handle.fileno(), fcntl.LOCK_UN)
         finally:
+            self._locked = False
             self._handle.close()
 
 
-class LumenMenuBar(rumps.App):
+class DesktopServer:
     def __init__(self, instance_lock: SingleInstance) -> None:
-        super().__init__(
-            "Lumen AI Chat",
-            icon=str(MENU_BAR_ICON),
-            template=False,
-            quit_button=None,
-        )
         self._instance_lock = instance_lock
         self._server = None
         self._server_thread: threading.Thread | None = None
         self._server_stopping = threading.Event()
-        self.menu = [
-            rumps.MenuItem("Open Lumen", callback=self.open_lumen),
-            rumps.MenuItem("Docker Status", callback=self.docker_status),
-            rumps.MenuItem("Open Logs", callback=self.open_logs),
-            None,
-            rumps.MenuItem("Quit Lumen", callback=self.quit_lumen),
-        ]
 
     def start_server(self) -> None:
         if not _port_available():
@@ -184,28 +207,118 @@ class LumenMenuBar(rumps.App):
         if self._server_thread is not None:
             self._server_thread.join(timeout=5)
 
-    def open_lumen(self, _sender=None) -> None:
+    def open_lumen(self, *_args) -> None:
         webbrowser.open(BASE_URL)
 
-    def docker_status(self, _sender=None) -> None:
-        status = runtime_requirements.check_requirements()
-        rumps.alert(
-            title=status.title,
-            message=status.message,
-            ok="OK",
-        )
 
-    def open_logs(self, _sender=None) -> None:
-        LOG_DIR.mkdir(parents=True, exist_ok=True)
-        subprocess.Popen(["/usr/bin/open", str(LOG_DIR)])
+if sys.platform == "darwin":
 
-    def quit_lumen(self, _sender=None) -> None:
-        try:
-            self.stop_server()
-            lumen_app._shutdown_containers()
-        finally:
-            self._instance_lock.close()
-            rumps.quit_application()
+    class LumenMenuBar(DesktopServer, rumps.App):
+        def __init__(self, instance_lock: SingleInstance) -> None:
+            rumps.App.__init__(
+                self,
+                "Lumen AI Chat",
+                icon=str(MENU_BAR_ICON),
+                template=False,
+                quit_button=None,
+            )
+            DesktopServer.__init__(self, instance_lock)
+            self.menu = [
+                rumps.MenuItem("Open Lumen", callback=self.open_lumen),
+                rumps.MenuItem("Docker Status", callback=self.docker_status),
+                rumps.MenuItem("Open Logs", callback=self.open_logs),
+                None,
+                rumps.MenuItem("Quit Lumen", callback=self.quit_lumen),
+            ]
+
+        def docker_status(self, _sender=None) -> None:
+            status = runtime_requirements.check_requirements()
+            rumps.alert(title=status.title, message=status.message, ok="OK")
+
+        def open_logs(self, _sender=None) -> None:
+            LOG_DIR.mkdir(parents=True, exist_ok=True)
+            subprocess.Popen(["/usr/bin/open", str(LOG_DIR)])
+
+        def quit_lumen(self, _sender=None) -> None:
+            try:
+                self.stop_server()
+                lumen_app._shutdown_containers()
+            finally:
+                self._instance_lock.close()
+                rumps.quit_application()
+
+
+if sys.platform == "win32":
+
+    def _windows_icon_image() -> Image.Image:
+        if WINDOWS_ICON.is_file():
+            with Image.open(WINDOWS_ICON) as image:
+                return image.convert("RGBA")
+        image = Image.new("RGBA", (64, 64), "#171713")
+        draw = ImageDraw.Draw(image)
+        draw.rounded_rectangle((10, 10, 54, 54), radius=0, fill="#fff3d6", outline="#120f0a", width=4)
+        draw.rectangle((20, 24, 28, 32), fill="#d96c4b")
+        draw.rectangle((36, 24, 44, 32), fill="#d96c4b")
+        draw.rectangle((24, 42, 40, 46), fill="#120f0a")
+        draw.rectangle((28, 4, 36, 12), fill="#d96c4b")
+        return image
+
+
+    def _windows_alert(title: str, message: str) -> None:
+        ctypes.windll.user32.MessageBoxW(None, message, title, 0x00000040)
+
+
+    class LumenTray(DesktopServer):
+        def __init__(self, instance_lock: SingleInstance) -> None:
+            super().__init__(instance_lock)
+            self._icon = pystray.Icon(
+                "lumen-ai-chat",
+                _windows_icon_image(),
+                "Lumen AI Chat",
+                menu=pystray.Menu(
+                    pystray.MenuItem("Open Lumen", self.open_lumen, default=True),
+                    pystray.MenuItem("Docker Status", self.docker_status),
+                    pystray.MenuItem("Open Logs", self.open_logs),
+                    pystray.Menu.SEPARATOR,
+                    pystray.MenuItem("Quit Lumen", self.quit_lumen),
+                ),
+            )
+
+        def run(self) -> None:
+            self._icon.run()
+
+        def docker_status(self, *_args) -> None:
+            status = runtime_requirements.check_requirements()
+            _windows_alert(status.title, status.message)
+
+        def open_logs(self, *_args) -> None:
+            LOG_DIR.mkdir(parents=True, exist_ok=True)
+            os.startfile(LOG_DIR)  # type: ignore[attr-defined]
+
+        def quit_lumen(self, *_args) -> None:
+            try:
+                self.stop_server()
+                lumen_app._shutdown_containers()
+            finally:
+                self._instance_lock.close()
+                self._icon.stop()
+
+
+def _show_alert(title: str, message: str) -> None:
+    if sys.platform == "darwin":
+        rumps.alert(title=title, message=message, ok="Close")
+    elif sys.platform == "win32":
+        _windows_alert(title, message)
+    else:
+        logging.error("%s: %s", title, message)
+
+
+def _desktop_app(instance: SingleInstance):
+    if sys.platform == "darwin":
+        return LumenMenuBar(instance)
+    if sys.platform == "win32":
+        return LumenTray(instance)
+    raise RuntimeError("The desktop launcher supports macOS and Windows only.")
 
 
 def main() -> int:
@@ -214,38 +327,38 @@ def main() -> int:
     if not instance.acquire():
         if _wait_for_health(timeout=5):
             webbrowser.open(BASE_URL)
-            return 0
-        rumps.alert(
-            title="Lumen is starting",
-            message="Another Lumen process is already running. Try again in a moment.",
-        )
-        return 1
-
-    menu_app = LumenMenuBar(instance)
-    try:
-        menu_app.start_server()
-        if os.getenv("LUMEN_DESKTOP_SMOKE_TEST", "") == "1":
-            _validate_frozen_runtime()
-            menu_app.stop_server()
             instance.close()
             return 0
-        menu_app.run()
+        _show_alert(
+            "Lumen is starting",
+            "Another Lumen process is already running. Try again in a moment.",
+        )
+        instance.close()
+        return 1
+
+    desktop_app = None
+    try:
+        desktop_app = _desktop_app(instance)
+        desktop_app.start_server()
+        if os.getenv("LUMEN_DESKTOP_SMOKE_TEST", "") == "1":
+            _validate_frozen_runtime()
+            desktop_app.stop_server()
+            instance.close()
+            return 0
+        desktop_app.run()
         return 0
     except SystemExit:
         instance.close()
         return 0
     except Exception as exc:
         logging.exception("desktop startup failed")
-        try:
-            menu_app.stop_server()
-        except Exception:
-            logging.exception("desktop server cleanup failed")
+        if desktop_app is not None:
+            try:
+                desktop_app.stop_server()
+            except Exception:
+                logging.exception("desktop server cleanup failed")
         instance.close()
-        rumps.alert(
-            title="Lumen could not start",
-            message=str(exc),
-            ok="Close",
-        )
+        _show_alert("Lumen could not start", str(exc))
         return 1
 
 

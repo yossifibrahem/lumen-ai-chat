@@ -6,6 +6,7 @@ import copy
 import json
 import logging
 import os
+import sys
 import threading
 import time
 import uuid
@@ -28,6 +29,8 @@ _config_cache_at = 0.0
 _config_cache_path: Path | None = None
 _config_cache_lock = threading.Lock()
 _CONFIG_TTL_SECONDS = float(os.getenv("LUMEN_MCP_CONFIG_CACHE_TTL", "5"))
+_mcp_stderr_handle = None
+_mcp_stderr_lock = threading.Lock()
 
 BUILTIN_SERVER_NAME = "agent_tools"
 BUILTIN_SERVER_CONFIG = {
@@ -35,6 +38,28 @@ BUILTIN_SERVER_CONFIG = {
     "args": ["/opt/lumen/mcp/computer-use/dist/index.js"],
     "_lumen_builtin": True,
 }
+
+
+def _mcp_stderr_sink():
+    """Return a valid, non-console stderr handle for a windowed frozen app."""
+    global _mcp_stderr_handle
+    with _mcp_stderr_lock:
+        if _mcp_stderr_handle is None or _mcp_stderr_handle.closed:
+            # PyInstaller windowed builds set sys.stderr to None. Passing that
+            # invalid inherited handle to docker.exe makes the MCP transport
+            # exit before initialization. NUL supplies a real OS handle while
+            # avoiding persistent logs of potentially sensitive tool arguments.
+            _mcp_stderr_handle = open(os.devnull, "w", encoding="utf-8")
+        return _mcp_stderr_handle
+
+
+def _stdio_client(params):
+    """Create an MCP stdio transport with valid child handles in GUI builds."""
+    from mcp.client.stdio import stdio_client
+
+    if sys.stderr is not None:
+        return stdio_client(params)
+    return stdio_client(params, errlog=_mcp_stderr_sink())
 
 
 def _mcp_timeout_seconds() -> float:
@@ -181,12 +206,11 @@ def _build_server_params(
 async def fetch_tools(server_name: str, server_config: dict, conv_id: str = "") -> list[dict]:
     """Connect to an MCP server and return its tool definitions."""
     from mcp import ClientSession
-    from mcp.client.stdio import stdio_client
 
     params = _build_server_params(server_name, server_config, conv_id=conv_id)
     tools: list[dict] = []
     try:
-        async with stdio_client(params) as (reader, writer):
+        async with _stdio_client(params) as (reader, writer):
             async with ClientSession(
                 reader,
                 writer,
@@ -208,11 +232,10 @@ async def fetch_tools(server_name: str, server_config: dict, conv_id: str = "") 
 async def invoke_tool(server_name: str, server_config: dict, tool_name: str, arguments: dict, *, conv_id: str = "") -> str:
     """Call a single MCP tool and return its text output."""
     from mcp import ClientSession
-    from mcp.client.stdio import stdio_client
 
     params = _build_server_params(server_name, server_config, conv_id=conv_id)
     try:
-        async with stdio_client(params) as (reader, writer):
+        async with _stdio_client(params) as (reader, writer):
             async with ClientSession(
                 reader,
                 writer,

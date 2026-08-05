@@ -120,11 +120,10 @@ class McpSessionPool:
     async def _open_session(self, server_name: str, server_config: dict):
         """Open a brand-new stdio session and cache it."""
         from mcp import ClientSession
-        from mcp.client.stdio import stdio_client
-        from mcp_service import _build_server_params
+        from mcp_service import _build_server_params, _stdio_client
 
         params = _build_server_params(server_name, server_config, conv_id=self.conv_id)
-        stdio_cm = stdio_client(params)
+        stdio_cm = _stdio_client(params)
         reader, writer = await stdio_cm.__aenter__()
         session_cm = ClientSession(
             reader,

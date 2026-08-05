@@ -1,5 +1,7 @@
 # Lumen AI Chat — macOS Installable Application Implementation Report
 
+> **Windows addendum (2026-08-05):** The original report below records the macOS packaging milestone. Lumen now also has an x64 Windows 10/11 production build. `desktop_launcher.py` provides a Windows system-tray launcher and Windows file locking, `docker_cli.py` discovers and starts Docker Desktop on Windows, and `packaging/build_windows.ps1` creates a versioned PyInstaller `onedir` application, portable ZIP, and SHA-256 checksum. The release workflow builds and smoke-tests both desktop platforms. Statements below that defer Windows packaging describe the original macOS-only milestone and are superseded by this addendum.
+
 **Report date:** 5 August 2026
 
 **Review scope:** Current local working tree in `flask-chatbot-ui`

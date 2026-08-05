@@ -25,12 +25,12 @@ The app is intentionally lightweight: no database, no frontend framework, no bun
 
 Treat these as release invariants unless the product direction is explicitly changed:
 
-- The end-user UI stays in the default browser. The macOS `.app` is a menu-bar launcher and bundled backend runtime, not an Electron or native chat client.
+- The end-user UI stays in the default browser. The macOS `.app` and Windows system-tray executable are launchers with a bundled backend runtime, not Electron or native chat clients.
 - Docker Desktop is the only end-user prerequisite. The `.app` contains Python, backend dependencies, web assets, `Dockerfile.sandbox`, and the minimal pinned computer-use MCP build source.
 - First-run setup builds `lumen-sandbox` locally after user confirmation. Do not add a prebuilt registry-image pull requirement.
 - `agent_tools` is image-managed and reserved. Keep it out of editable `mcp.json`, never infer host mounts from its container path, and retain its normal icon, enable, and approval settings.
 - User state remains in `~/.lumen/`. App replacement and image/container recreation must preserve conversations, settings, memory, and mounted workspaces.
-- The current distribution target is Apple Silicon macOS 14+ with manual DMG updates. Windows packaging and Intel macOS are deferred.
+- The current distribution targets are Apple Silicon macOS 14+ (DMG) and x64 Windows 10/11 (portable ZIP), both with manual updates. Intel macOS is deferred.
 
 ## Repository map
 
@@ -39,7 +39,7 @@ Treat these as release invariants unless the product direction is explicitly cha
 ├── app.py                         # Flask app factory, startup checks, CORS, shutdown cleanup
 ├── build_info.py                  # Source/frozen version, image, resource-root, desktop-port metadata
 ├── docker_cli.py                  # Finder-safe Docker CLI discovery and invocation
-├── desktop_launcher.py            # macOS rumps menu bar + single-process Waitress launcher
+├── desktop_launcher.py            # macOS menu bar / Windows tray + single-process Waitress launcher
 ├── app_config.py                  # Server-side API provider config and API key storage
 ├── advanced_config.py             # Server-side container/file settings; env-lock support; written by UI
 ├── runtime_requirements.py        # Docker availability + sandbox image checks; streaming build log
@@ -61,7 +61,7 @@ Treat these as release invariants unless the product direction is explicitly cha
 ├── workspace_service.py           # Workspace listing, reading, upload, download path safety
 ├── store.py                       # Filesystem persistence for conversations/images + cached index
 ├── Dockerfile.sandbox             # Required per-chat sandbox image
-├── requirements-desktop.txt       # Waitress, rumps, and PyInstaller desktop dependencies
+├── requirements-desktop.txt       # Waitress, native tray libraries, and PyInstaller dependencies
 ├── packaging/                     # PyInstaller spec, metadata generator, DMG build script
 ├── vendor/computer-use-mcp-server # Pinned built-in MCP git submodule
 ├── .github/workflows/release.yml  # ARM64 sandbox smoke test and Apple Silicon DMG release pipeline
@@ -687,12 +687,13 @@ Server-level UI settings such as enabled, auto-approve, and icon are not stored 
 
 The reserved `agent_tools` key is filtered from editable configuration in memory and always replaced by `BUILTIN_SERVER_CONFIG` in effective configuration. Loading configuration does not rewrite or back up the user's file. Saves that attempt to override `agent_tools` return a validation error.
 
-## macOS desktop and releases
+## Desktop packaging and releases
 
 - `desktop_launcher.py` is a menu-bar process with no native chat window. It serves one Waitress process on `127.0.0.1:38492`, opens the default browser, holds an advisory single-instance lock, and exposes Open, Docker Status, Logs, and Quit actions.
 - `build_info.resource_root()` is the only supported way to locate bundled templates/static assets and the first-run Docker build context in a frozen app. Both source and packaged runs default to `lumen-sandbox`.
 - `docker_cli.py` resolves Docker through the shell plus standard Docker Desktop/Homebrew locations because Finder applications inherit a minimal PATH. Container and requirement modules must use this helper rather than invoking a literal `docker` executable.
 - `packaging/build_macos.sh` creates an Apple Silicon, macOS 14+ `.app` and DMG. With no `MACOS_SIGN_IDENTITY` it ad-hoc signs; the release workflow can import signing credentials and notarize later.
+- `packaging/build_windows.ps1` creates an x64 Windows `onedir` application, portable ZIP, and SHA-256 checksum. The launcher uses `pystray`, starts Docker Desktop from its standard installation path, and stores persistent data under `%USERPROFILE%\.lumen`.
 - The menu-bar item uses the bundled Lumen SVG artwork. Docker shutdown calls are bounded so an unresponsive daemon cannot prevent the app from quitting.
 - The packaged setup page asks before starting Docker Desktop and before locally building the tools image. It streams Docker's base-layer, dependency, and MCP compilation progress. A container image/version-label or underlying image-ID mismatch triggers recreation of the container only; mounted workspace data remains on the host.
 - Build metadata supplies both the user-facing application version and Apple-compatible `CFBundleShortVersionString`/`CFBundleVersion` values. GitHub Actions uses its monotonic run number for release builds.
