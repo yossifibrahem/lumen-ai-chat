@@ -119,7 +119,7 @@ async def _exercise_server(container_name: str) -> dict[str, object]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image", default="lumen-sandbox")
+    parser.add_argument("--image", default="lumen-sandbox:latest")
     args = parser.parse_args()
 
     container_name = f"lumen-mcp-smoke-{uuid.uuid4().hex[:12]}"

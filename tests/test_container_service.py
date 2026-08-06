@@ -190,9 +190,11 @@ class TestVolumeArgs:
     from pathlib import Path
 
     def test_workspace_volume_always_first(self, tmp_path):
+        import docker_path_utils
+
         result = container_service._volume_args(tmp_path, [])
         assert result[0] == "--volume"
-        assert result[1].startswith(str(tmp_path))
+        assert result[1].startswith(docker_path_utils.host_path_to_docker_src(str(tmp_path)))
         assert ":/workspace" in result[1]
 
     def test_extra_volumes_appended(self, tmp_path):
@@ -201,6 +203,8 @@ class TestVolumeArgs:
         assert "/host/path:/host/path:ro" in result
 
     def test_no_extra_volumes_include_workspace_and_memory(self, tmp_path, monkeypatch):
+        import docker_path_utils
+
         monkeypatch.setattr(
             container_service,
             "_memory_volume_spec",
@@ -209,7 +213,7 @@ class TestVolumeArgs:
         result = container_service._volume_args(tmp_path, [])
         assert result == [
             "--volume",
-            f"{tmp_path}:/workspace",
+            f"{docker_path_utils.host_path_to_docker_src(str(tmp_path))}:/workspace",
             "--volume",
             "/host/memory.md:/memory.md:rw",
         ]
@@ -232,9 +236,10 @@ class TestVolumeArgs:
         ]
 
 
-class TestContainerImageVersion:
+class TestContainerImageIdentity:
     def test_run_command_labels_container_with_configured_image(self, tmp_path, monkeypatch):
         monkeypatch.setattr(container_service, "_memory_volume_spec", lambda: None)
+        monkeypatch.setattr(container_service.build_info, "sandbox_identity", lambda: "sandbox-digest")
         monkeypatch.setattr(container_service._adv_cfg, "load_advanced_config", lambda: {
             "sandbox_image": "registry.example/lumen:1.2.3",
             "container_memory": "512m",
@@ -246,11 +251,8 @@ class TestContainerImageVersion:
 
         label = f"{container_service.build_info.CONTAINER_BUILD_LABEL}=registry.example/lumen:1.2.3"
         assert ["--label", label] == command[command.index("--label"):command.index("--label") + 2]
-        version_label = (
-            f"{container_service.build_info.CONTAINER_VERSION_LABEL}="
-            f"{container_service.build_info.APP_VERSION}"
-        )
-        assert version_label in command
+        identity_label = f"{container_service.build_info.CONTAINER_IDENTITY_LABEL}=sandbox-digest"
+        assert identity_label in command
 
     def test_existing_container_with_old_image_is_recreated(self, tmp_path, monkeypatch):
         monkeypatch.setattr(container_service, "_workspace", lambda _conv: tmp_path)
@@ -259,9 +261,10 @@ class TestContainerImageVersion:
         monkeypatch.setattr(container_service, "_get_container_image_marker", lambda _name: "old-image")
         monkeypatch.setattr(
             container_service,
-            "_get_container_version_marker",
-            lambda _name: container_service.build_info.APP_VERSION,
+            "_get_container_identity_marker",
+            lambda _name: "sandbox-digest",
         )
+        monkeypatch.setattr(container_service.build_info, "sandbox_identity", lambda: "sandbox-digest")
         monkeypatch.setattr(container_service._adv_cfg, "load_advanced_config", lambda: {
             "sandbox_image": "new-image",
             "container_memory": "512m",
@@ -285,12 +288,13 @@ class TestContainerImageVersion:
         monkeypatch.setattr(container_service, "_workspace", lambda _conv: tmp_path)
         monkeypatch.setattr(container_service, "get_status", lambda _conv: "running")
         monkeypatch.setattr(container_service, "_get_mounted_sources", lambda _name: set())
-        monkeypatch.setattr(container_service, "_get_container_image_marker", lambda _name: "lumen-sandbox")
+        monkeypatch.setattr(container_service, "_get_container_image_marker", lambda _name: "lumen-sandbox:latest")
         monkeypatch.setattr(
             container_service,
-            "_get_container_version_marker",
-            lambda _name: container_service.build_info.APP_VERSION,
+            "_get_container_identity_marker",
+            lambda _name: "sandbox-digest",
         )
+        monkeypatch.setattr(container_service.build_info, "sandbox_identity", lambda: "sandbox-digest")
         monkeypatch.setattr(container_service, "_get_container_image_id", lambda _name: "sha256:old")
         monkeypatch.setattr(container_service, "_get_tagged_image_id", lambda _image: "sha256:new")
         monkeypatch.setattr(container_service._adv_cfg, "load_advanced_config", lambda: {
@@ -311,6 +315,16 @@ class TestContainerImageVersion:
 
         assert removed == ["conversation"]
         assert info.status == "running"
+
+    def test_desktop_version_does_not_change_container_compatibility(self, monkeypatch):
+        monkeypatch.setattr(container_service, "_get_container_image_marker", lambda _name: "lumen-sandbox:latest")
+        monkeypatch.setattr(container_service, "_get_container_identity_marker", lambda _name: "sandbox-digest")
+        monkeypatch.setattr(container_service, "_get_container_image_id", lambda _name: "sha256:same")
+        monkeypatch.setattr(container_service, "_get_tagged_image_id", lambda _image: "sha256:same")
+        monkeypatch.setattr(container_service.build_info, "sandbox_identity", lambda: "sandbox-digest")
+        monkeypatch.setattr(container_service.build_info, "APP_VERSION", "99.0.0-desktop-only")
+
+        assert not container_service._container_image_changed("container", "lumen-sandbox")
 
 
 class TestShutdownTimeouts:

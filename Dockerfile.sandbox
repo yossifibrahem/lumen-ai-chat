@@ -1,16 +1,10 @@
 # Lumen per-chat MCP sandbox image.
 #
 # First-run/developer build:
-#   docker build --build-arg LUMEN_SANDBOX_VERSION=0.1.0-dev \
-#     -f Dockerfile.sandbox -t lumen-sandbox .
+#   docker build --build-arg LUMEN_SANDBOX_IDENTITY=<content-sha256> \
+#     -f Dockerfile.sandbox -t lumen-sandbox:latest .
 
 FROM ubuntu:24.04
-
-ARG LUMEN_SANDBOX_VERSION=dev
-LABEL org.opencontainers.image.title="Lumen MCP Sandbox" \
-      org.opencontainers.image.source="https://github.com/yossifibrahem/lumen-ai-chat" \
-      org.opencontainers.image.version="${LUMEN_SANDBOX_VERSION}" \
-      com.lumen.sandbox.version="${LUMEN_SANDBOX_VERSION}"
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
@@ -95,6 +89,11 @@ RUN cd /tmp/computer-use-mcp \
     && cd / \
     && rm -rf /tmp/computer-use-mcp \
     && npm cache clean --force
+
+ARG LUMEN_SANDBOX_IDENTITY=unidentified
+LABEL org.opencontainers.image.title="Lumen MCP Sandbox" \
+      org.opencontainers.image.source="https://github.com/yossifibrahem/lumen-ai-chat" \
+      com.lumen.sandbox.identity="${LUMEN_SANDBOX_IDENTITY}"
 
 WORKDIR /workspace
 CMD ["sleep", "infinity"]

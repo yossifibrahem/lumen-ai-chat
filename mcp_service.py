@@ -6,6 +6,7 @@ import copy
 import json
 import logging
 import os
+import sys
 import threading
 import time
 import uuid
@@ -28,6 +29,8 @@ _config_cache_at = 0.0
 _config_cache_path: Path | None = None
 _config_cache_lock = threading.Lock()
 _CONFIG_TTL_SECONDS = float(os.getenv("LUMEN_MCP_CONFIG_CACHE_TTL", "5"))
+_mcp_stderr_handle = None
+_mcp_stderr_lock = threading.Lock()
 
 BUILTIN_SERVER_NAME = "agent_tools"
 BUILTIN_SERVER_CONFIG = {
@@ -35,6 +38,24 @@ BUILTIN_SERVER_CONFIG = {
     "args": ["/opt/lumen/mcp/computer-use/dist/index.js"],
     "_lumen_builtin": True,
 }
+
+
+def _mcp_stderr_sink():
+    """Return a valid long-lived stderr handle for frozen GUI processes."""
+    global _mcp_stderr_handle
+    with _mcp_stderr_lock:
+        if _mcp_stderr_handle is None or _mcp_stderr_handle.closed:
+            _mcp_stderr_handle = open(os.devnull, "w", encoding="utf-8")
+        return _mcp_stderr_handle
+
+
+def _stdio_client(params):
+    """Create MCP stdio without inheriting an absent PyInstaller stream."""
+    from mcp.client.stdio import stdio_client
+
+    if sys.stderr is not None:
+        return stdio_client(params)
+    return stdio_client(params, errlog=_mcp_stderr_sink())
 
 
 def _mcp_timeout_seconds() -> float:
@@ -181,12 +202,11 @@ def _build_server_params(
 async def fetch_tools(server_name: str, server_config: dict, conv_id: str = "") -> list[dict]:
     """Connect to an MCP server and return its tool definitions."""
     from mcp import ClientSession
-    from mcp.client.stdio import stdio_client
 
     params = _build_server_params(server_name, server_config, conv_id=conv_id)
     tools: list[dict] = []
     try:
-        async with stdio_client(params) as (reader, writer):
+        async with _stdio_client(params) as (reader, writer):
             async with ClientSession(
                 reader,
                 writer,
@@ -208,11 +228,10 @@ async def fetch_tools(server_name: str, server_config: dict, conv_id: str = "") 
 async def invoke_tool(server_name: str, server_config: dict, tool_name: str, arguments: dict, *, conv_id: str = "") -> str:
     """Call a single MCP tool and return its text output."""
     from mcp import ClientSession
-    from mcp.client.stdio import stdio_client
 
     params = _build_server_params(server_name, server_config, conv_id=conv_id)
     try:
-        async with stdio_client(params) as (reader, writer):
+        async with _stdio_client(params) as (reader, writer):
             async with ClientSession(
                 reader,
                 writer,
@@ -262,16 +281,38 @@ def close_persistent_pool(conv_id: str) -> None:
             log.exception("[mcp] error closing persistent pool for conv %s", conv_id)
 
 
-def close_all_persistent_pools() -> None:
-    """Close every persistent pool. Call once on app shutdown."""
+def close_all_persistent_pools(*, deadline: float | None = None) -> None:
+    """Close every persistent pool concurrently within one deadline."""
     with _persistent_pools_lock:
         items = list(_persistent_pools.items())
         _persistent_pools.clear()
-    for conv_id, pool in items:
+    if not items:
+        return
+
+    def _close(conv_id: str, pool: McpSessionPool) -> None:
         try:
-            pool.close()
+            timeout = None if deadline is None else max(0.01, deadline - time.monotonic())
+            pool.close(timeout=timeout)
         except Exception:
             log.exception("[mcp] error closing persistent pool for conv %s on shutdown", conv_id)
+
+    threads = [
+        threading.Thread(
+            target=_close,
+            args=(conv_id, pool),
+            name=f"mcp-close-{conv_id}",
+            daemon=True,
+        )
+        for conv_id, pool in items
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        timeout = None if deadline is None else max(0.0, deadline - time.monotonic())
+        thread.join(timeout=timeout)
+    unfinished = [thread.name for thread in threads if thread.is_alive()]
+    if unfinished:
+        log.warning("[mcp] shutdown deadline reached with pools still closing: %s", unfinished)
 
 
 # ── Sync bridge ───────────────────────────────────────────────────────────────

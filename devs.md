@@ -25,12 +25,12 @@ The app is intentionally lightweight: no database, no frontend framework, no bun
 
 Treat these as release invariants unless the product direction is explicitly changed:
 
-- The end-user UI stays in the default browser. The macOS `.app` is a menu-bar launcher and bundled backend runtime, not an Electron or native chat client.
-- Docker Desktop is the only end-user prerequisite. The `.app` contains Python, backend dependencies, web assets, `Dockerfile.sandbox`, and the minimal pinned computer-use MCP build source.
-- First-run setup builds `lumen-sandbox` locally after user confirmation. Do not add a prebuilt registry-image pull requirement.
+- The end-user UI stays in the default browser. The macOS menu-bar and Windows tray applications are launchers and bundled backend runtimes, not Electron or native chat clients.
+- Docker Desktop is the only end-user prerequisite. Each desktop package contains Python, backend dependencies, web assets, `Dockerfile.sandbox`, and the minimal pinned computer-use MCP build source.
+- First-run setup builds `lumen-sandbox:latest` locally after user confirmation. Do not add a prebuilt registry-image pull requirement.
 - `agent_tools` is image-managed and reserved. Keep it out of editable `mcp.json`, never infer host mounts from its container path, and retain its normal icon, enable, and approval settings.
 - User state remains in `~/.lumen/`. App replacement and image/container recreation must preserve conversations, settings, memory, and mounted workspaces.
-- The current distribution target is Apple Silicon macOS 14+ with manual DMG updates. Windows packaging and Intel macOS are deferred.
+- Distribution targets are Apple Silicon macOS 14+ DMG and portable Windows x64 PyInstaller `onedir` ZIP. Intel macOS, ARM64 Windows, installers, signing, and automatic updates are deferred.
 
 ## Repository map
 
@@ -40,6 +40,7 @@ Treat these as release invariants unless the product direction is explicitly cha
 ├── build_info.py                  # Source/frozen version, image, resource-root, desktop-port metadata
 ├── docker_cli.py                  # Finder-safe Docker CLI discovery and invocation
 ├── desktop_launcher.py            # macOS rumps menu bar + single-process Waitress launcher
+├── windows_desktop_launcher.py    # Windows tray + named mutex + Waitress launcher
 ├── app_config.py                  # Server-side API provider config and API key storage
 ├── advanced_config.py             # Server-side container/file settings; env-lock support; written by UI
 ├── runtime_requirements.py        # Docker availability + sandbox image checks; streaming build log
@@ -62,9 +63,9 @@ Treat these as release invariants unless the product direction is explicitly cha
 ├── store.py                       # Filesystem persistence for conversations/images + cached index
 ├── Dockerfile.sandbox             # Required per-chat sandbox image
 ├── requirements-desktop.txt       # Waitress, rumps, and PyInstaller desktop dependencies
-├── packaging/                     # PyInstaller spec, metadata generator, DMG build script
+├── packaging/                     # Platform PyInstaller specs and release build scripts
 ├── vendor/computer-use-mcp-server # Pinned built-in MCP git submodule
-├── .github/workflows/release.yml  # ARM64 sandbox smoke test and Apple Silicon DMG release pipeline
+├── .github/workflows/release.yml  # Cross-platform tests, sandbox smoke, and desktop artifacts
 ├── gunicorn.conf.py               # Single-worker/threaded production default
 ├── requirements.txt               # Flask, CORS, OpenAI SDK, MCP SDK
 ├── requirements-dev.txt           # Adds pytest and pytest-mock on top of requirements.txt
@@ -154,7 +155,8 @@ Build the required source-development sandbox image before using MCP tools:
 
 ```bash
 git submodule update --init --recursive
-docker build --build-arg LUMEN_SANDBOX_VERSION=0.1.0-dev -f Dockerfile.sandbox -t lumen-sandbox .
+identity="$(python -c 'import build_info; print(build_info.sandbox_identity())')"
+docker build --build-arg "LUMEN_SANDBOX_IDENTITY=$identity" -f Dockerfile.sandbox -t lumen-sandbox:latest .
 ```
 
 Production-ish entrypoint:
@@ -196,7 +198,7 @@ LUMEN_CONFIG_FILE            path to server-side config JSON
 LUMEN_CONFIG_CACHE_TTL       default: 5 seconds
 LUMEN_ADVANCED_CONFIG_FILE   path to advanced/container config JSON; default ~/.lumen/advanced_config.json
 LUMEN_MCP_CONFIG_FILE        path to MCP config JSON; default ~/.lumen/mcp.json
-LUMEN_SANDBOX_IMAGE          default: lumen-sandbox  [env-locks the UI field]
+LUMEN_SANDBOX_IMAGE          default: lumen-sandbox:latest  [env-locks the UI field]
 LUMEN_CONTAINERS_ROOT        default: ~/.lumen/containers
 LUMEN_CONTAINER_MEMORY       default: 512m  [env-locks the UI field]
 LUMEN_CONTAINER_CPUS         default: 1  [env-locks the UI field]
@@ -262,10 +264,10 @@ Owns Docker availability and sandbox image checks. Used by `app.py` at startup a
 Key behavior:
 
 - `check_docker()` — resolves the Docker CLI, then runs a bounded server-version probe to verify the selected Docker context can reach a usable daemon without hanging app startup.
-- `check_sandbox_image()` — verifies the configured image exists locally and its build-version label matches the app.
+- `check_sandbox_image()` — first confirms the exact canonical image reference exists, then compares its `com.lumen.sandbox.identity` label with the normalized Docker/MCP input digest. Query or inspection failures are retry-only states, never installation prompts.
 - `check_requirements()` — returns the first unmet requirement, or ok.
 - `build_sandbox_image_stream()` — generator that yields `("log", {"line": str})`, `("done", status_dict)`, or `("error", status_dict)` tuples for SSE streaming from `routes_startup.py`.
-- The sandbox image name is read from `advanced_config.load_advanced_config()["sandbox_image"]` so `LUMEN_SANDBOX_IMAGE` and UI changes take effect without code changes.
+- The sandbox image name is read from `advanced_config.load_advanced_config()["sandbox_image"]` so `LUMEN_SANDBOX_IMAGE` and UI changes take effect without code changes. Docker boundaries canonicalize untagged names to `:latest` without rewriting saved settings.
 
 ### `fs_utils.py`
 
@@ -687,14 +689,17 @@ Server-level UI settings such as enabled, auto-approve, and icon are not stored 
 
 The reserved `agent_tools` key is filtered from editable configuration in memory and always replaced by `BUILTIN_SERVER_CONFIG` in effective configuration. Loading configuration does not rewrite or back up the user's file. Saves that attempt to override `agent_tools` return a validation error.
 
-## macOS desktop and releases
+## Desktop applications and releases
 
 - `desktop_launcher.py` is a menu-bar process with no native chat window. It serves one Waitress process on `127.0.0.1:38492`, opens the default browser, holds an advisory single-instance lock, and exposes Open, Docker Status, Logs, and Quit actions.
-- `build_info.resource_root()` is the only supported way to locate bundled templates/static assets and the first-run Docker build context in a frozen app. Both source and packaged runs default to `lumen-sandbox`.
-- `docker_cli.py` resolves Docker through the shell plus standard Docker Desktop/Homebrew locations because Finder applications inherit a minimal PATH. Container and requirement modules must use this helper rather than invoking a literal `docker` executable.
+- `windows_desktop_launcher.py` provides the equivalent Windows tray host. It uses a per-session named mutex, a windowed PyInstaller process, and one absolute 15-second Quit deadline. The listener closes before worker cleanup; MCP pools and running containers close concurrently; the mutex is released before the tray loop stops. A Windows-only watchdog records and forces an abnormal exit only if the coordinated path misses the deadline.
+- `build_info.resource_root()` is the only supported way to locate bundled templates/static assets and the first-run Docker build context in a frozen app. Both source and packaged runs default to `lumen-sandbox:latest`.
+- `build_info.sandbox_identity()` hashes only `.dockerignore`, `Dockerfile.sandbox`, MCP manifests/lockfile/TypeScript config, and MCP source. Relative paths and line endings are normalized, so identity is invariant across desktop versions and platforms.
+- `docker_cli.py` resolves Docker through explicit override, `PATH`, and standard platform locations because GUI applications inherit a restricted `PATH`. All Lumen-owned Windows Docker processes use no-window creation flags. Container and requirement modules must use this helper rather than invoking a literal `docker` executable.
 - `packaging/build_macos.sh` creates an Apple Silicon, macOS 14+ `.app` and DMG. With no `MACOS_SIGN_IDENTITY` it ad-hoc signs; the release workflow can import signing credentials and notarize later.
+- `packaging/build_windows.ps1` requires Python 3.12 x64, creates a complete PyInstaller `onedir` ZIP and checksum, extracts that ZIP, and runs frozen-resource/server smoke mode from the extracted copy. Never distribute only `Lumen AI Chat.exe`.
 - The menu-bar item uses the bundled Lumen SVG artwork. Docker shutdown calls are bounded so an unresponsive daemon cannot prevent the app from quitting.
-- The packaged setup page asks before starting Docker Desktop and before locally building the tools image. It streams Docker's base-layer, dependency, and MCP compilation progress. A container image/version-label or underlying image-ID mismatch triggers recreation of the container only; mounted workspace data remains on the host.
+- The packaged setup page asks before starting Docker Desktop and before locally building the tools image. It streams Docker's base-layer, dependency, and MCP compilation progress. A container sandbox-identity or underlying image-ID mismatch triggers recreation of the container only; mounted workspace data remains on the host.
 - Build metadata supplies both the user-facing application version and Apple-compatible `CFBundleShortVersionString`/`CFBundleVersion` values. GitHub Actions uses its monotonic run number for release builds.
 - `Dockerfile.sandbox` starts from `ubuntu:24.04`, installs Node.js inside Ubuntu, builds the MCP source from the pinned submodule commit in the same image, removes development dependencies, and overlays explicitly pinned compatible runtime dependency fixes. Keep the four-tool container smoke test and runtime audit clean when changing those pins.
 
@@ -735,7 +740,11 @@ Coverage summary:
 | `test_streaming.py` | Typed event ordering, multi-delta tool name accumulation, parallel tool calls, cancellation closes stream, error+done events |
 | `test_mcp_service.py` | Config cache, malformed-config handling, atomic writes, `run_async`, `McpSessionPool` same-task cleanup behavior (pool now in `mcp_session_pool.py`) |
 | `test_mcp_adapters.py` | Docker exec param mutation, project-root detection, host mount extraction/deduplication |
-| `test_container_service.py` | Safe container names, exec argv/env ordering, name-conflict handling, idle reaper behavior |
+| `test_build_info.py` | Explicit image-reference canonicalization and platform/line-ending invariant sandbox identity |
+| `test_container_service.py` | Safe container names, content-identity compatibility, exec argv/env ordering, name-conflict handling, idle reaper behavior |
+| `test_runtime_requirements.py` | Missing/transient/incompatible image states and identity-labelled builds |
+| `test_app_shutdown.py` | Idempotent, concurrent MCP/container shutdown coordination |
+| `test_windows_desktop_launcher.py` | Native mutex, listener close ordering, tray cleanup ordering, and packaged smoke-mode contract |
 | `test_tool_approval.py` | Approval gate lifecycle, concurrent approvals in the same stream, cancel-event unblocking, slot cleanup after resolve/cancel |
 | `test_title_service.py` | `_SET_TITLE_TOOL` shape, `_messages_to_text` role/content handling, `_extract_title` from model tool-call response |
 | `test_routes.py` | HTTP routes, route error paths, settings routes, conversation update whitelist |

@@ -42,7 +42,12 @@ class RequirementStatus:
 
 
 def _image_name() -> str:
-    return str(advanced_config.load_advanced_config()["sandbox_image"])
+    configured = str(advanced_config.load_advanced_config()["sandbox_image"])
+    return build_info.canonical_image_reference(configured)
+
+
+def _expected_sandbox_identity() -> str:
+    return build_info.sandbox_identity(PROJECT_ROOT)
 
 
 def _run(
@@ -125,14 +130,38 @@ def check_docker() -> RequirementStatus:
 
 
 def check_sandbox_image() -> RequirementStatus:
-    """Return whether the configured sandbox image exists locally."""
+    """Return whether the configured sandbox image exists and is compatible."""
     image = _image_name()
     docker_status = check_docker()
     if not docker_status.ok:
         return docker_status
 
-    result = _run(["image", "inspect", image])
-    if result.returncode != 0:
+    try:
+        list_result = _run(
+            ["image", "ls", "--quiet", "--no-trunc", image],
+            timeout=DOCKER_PROBE_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        return RequirementStatus(
+            ok=False,
+            code="sandbox_image_check_failed",
+            title="Lumen could not check its tools",
+            message="Docker returned a temporary error while checking the sandbox. Click Retry.",
+            action="retry",
+            image=image,
+            details=str(exc),
+        )
+    if list_result.returncode != 0:
+        return RequirementStatus(
+            ok=False,
+            code="sandbox_image_check_failed",
+            title="Lumen could not check its tools",
+            message="Docker returned a temporary error while checking the sandbox. Click Retry.",
+            action="retry",
+            image=image,
+            details=(list_result.stderr or list_result.stdout).strip(),
+        )
+    if not list_result.stdout.strip():
         return RequirementStatus(
             ok=False,
             code="sandbox_image_missing",
@@ -143,28 +172,63 @@ def check_sandbox_image() -> RequirementStatus:
             ),
             action="build",
             image=image,
-            details=(result.stderr or result.stdout).strip(),
         )
 
-    version_result = _run([
-        "image",
-        "inspect",
-        "--format",
-        f'{{{{index .Config.Labels "{build_info.CONTAINER_VERSION_LABEL}"}}}}',
-        image,
-    ])
-    image_version = version_result.stdout.strip() if version_result.returncode == 0 else ""
-    if image_version != build_info.APP_VERSION:
+    try:
+        identity_result = _run(
+            [
+                "image",
+                "inspect",
+                "--format",
+                f'{{{{index .Config.Labels "{build_info.CONTAINER_IDENTITY_LABEL}"}}}}',
+                image,
+            ],
+            timeout=DOCKER_PROBE_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        return RequirementStatus(
+            ok=False,
+            code="sandbox_image_check_failed",
+            title="Lumen could not inspect its tools",
+            message="Docker returned a temporary error while inspecting the sandbox. Click Retry.",
+            action="retry",
+            image=image,
+            details=str(exc),
+        )
+    if identity_result.returncode != 0:
+        return RequirementStatus(
+            ok=False,
+            code="sandbox_image_check_failed",
+            title="Lumen could not inspect its tools",
+            message="Docker returned a temporary error while inspecting the sandbox. Click Retry.",
+            action="retry",
+            image=image,
+            details=(identity_result.stderr or identity_result.stdout).strip(),
+        )
+    try:
+        expected_identity = _expected_sandbox_identity()
+    except OSError as exc:
+        return RequirementStatus(
+            ok=False,
+            code="sandbox_image_check_failed",
+            title="Lumen's bundled tools are incomplete",
+            message="Required sandbox build files could not be read. Reinstall Lumen.",
+            action="retry",
+            image=image,
+            details=str(exc),
+        )
+    image_identity = identity_result.stdout.strip()
+    if image_identity != expected_identity:
         return RequirementStatus(
             ok=False,
             code="sandbox_image_outdated",
             title="Lumen tools need to be updated",
-            message="Click Install Lumen Tools to rebuild them for this version of Lumen.",
+            message="Click Install Lumen Tools to rebuild them from the bundled Docker and MCP files.",
             action="build",
             image=image,
             details=(
-                f"Installed tools version: {image_version or 'unknown'}\n"
-                f"Required tools version: {build_info.APP_VERSION}"
+                f"Installed tools identity: {image_identity or 'legacy/unidentified'}\n"
+                f"Required tools identity: {expected_identity}"
             ),
         )
 
@@ -213,10 +277,23 @@ def build_sandbox_image_stream():
             return
 
         image = _image_name()
+        try:
+            identity = _expected_sandbox_identity()
+        except OSError as exc:
+            yield "error", RequirementStatus(
+                ok=False,
+                code="sandbox_image_build_failed",
+                title="Lumen's bundled tools are incomplete",
+                message="Required sandbox build files could not be read. Reinstall Lumen.",
+                action="retry",
+                image=image,
+                details=str(exc),
+            ).as_dict()
+            return
         cmd = [
             "build",
             "--progress=plain",
-            "--build-arg", f"LUMEN_SANDBOX_VERSION={build_info.APP_VERSION}",
+            "--build-arg", f"LUMEN_SANDBOX_IDENTITY={identity}",
             "-f", "Dockerfile.sandbox",
             "-t", image,
             ".",

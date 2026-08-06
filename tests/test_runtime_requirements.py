@@ -8,7 +8,8 @@ import runtime_requirements as requirements
 
 
 def _configure(monkeypatch):
-    monkeypatch.setattr(requirements, "_image_name", lambda: "test-sandbox")
+    monkeypatch.setattr(requirements, "_image_name", lambda: "test-sandbox:latest")
+    monkeypatch.setattr(requirements, "_expected_sandbox_identity", lambda: "expected-identity", raising=False)
 
 
 def test_reports_missing_docker_cli_before_running_a_command(monkeypatch):
@@ -130,10 +131,12 @@ def test_missing_image_uses_first_run_build_action(monkeypatch):
     monkeypatch.setattr(
         requirements,
         "_run",
-        lambda args, **kwargs: subprocess.CompletedProcess(args, 1, stdout="", stderr="missing"),
+        lambda args, **kwargs: subprocess.CompletedProcess(args, 0, stdout="", stderr=""),
     )
 
-    assert requirements.check_sandbox_image().action == "build"
+    status = requirements.check_sandbox_image()
+    assert status.code == "sandbox_image_missing"
+    assert status.action == "build"
 
 
 def test_missing_image_uses_build_action_in_frozen_app(monkeypatch):
@@ -145,7 +148,7 @@ def test_missing_image_uses_build_action_in_frozen_app(monkeypatch):
     monkeypatch.setattr(
         requirements,
         "_run",
-        lambda args, **kwargs: subprocess.CompletedProcess(args, 1, stdout="", stderr="missing"),
+        lambda args, **kwargs: subprocess.CompletedProcess(args, 0, stdout="", stderr=""),
     )
 
     assert requirements.check_sandbox_image().action == "build"
@@ -161,7 +164,7 @@ def test_outdated_image_uses_rebuild_action(monkeypatch):
         lambda args, **kwargs: subprocess.CompletedProcess(
             args,
             0,
-            stdout="old-version\n" if "--format" in args else "{}",
+            stdout="old-identity\n" if "inspect" in args else "sha256:image\n",
             stderr="",
         ),
     )
@@ -170,10 +173,60 @@ def test_outdated_image_uses_rebuild_action(monkeypatch):
 
     assert status.code == "sandbox_image_outdated"
     assert status.action == "build"
-    assert requirements.build_info.APP_VERSION in status.details
+    assert "expected-identity" in status.details
 
 
-def test_build_stream_uses_bundled_context_and_version_label(monkeypatch, tmp_path):
+def test_image_query_failure_is_retryable_not_missing(monkeypatch):
+    _configure(monkeypatch)
+    ready = requirements.RequirementStatus(True, "ok", "Ready", "ready", "continue", "test-sandbox:latest")
+    monkeypatch.setattr(requirements, "check_docker", lambda: ready)
+    monkeypatch.setattr(
+        requirements,
+        "_run",
+        lambda args, **kwargs: subprocess.CompletedProcess(args, 1, stdout="", stderr="daemon interrupted"),
+    )
+
+    status = requirements.check_sandbox_image()
+
+    assert status.code == "sandbox_image_check_failed"
+    assert status.action == "retry"
+
+
+def test_image_query_timeout_is_retryable_not_missing(monkeypatch):
+    _configure(monkeypatch)
+    ready = requirements.RequirementStatus(True, "ok", "Ready", "ready", "continue", "test-sandbox:latest")
+    monkeypatch.setattr(requirements, "check_docker", lambda: ready)
+
+    def time_out(args, **kwargs):
+        raise subprocess.TimeoutExpired(args, kwargs["timeout"])
+
+    monkeypatch.setattr(requirements, "_run", time_out)
+
+    status = requirements.check_sandbox_image()
+
+    assert status.code == "sandbox_image_check_failed"
+    assert status.action == "retry"
+
+
+def test_matching_identity_accepts_existing_image(monkeypatch):
+    _configure(monkeypatch)
+    ready = requirements.RequirementStatus(True, "ok", "Ready", "ready", "continue", "test-sandbox:latest")
+    monkeypatch.setattr(requirements, "check_docker", lambda: ready)
+    monkeypatch.setattr(
+        requirements,
+        "_run",
+        lambda args, **kwargs: subprocess.CompletedProcess(
+            args,
+            0,
+            stdout="expected-identity\n" if "inspect" in args else "sha256:image\n",
+            stderr="",
+        ),
+    )
+
+    assert requirements.check_sandbox_image().ok is True
+
+
+def test_build_stream_uses_bundled_context_and_identity_label(monkeypatch, tmp_path):
     _configure(monkeypatch)
     ready = requirements.RequirementStatus(True, "ok", "Ready", "ready", "continue", "test-sandbox")
     missing = requirements.RequirementStatus(
@@ -211,7 +264,8 @@ def test_build_stream_uses_bundled_context_and_version_label(monkeypatch, tmp_pa
 
     assert events[-1][0] == "done"
     assert calls[0][1] == tmp_path
-    assert f"LUMEN_SANDBOX_VERSION={requirements.build_info.APP_VERSION}" in calls[0][0]
+    assert "LUMEN_SANDBOX_IDENTITY=expected-identity" in calls[0][0]
+    assert "test-sandbox:latest" in calls[0][0]
 
 
 def test_build_stream_does_not_rebuild_ready_image(monkeypatch):

@@ -1,4 +1,4 @@
-"""Resolve and invoke Docker reliably from shells and macOS GUI applications."""
+"""Resolve and invoke Docker reliably from shells and desktop applications."""
 from __future__ import annotations
 
 import os
@@ -10,6 +10,30 @@ from typing import Iterable
 
 
 MAC_DOCKER_APP = Path("/Applications/Docker.app")
+
+
+def _windowless_process_kwargs() -> dict:
+    """Prevent console executables from flashing a window on Windows."""
+    if sys.platform != "win32":
+        return {}
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    startupinfo.wShowWindow = subprocess.SW_HIDE
+    return {
+        "creationflags": subprocess.CREATE_NO_WINDOW,
+        "startupinfo": startupinfo,
+    }
+
+
+def _windows_docker_roots() -> list[Path]:
+    roots: list[Path] = []
+    program_files = os.getenv("ProgramFiles", "").strip()
+    local_app_data = os.getenv("LOCALAPPDATA", "").strip()
+    if program_files:
+        roots.append(Path(program_files) / "Docker" / "Docker")
+    if local_app_data:
+        roots.append(Path(local_app_data) / "Docker")
+    return roots
 
 
 def candidate_paths() -> list[str]:
@@ -29,11 +53,17 @@ def candidate_paths() -> list[str]:
             "/Applications/Docker.app/Contents/Resources/bin/docker",
             str(Path.home() / ".docker" / "bin" / "docker"),
         ])
+    elif sys.platform == "win32":
+        candidates.extend(
+            str(root / "resources" / "bin" / "docker.exe")
+            for root in _windows_docker_roots()
+        )
+        candidates.append(str(Path.home() / ".docker" / "bin" / "docker.exe"))
 
     unique: list[str] = []
     seen: set[str] = set()
     for candidate in candidates:
-        expanded = str(Path(candidate).expanduser())
+        expanded = os.path.expanduser(candidate)
         if expanded not in seen:
             seen.add(expanded)
             unique.append(expanded)
@@ -71,6 +101,7 @@ def run(
         text=True,
         timeout=timeout,
         cwd=cwd,
+        **_windowless_process_kwargs(),
     )
 
 
@@ -85,21 +116,30 @@ def popen(
         stderr=subprocess.STDOUT,
         text=True,
         cwd=cwd,
+        **_windowless_process_kwargs(),
     )
 
 
 def docker_desktop_installed() -> bool:
-    return sys.platform == "darwin" and MAC_DOCKER_APP.is_dir()
+    if sys.platform == "darwin":
+        return MAC_DOCKER_APP.is_dir()
+    if sys.platform == "win32":
+        return any((root / "Docker Desktop.exe").is_file() for root in _windows_docker_roots())
+    return False
 
 
 def start_docker_desktop() -> subprocess.CompletedProcess:
-    if sys.platform != "darwin":
-        raise RuntimeError("Starting Docker Desktop is only supported on macOS.")
-    if not docker_desktop_installed():
-        raise FileNotFoundError("Docker Desktop is not installed in /Applications.")
-    return subprocess.run(
-        ["/usr/bin/open", "-a", "Docker"],
-        capture_output=True,
-        text=True,
-        timeout=10,
-    )
+    if sys.platform == "darwin":
+        if not docker_desktop_installed():
+            raise FileNotFoundError("Docker Desktop is not installed in /Applications.")
+        return subprocess.run(
+            ["/usr/bin/open", "-a", "Docker"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    if sys.platform == "win32":
+        if not docker_desktop_installed():
+            raise FileNotFoundError("Docker Desktop is not installed in a standard location.")
+        return run(["desktop", "start", "--detach", "--timeout", "10"], timeout=12)
+    raise RuntimeError("Starting Docker Desktop is only supported on macOS and Windows.")

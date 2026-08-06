@@ -112,10 +112,10 @@ def _get_container_image_marker(name: str) -> str:
     return result.stdout.strip() if result.returncode == 0 else ""
 
 
-def _get_container_version_marker(name: str) -> str:
+def _get_container_identity_marker(name: str) -> str:
     result = _run([
         "docker", "inspect",
-        "--format", f'{{{{index .Config.Labels "{build_info.CONTAINER_VERSION_LABEL}"}}}}',
+        "--format", f'{{{{index .Config.Labels "{build_info.CONTAINER_IDENTITY_LABEL}"}}}}',
         name,
     ])
     return result.stdout.strip() if result.returncode == 0 else ""
@@ -132,10 +132,11 @@ def _get_tagged_image_id(image: str) -> str:
 
 
 def _container_image_changed(name: str, expected_image: str) -> bool:
+    expected_image = build_info.canonical_image_reference(expected_image)
     tagged_image_id = _get_tagged_image_id(expected_image)
     return (
         _get_container_image_marker(name) != expected_image
-        or _get_container_version_marker(name) != build_info.APP_VERSION
+        or _get_container_identity_marker(name) != build_info.sandbox_identity()
         or not tagged_image_id
         or _get_container_image_id(name) != tagged_image_id
     )
@@ -181,7 +182,9 @@ def _ensure_container_locked(conv_id: str, extra_volumes: list[str]) -> Containe
     status = get_status(conv_id)
     if status in {"running", "stopped"}:
         missing = required_sources - _get_mounted_sources(name)
-        expected_image = str(_adv_cfg.load_advanced_config()["sandbox_image"])
+        expected_image = build_info.canonical_image_reference(
+            str(_adv_cfg.load_advanced_config()["sandbox_image"])
+        )
         image_changed = _container_image_changed(name, expected_image)
         if missing or image_changed:
             if missing:
@@ -211,12 +214,13 @@ def _ensure_container_locked(conv_id: str, extra_volumes: list[str]) -> Containe
 
 def _docker_run_command(name: str, workspace: Path, extra_volumes: list[str]) -> list[str]:
     cfg = _adv_cfg.load_advanced_config()
+    image = build_info.canonical_image_reference(str(cfg["sandbox_image"]))
     return [
         "docker", "run",
         "--detach",
         "--name", name,
-        "--label", f"{build_info.CONTAINER_BUILD_LABEL}={cfg['sandbox_image']}",
-        "--label", f"{build_info.CONTAINER_VERSION_LABEL}={build_info.APP_VERSION}",
+        "--label", f"{build_info.CONTAINER_BUILD_LABEL}={image}",
+        "--label", f"{build_info.CONTAINER_IDENTITY_LABEL}={build_info.sandbox_identity()}",
         *_volume_args(workspace, extra_volumes),
         "--workdir", "/workspace",
         "--memory", str(cfg["container_memory"]),
@@ -228,7 +232,7 @@ def _docker_run_command(name: str, workspace: Path, extra_volumes: list[str]) ->
         "--cap-add", "SETUID",
         "--cap-add", "SETGID",
         "--security-opt", "no-new-privileges",
-        str(cfg["sandbox_image"]),
+        image,
     ]
 
 
@@ -255,7 +259,9 @@ def _reuse_conflicting_container(conv_id: str, required_sources: set[str]) -> Co
         raise RuntimeError(
             f"Container {name} already exists but is missing required volume(s): {sorted(missing)}"
         )
-    expected_image = str(_adv_cfg.load_advanced_config()["sandbox_image"])
+    expected_image = build_info.canonical_image_reference(
+        str(_adv_cfg.load_advanced_config()["sandbox_image"])
+    )
     if _container_image_changed(name, expected_image):
         raise RuntimeError(
             f"Container {name} already exists but uses a different sandbox image"
@@ -348,7 +354,13 @@ def delete_workspace(conv_id: str) -> None:
     log.info("[container] deleted workspace %s", path)
 
 
-def stop_all_containers() -> list[str]:
+def _remaining_shutdown_timeout(deadline: float | None) -> float:
+    if deadline is None:
+        return float(DOCKER_SHUTDOWN_TIMEOUT_SECONDS)
+    return max(0.01, min(float(DOCKER_SHUTDOWN_TIMEOUT_SECONDS), deadline - time.monotonic()))
+
+
+def stop_all_containers(*, deadline: float | None = None) -> list[str]:
     """Kill every running lumen-chat-* container.
 
     Called on app shutdown so containers are not left running indefinitely
@@ -359,12 +371,15 @@ def stop_all_containers() -> list[str]:
     that ``ensure_container()`` can restart them quickly on the next launch;
     ``cleanup_stale()`` at startup handles any orphaned ones.
     """
+    if deadline is not None and deadline <= time.monotonic():
+        log.warning("[container] shutdown deadline expired before cleanup started")
+        return []
     try:
         result = _run([
             "docker", "ps",
             "--filter", f"name={CONTAINER_PREFIX}",
             "--format", "{{.Names}}",
-        ], timeout=DOCKER_SHUTDOWN_TIMEOUT_SECONDS)
+        ], timeout=_remaining_shutdown_timeout(deadline))
     except subprocess.TimeoutExpired:
         log.warning("[container] shutdown cleanup timed out while listing containers")
         return []
@@ -380,11 +395,13 @@ def stop_all_containers() -> list[str]:
     if not names:
         return []
 
-    print(f"Stopping {len(names)} container(s)...", flush=True)
+    if deadline is not None and deadline <= time.monotonic():
+        log.warning("[container] shutdown deadline expired before containers could be killed")
+        return []
     try:
         r = _run(
             ["docker", "kill", *names],
-            timeout=DOCKER_SHUTDOWN_TIMEOUT_SECONDS,
+            timeout=_remaining_shutdown_timeout(deadline),
         )
     except subprocess.TimeoutExpired:
         log.warning("[container] shutdown timed out while killing containers")

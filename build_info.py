@@ -1,6 +1,7 @@
 """Application build metadata shared by the web server and desktop launcher."""
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sys
@@ -8,7 +9,15 @@ from pathlib import Path
 
 
 SOURCE_VERSION = "0.1.0-dev"
-LOCAL_SANDBOX_IMAGE = "lumen-sandbox"
+LOCAL_SANDBOX_IMAGE = "lumen-sandbox:latest"
+_SANDBOX_FIXED_INPUTS = (
+    ".dockerignore",
+    "Dockerfile.sandbox",
+    "vendor/computer-use-mcp-server/package.json",
+    "vendor/computer-use-mcp-server/package-lock.json",
+    "vendor/computer-use-mcp-server/tsconfig.json",
+)
+_SANDBOX_SOURCE_DIR = "vendor/computer-use-mcp-server/src"
 
 
 def is_frozen() -> bool:
@@ -28,6 +37,45 @@ def resource_root() -> Path:
             return resources_root
         return frozen_root
     return Path(__file__).resolve().parent
+
+
+def canonical_image_reference(image: str) -> str:
+    """Return an explicit Docker reference without rewriting stored config."""
+    reference = str(image).strip()
+    if not reference or "@" in reference:
+        return reference
+    final_component = reference.rsplit("/", 1)[-1]
+    return reference if ":" in final_component else f"{reference}:latest"
+
+
+def sandbox_input_files(root: Path | None = None) -> list[Path]:
+    """Return every bundled input that can affect the sandbox image."""
+    context_root = Path(root) if root is not None else resource_root()
+    paths = [context_root / relative for relative in _SANDBOX_FIXED_INPUTS]
+    source_root = context_root / _SANDBOX_SOURCE_DIR
+    if source_root.is_dir():
+        paths.extend(sorted(path for path in source_root.rglob("*") if path.is_file()))
+    missing = [path for path in paths[:len(_SANDBOX_FIXED_INPUTS)] if not path.is_file()]
+    if missing or not source_root.is_dir():
+        names = [str(path) for path in missing]
+        if not source_root.is_dir():
+            names.append(str(source_root))
+        raise FileNotFoundError(f"Sandbox build inputs are missing: {', '.join(names)}")
+    return paths
+
+
+def sandbox_identity(root: Path | None = None) -> str:
+    """Hash Docker/MCP inputs with platform-independent paths and newlines."""
+    context_root = Path(root) if root is not None else resource_root()
+    digest = hashlib.sha256()
+    for path in sandbox_input_files(context_root):
+        relative = path.relative_to(context_root).as_posix().encode("utf-8")
+        content = path.read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+        digest.update(relative)
+        digest.update(b"\0")
+        digest.update(content)
+        digest.update(b"\0")
+    return digest.hexdigest()
 
 
 def _bundled_metadata() -> dict:
@@ -54,4 +102,4 @@ DEFAULT_SANDBOX_IMAGE = str(
 DESKTOP_PORT = int(os.getenv("LUMEN_DESKTOP_PORT", "38492"))
 APP_ID = "lumen-ai-chat"
 CONTAINER_BUILD_LABEL = "com.lumen.sandbox.image"
-CONTAINER_VERSION_LABEL = "com.lumen.sandbox.version"
+CONTAINER_IDENTITY_LABEL = "com.lumen.sandbox.identity"

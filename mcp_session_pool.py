@@ -26,6 +26,7 @@ import asyncio
 import logging
 import os
 import threading
+import time
 from concurrent.futures import TimeoutError as FutureTimeoutError
 
 log = logging.getLogger(__name__)
@@ -120,11 +121,10 @@ class McpSessionPool:
     async def _open_session(self, server_name: str, server_config: dict):
         """Open a brand-new stdio session and cache it."""
         from mcp import ClientSession
-        from mcp.client.stdio import stdio_client
-        from mcp_service import _build_server_params
+        from mcp_service import _build_server_params, _stdio_client
 
         params = _build_server_params(server_name, server_config, conv_id=self.conv_id)
-        stdio_cm = stdio_client(params)
+        stdio_cm = _stdio_client(params)
         reader, writer = await stdio_cm.__aenter__()
         session_cm = ClientSession(
             reader,
@@ -211,7 +211,7 @@ class McpSessionPool:
         for server_name in reversed(list(self._sessions)):
             await self._close_one_session(server_name)
 
-    def close(self) -> None:
+    def close(self, timeout: float | None = None) -> None:
         if self._closed:
             return
         self._closed = True
@@ -227,8 +227,10 @@ class McpSessionPool:
             self._aqueue.put_nowait,
             ("close", future),
         )
+        wait_seconds = self.tool_timeout + 5 if timeout is None else max(0.01, timeout)
+        deadline = time.monotonic() + wait_seconds
         try:
-            future.result(timeout=self.tool_timeout + 5)
+            future.result(timeout=wait_seconds)
         except FutureTimeoutError:
             log.warning("[mcp] timed out closing session pool for %s", self.conv_id)
-        self._thread.join(timeout=2)
+        self._thread.join(timeout=max(0.0, min(2.0, deadline - time.monotonic())))

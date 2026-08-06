@@ -123,3 +123,46 @@ After the Git reverts, the tracked repository content matched `e768fed` exactly.
 - one Docker CLI test expects the macOS `/Applications/Docker.app/...` path even when executed on Windows.
 
 These tests were intentionally not changed during the rollback. They should be addressed as explicit cross-platform contracts at the start of the next Windows effort, before implementation code is added.
+
+## Narrow implementation validation (2026-08-06)
+
+The restarted implementation keeps the native desktop host in
+`windows_desktop_launcher.py` and the Windows build in `packaging/`. The three
+macOS-specific files named in the implementation plan remain byte-for-byte
+unchanged. Shared changes are limited to image identity/classification, Docker
+process discovery, MCP stderr/session cleanup, and the application shutdown
+coordinator.
+
+The sandbox now uses the explicit `lumen-sandbox:latest` reference and a
+platform-independent SHA-256 over only the Docker/MCP build inputs. A legacy
+version-labelled image produced one `sandbox_image_outdated` state. After one
+content-identity build it returned `ok`; a separately frozen desktop
+`0.1.0-alpha.2` package also returned `ok` without rebuilding. A disposable
+extracted package with one changed `.dockerignore` input returned
+`sandbox_image_outdated`, then returned `ok` on two consecutive checks after
+its changed-identity build. The production identity was restored afterward.
+
+Acceptance evidence from a clean extracted Windows ZIP:
+
+- PyInstaller produced a complete `onedir` archive and SHA-256; the extracted
+  executable passed frozen-resource and server smoke mode.
+- The executable PE subsystem is Windows GUI (`2`), and Lumen-owned Docker
+  launches use `CREATE_NO_WINDOW`. MCP 2.0's Windows launcher retains its Job
+  Object process-tree cleanup and also uses `CREATE_NO_WINDOW`.
+- Docker-running startup returned `ok`. Docker-stopped startup returned
+  `docker_not_running` with `start_docker`, and the documented detached Docker
+  Desktop CLI start recovered to `ok`.
+- The built-in MCP smoke exercised all four bundled tools. The extracted
+  package discovered both `agent_tools` and an editable `mcp.json` server, then
+  successfully invoked `create_file` through each entirely inside Docker.
+- Real Windows tray-loop Quit runs with zero, one, and three live persistent
+  MCP pools completed in 1.219, 1.891, and 1.781 seconds. All runs reacquired
+  the named mutex, kept stopped containers reusable, and left zero Lumen
+  processes, listeners on port `38492`, and running Lumen containers.
+- The final Windows test run collected 415 passing tests with the macOS-only
+  launcher module skipped on Windows. Python compilation, frontend JavaScript
+  syntax, extracted-package smoke, Docker/MCP smoke, and whitespace checks also
+  passed.
+
+No commit, push, publication, or release was created; the implementation
+remains available for final review.

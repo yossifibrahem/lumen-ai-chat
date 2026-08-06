@@ -13,9 +13,59 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
+import threading
+import types
 import pytest
 
 import mcp_service
+
+
+def test_windowed_app_routes_mcp_stderr_to_valid_sink(monkeypatch):
+    captured = {}
+
+    def fake_stdio_client(params, **kwargs):
+        captured["params"] = params
+        captured.update(kwargs)
+        return object()
+
+    fake_module = types.ModuleType("mcp.client.stdio")
+    fake_module.stdio_client = fake_stdio_client
+    monkeypatch.setitem(sys.modules, "mcp.client.stdio", fake_module)
+    monkeypatch.setattr(mcp_service.sys, "stderr", None)
+    monkeypatch.setattr(mcp_service, "_mcp_stderr_handle", None)
+
+    transport = mcp_service._stdio_client({"command": "docker"})
+
+    assert transport is not None
+    assert captured["params"] == {"command": "docker"}
+    assert captured["errlog"].fileno() >= 0
+    captured["errlog"].close()
+
+
+def test_close_all_persistent_pools_runs_in_parallel(monkeypatch):
+    release = threading.Event()
+    both_started = threading.Event()
+    started = []
+    guard = threading.Lock()
+
+    class Pool:
+        def close(self, timeout=None):
+            with guard:
+                started.append(timeout)
+                if len(started) == 2:
+                    both_started.set()
+            assert release.wait(timeout=2)
+
+    monkeypatch.setattr(mcp_service, "_persistent_pools", {"one": Pool(), "two": Pool()})
+    worker = threading.Thread(target=mcp_service.close_all_persistent_pools)
+    worker.start()
+    assert both_started.wait(timeout=2)
+    release.set()
+    worker.join(timeout=2)
+
+    assert not worker.is_alive()
+    assert mcp_service._persistent_pools == {}
 
 
 # ---------------------------------------------------------------------------

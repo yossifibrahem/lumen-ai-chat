@@ -8,18 +8,18 @@ Lumen is distributed as an installable desktop application for normal users whil
 
 ## Current Product Direction
 
-- **Desktop experience:** a small macOS menu-bar application runs Lumen locally and opens the chat in the user's default browser.
+- **Desktop experience:** small macOS menu-bar and Windows tray applications run Lumen locally and open the same chat UI in the user's default browser.
 - **User prerequisite:** Docker Desktop is the only external runtime users install. Python, Node.js, npm, Git, and the Lumen source tree are included or handled internally.
-- **Tool installation:** the app bundles `Dockerfile.sandbox` and the computer-use MCP source pinned at commit `8a96eab`. After explicit confirmation on first run, Docker pulls the official `ubuntu:24.04` image, installs the required packages, compiles the MCP server inside Ubuntu, and creates the local `lumen-sandbox` image.
+- **Tool installation:** the app bundles `Dockerfile.sandbox` and the computer-use MCP source pinned at commit `8a96eab`. After explicit confirmation on first run, Docker pulls the official `ubuntu:24.04` image, installs the required packages, compiles the MCP server inside Ubuntu, and creates the local `lumen-sandbox:latest` image.
 - **MCP boundary:** the built-in `agent_tools` server runs only inside Lumen's containers. Its JSON definition is hidden and non-removable, while its icon, enable, and approval controls remain available.
-- **Distribution:** the current release target is Apple Silicon on macOS 14+ through an ad-hoc-signed DMG. Windows, Intel macOS, automatic updates, and a native chat window are later work.
+- **Distribution:** desktop artifacts are an Apple Silicon macOS 14+ DMG and a portable Windows x64 `onedir` ZIP. The Windows package must remain intact; the executable is not a standalone distribution.
 - **Data ownership:** chats, settings, memory, and workspaces remain under `~/.lumen/`; replacing or uninstalling the app does not remove them.
 - **Image delivery:** Lumen does not pull a prebuilt application image from a container registry. The release workflow verifies the same Dockerfile, and each user builds the pinned image locally.
 
 ```text
 Lumen AI Chat.app ──> Waitress + Flask on 127.0.0.1:38492 ──> browser UI
         │
-        └──> first-run Docker build ──> lumen-sandbox ──> per-chat/folder containers
+        └──> first-run Docker build ──> lumen-sandbox:latest ──> per-chat/folder containers
                                                         └──> built-in agent_tools MCP
 ```
 
@@ -94,6 +94,29 @@ Lumen AI Chat.app ──> Waitress + Flask on 127.0.0.1:38492 ──> browser UI
 
 ---
 
+## Windows x64 Installation
+
+The Windows build is a portable, unsigned ZIP. It contains the complete
+PyInstaller `onedir` application; keep the extracted folder together.
+
+1. Install Docker Desktop for Windows and allow its normal setup to finish.
+2. Download `Lumen-AI-Chat-<version>-windows-x64.zip` and its `.sha256` file.
+3. Verify the checksum, then extract the entire ZIP to a writable local folder.
+4. Run `Lumen AI Chat.exe` from the extracted `Lumen AI Chat` folder. Windows
+   may show an unsigned-application warning on first launch.
+5. If Docker is stopped, use **Docker Status** in the tray and click **Start
+   Docker** in Lumen's setup page. When prompted, click **Install Lumen Tools**.
+
+Lumen remains in the notification area with **Open Lumen**, **Docker Status**,
+**Open Logs**, and **Quit Lumen** actions. Quit stops the local listener, MCP
+sessions, and running Lumen containers before removing the tray icon. Cleanup
+has a single 15-second deadline; stopped containers remain available for fast
+reuse. Chats and workspaces stay under `%USERPROFILE%\.lumen`.
+
+The first tools installation needs an internet connection. Python, Node.js,
+the MCP server, and development tools are not required on the host: the app
+contains the MCP build source, and Docker compiles it inside the sandbox image.
+
 ## macOS Alpha Installation
 
 The prebuilt desktop alpha targets **Apple Silicon Macs running macOS 14 or newer**. It opens Lumen in the default browser and keeps the local server available from a small menu-bar item; it does not install Python or Node.js on the Mac.
@@ -102,7 +125,7 @@ The prebuilt desktop alpha targets **Apple Silicon Macs running macOS 14 or newe
 2. Download the Apple Silicon DMG from the GitHub release.
 3. Open the DMG and drag **Lumen AI Chat** into **Applications**.
 4. Because the alpha is not notarized, Control-click the app on first launch, choose **Open**, and confirm macOS's warning. Later launches work normally.
-5. Lumen opens its setup page. If Docker is stopped, click **Start Docker**. When prompted, click **Install Lumen Tools**. Docker pulls `ubuntu:24.04`, installs Node.js and the sandbox packages inside it, compiles the MCP source already included in the app, and creates `lumen-sandbox` locally.
+5. Lumen opens its setup page. If Docker is stopped, click **Start Docker**. When prompted, click **Install Lumen Tools**. Docker pulls `ubuntu:24.04`, installs Node.js and the sandbox packages inside it, compiles the MCP source already included in the app, and creates `lumen-sandbox:latest` locally.
 
 Lumen remains in the menu bar using the bundled Lumen artwork, with **Open Lumen**, **Docker Status**, **Open Logs**, and **Quit Lumen** actions. Application updates are manual: replace the old app with a newer DMG. Chats and workspaces stay under `~/.lumen/` and are not removed by an app update or uninstall.
 
@@ -125,7 +148,8 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 # 4. Build the Docker sandbox image (required for MCP tools)
-docker build --build-arg LUMEN_SANDBOX_VERSION=0.1.0-dev -f Dockerfile.sandbox -t lumen-sandbox .
+identity="$(python -c 'import build_info; print(build_info.sandbox_identity())')"
+docker build --build-arg "LUMEN_SANDBOX_IDENTITY=$identity" -f Dockerfile.sandbox -t lumen-sandbox:latest .
 
 # 5. Start the app
 python app.py
@@ -135,7 +159,7 @@ Open **http://localhost:8080**, then open the settings panel to enter your API k
 
 The development server binds to `127.0.0.1` with debug mode disabled by default. For deliberate LAN testing on a trusted network, set `LUMEN_HOST=0.0.0.0`, configure `LUMEN_CORS_ORIGINS`, and open `http://<your-computer-ip>:8080` from the other device.
 
-> Source and desktop runs use the local `lumen-sandbox` image. The desktop app contains the complete Docker build context, including the pinned MCP source, so first-run setup needs Docker Desktop but no host Python, Node.js, Git, or source checkout.
+> Source and desktop runs use the local `lumen-sandbox:latest` image. The desktop app contains the complete Docker build context, including the pinned MCP source, so first-run setup needs Docker Desktop but no host Python, Node.js, Git, or source checkout.
 
 ### Built-in tools
 
@@ -147,7 +171,7 @@ The sandbox image includes the [computer-use MCP server](https://github.com/yoss
 
 | Requirement | Version | Notes |
 |---|---|---|
-| Python | 3.10+ | Needed only for source development; included in the macOS app |
+| Python | 3.10+ | Needed only for source development; included in both desktop apps |
 | Docker | 20.10+ | Required for MCP sandbox containers |
 | Git submodules | — | Supplies the pinned built-in MCP source to Docker builds |
 | OpenAI-compatible API | — | OpenAI, Ollama, LM Studio, or a compatible proxy |
@@ -173,10 +197,21 @@ mcp>=2.0.0,<3
 All MCP servers run inside the active chat or folder's Docker sandbox. Build the image once before starting the app:
 
 ```bash
-docker build --build-arg LUMEN_SANDBOX_VERSION=0.1.0-dev -f Dockerfile.sandbox -t lumen-sandbox .
+identity="$(python -c 'import build_info; print(build_info.sandbox_identity())')"
+docker build --build-arg "LUMEN_SANDBOX_IDENTITY=$identity" -f Dockerfile.sandbox -t lumen-sandbox:latest .
 ```
 
-The default is the locally built `lumen-sandbox` image. The packaged app embeds `Dockerfile.sandbox` and the pinned computer-use MCP source, then compiles and installs it directly inside Ubuntu during first-run setup. Image version labels make a newer app request a rebuild while conversation workspaces remain on the host. The image remains configurable through `LUMEN_SANDBOX_IMAGE` or advanced settings.
+In PowerShell, compute the same value with `$identity = python -c "import
+build_info; print(build_info.sandbox_identity())"`, then run the Docker command
+with `--build-arg "LUMEN_SANDBOX_IDENTITY=$identity"`.
+
+The default is the locally built `lumen-sandbox:latest` image. The packaged
+app embeds `Dockerfile.sandbox` and the pinned computer-use MCP source, then
+compiles and installs it directly inside Ubuntu during first-run setup. A
+content identity derived only from Docker/MCP build inputs determines whether
+the image needs rebuilding, so rebuilding or upgrading desktop-only code does
+not invalidate it. The image remains configurable through
+`LUMEN_SANDBOX_IMAGE` or advanced settings.
 
 ### Build the macOS DMG
 
@@ -194,7 +229,23 @@ The script renders the current favicon into an `.icns`, generates Finder bundle/
 The release workflow builds and smoke-tests the ARM64 sandbox without publishing it, runs the Python tests, and publishes the DMG. End users build the same pinned sandbox locally on first run, so no container registry account is required.
 
 To exercise the local development image through the same Docker/MCP boundary
-used by Lumen, run `python packaging/smoke_sandbox.py --image lumen-sandbox`.
+used by Lumen, run `python packaging/smoke_sandbox.py --image lumen-sandbox:latest`.
+
+### Build the Windows ZIP
+
+On Windows x64, use an x64 Python 3.12 environment:
+
+```powershell
+python -m pip install -r requirements-dev.txt -r requirements-desktop.txt
+$env:LUMEN_BUILD_VERSION = "0.1.0-alpha.1"
+.\packaging\build_windows.ps1
+```
+
+The script generates the icon and executable version resource, freezes the
+windowed Waitress/tray host, and archives the complete `onedir` folder. It then
+extracts the ZIP to a clean temporary directory and runs the frozen resource
+and server smoke mode from that extraction. Successful output is
+`dist\Lumen-AI-Chat-<version>-windows-x64.zip` plus a SHA-256 file.
 
 ### Production Deployment
 
@@ -261,7 +312,7 @@ http://localhost:1234/v1     # LM Studio
 | `LUMEN_ADVANCED_CONFIG_FILE` | `~/.lumen/advanced_config.json` | Advanced/container settings config path |
 | `LUMEN_MCP_CONFIG_FILE` | `~/.lumen/mcp.json` | MCP server config path |
 | `LUMEN_MCP_CONFIG_CACHE_TTL` | `5` | Seconds to cache MCP config reads |
-| `LUMEN_SANDBOX_IMAGE` | `lumen-sandbox` | Locally built Docker image for sandbox containers |
+| `LUMEN_SANDBOX_IMAGE` | `lumen-sandbox:latest` | Locally built Docker image for sandbox containers |
 | `LUMEN_CONTAINERS_ROOT` | `~/.lumen/containers` | Host directory for standalone-chat and shared-folder workspaces |
 | `LUMEN_CONTAINER_MEMORY` | `512m` | Memory limit per sandbox container |
 | `LUMEN_CONTAINER_CPUS` | `1` | CPU quota per sandbox container |
@@ -345,7 +396,7 @@ Open the workspace panel, upload a file, and it will appear under `/workspace/up
 
 ### Using MCP Tools
 
-1. Build the sandbox image if you haven't already: `docker build --build-arg LUMEN_SANDBOX_VERSION=0.1.0-dev -f Dockerfile.sandbox -t lumen-sandbox .`
+1. Build the sandbox image if you have not already, using the content-identity command in [Build the Sandbox Image](#build-the-sandbox-image).
 2. Open the MCP settings panel and add a server (command, args, optional env vars).
 3. Save the config and click **Load Tools** — a conversation must be open for tool discovery.
 4. Send a message asking the model to use a tool.

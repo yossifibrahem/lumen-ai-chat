@@ -12,6 +12,8 @@ import signal
 import os
 import secrets
 import sys
+import threading
+import time
 
 from flask import Flask
 from flask_cors import CORS
@@ -32,6 +34,8 @@ log = logging.getLogger(__name__)
 # multiple create_app() calls in tests do not stack duplicate registrations.
 _shutdown_registered = False
 _shutdown_done = False
+_shutdown_lock = threading.Lock()
+SHUTDOWN_CLEANUP_SECONDS = 10
 
 
 def create_app() -> Flask:
@@ -120,7 +124,7 @@ def _cleanup_stale_containers() -> None:
         log.warning("[startup] stale container cleanup skipped: %s", exc)
 
 
-def _shutdown_containers() -> None:
+def _shutdown_containers(*, deadline: float | None = None) -> None:
     """Kill all running lumen-chat-* containers on app shutdown.
 
     Non-fatal: a failure to reach Docker (e.g. Docker daemon itself was
@@ -129,19 +133,38 @@ def _shutdown_containers() -> None:
     SIGTERM handler and atexit fire in the same shutdown sequence.
     """
     global _shutdown_done
-    if _shutdown_done:
-        return
-    _shutdown_done = True
-    try:
-        mcp_service.close_all_persistent_pools()
-    except Exception as exc:
-        log.warning("[shutdown] MCP pool teardown failed: %s", exc)
-    try:
-        stopped = container_service.stop_all_containers()
-        if stopped:
-            log.info("[shutdown] stopped %d container(s): %s", len(stopped), stopped)
-    except Exception as exc:
-        log.warning("[shutdown] container stop failed: %s", exc)
+    with _shutdown_lock:
+        if _shutdown_done:
+            return
+        _shutdown_done = True
+
+    shutdown_deadline = deadline or (time.monotonic() + SHUTDOWN_CLEANUP_SECONDS)
+
+    def _close_mcp() -> None:
+        try:
+            mcp_service.close_all_persistent_pools(deadline=shutdown_deadline)
+        except Exception as exc:
+            log.warning("[shutdown] MCP pool teardown failed: %s", exc)
+
+    def _stop_containers() -> None:
+        try:
+            stopped = container_service.stop_all_containers(deadline=shutdown_deadline)
+            if stopped:
+                log.info("[shutdown] stopped %d container(s): %s", len(stopped), stopped)
+        except Exception as exc:
+            log.warning("[shutdown] container stop failed: %s", exc)
+
+    workers = [
+        threading.Thread(target=_close_mcp, name="lumen-shutdown-mcp", daemon=True),
+        threading.Thread(target=_stop_containers, name="lumen-shutdown-containers", daemon=True),
+    ]
+    for worker in workers:
+        worker.start()
+    for worker in workers:
+        worker.join(timeout=max(0.0, shutdown_deadline - time.monotonic()))
+    unfinished = [worker.name for worker in workers if worker.is_alive()]
+    if unfinished:
+        log.warning("[shutdown] deadline reached with cleanup still running: %s", unfinished)
 
 
 if __name__ == "__main__":
