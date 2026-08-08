@@ -6,7 +6,7 @@ import { escapeHtml, formatBytes, fileExtensionLabel } from './format.js';
 
 
 // Keep one ordered list so mixed uploads render in the exact order the user picked them.
-// Image entry: { kind: 'image', previewUrl, uploadPromise, name, size }
+// Image entry: { kind: 'image', file, previewUrl, uploadPromise, name, size }
 // File entry:  { kind: 'file', file, name, size }
 let pendingAttachments = [];
 let pendingAttachmentAdds = Promise.resolve();
@@ -127,7 +127,9 @@ async function addImageFiles(files) {
     try {
       const { dataUrl, mediaType } = await readFile(file);
       const uploadPromise = uploadImage(dataUrl, mediaType);
-      pendingAttachments.push({ kind: 'image', previewUrl: dataUrl, uploadPromise, name: file.name || 'image', size: file.size || 0 });
+      // Retain the original File so the send flow can copy the image into the
+      // conversation workspace in addition to uploading its model/preview copy.
+      pendingAttachments.push({ kind: 'image', file, previewUrl: dataUrl, uploadPromise, name: file.name || 'image', size: file.size || 0 });
       refreshImagePreviewBar(); // show thumb immediately, upload in background
     } catch {}
   }

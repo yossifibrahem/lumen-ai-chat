@@ -61,7 +61,7 @@ export async function editAndResend(logIndex, newText, imageUrls = [], files = [
 
   // Rebuild the user turn with the original attachments so they are preserved.
   const textToSend = newText.trim();
-  const fileAttachments = normalizedAttachments.filter(entry => entry.kind === 'file');
+  const workspaceAttachments = normalizedAttachments.filter(entry => entry.path);
   const imageAttachments = normalizedAttachments.filter(entry => entry.kind === 'image');
   const refs = imageAttachments.map(entry => entry.ref || imageUrlToRef(entry.url)).filter(Boolean);
 
@@ -79,12 +79,12 @@ export async function editAndResend(logIndex, newText, imageUrls = [], files = [
         text: textToSend,
         attachments: normalizedAttachments,
         imageUrls: imageAttachments.map(entry => entry.url).filter(Boolean),
-        files: fileAttachments,
+        files: workspaceAttachments,
       }
     : textToSend;
 
   const turn = deps.createTurnContext(state.convId);
-  turn.messages.push({ role: 'user', content: apiContent, attachments: fileAttachments });
+  turn.messages.push({ role: 'user', content: apiContent, attachments: workspaceAttachments });
   turn.displayLog.push({ type: 'message', role: 'user', content: displayContent });
   deps.syncVisibleTurn(turn);
   if (deps.isTurnVisible(turn)) appendMessage('user', displayContent, turn.displayLog.length - 1);

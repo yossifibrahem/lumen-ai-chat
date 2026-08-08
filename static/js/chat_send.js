@@ -25,7 +25,6 @@ export async function sendMessage(userText, deps) {
   const textToSend        = userText.trim();
   const attachmentsToSend = drainPendingAttachments();
   const imagesToSend      = attachmentsToSend.filter(entry => entry.kind === 'image');
-  const filesToSend       = attachmentsToSend.filter(entry => entry.kind === 'file');
   refreshImagePreviewBar();
 
   // Resolve images first so a failed image does not silently disappear from the sent message.
@@ -42,10 +41,10 @@ export async function sendMessage(userText, deps) {
     return;
   }
 
-  // Copy regular files into the chat workspace.
+  // Copy every attachment, including images, into the chat workspace.
   let uploadedFiles = [];
   try {
-    uploadedFiles = await uploadConversationFiles(turn.convId, filesToSend);
+    uploadedFiles = await uploadConversationFiles(turn.convId, attachmentsToSend);
     if (uploadedFiles.length && deps.isTurnVisible(turn)) refreshFilePanel({ keepPreview: true }).catch(() => {});
   } catch (err) {
     restorePendingAttachments(attachmentsToSend);
@@ -59,21 +58,21 @@ export async function sendMessage(userText, deps) {
 
   const displayAttachments = [];
   let imageCursor = 0;
-  let fileCursor = 0;
-  attachmentsToSend.forEach(entry => {
+  attachmentsToSend.forEach((entry, attachmentIndex) => {
+    const uploadedFile = uploadedFiles[attachmentIndex];
     if (entry.kind === 'image') {
       const uploaded = uploadedRefs[imageCursor++];
       displayAttachments.push({
+        ...uploadedFile,
         kind: 'image',
         url: uploaded.url,
         ref: uploaded.ref,
         mediaType: uploaded.mediaType,
-        name: entry.name || 'image',
-        size: entry.size || 0,
+        name: uploadedFile?.name || entry.name || 'image',
+        size: uploadedFile?.size ?? entry.size ?? 0,
       });
     } else {
-      const uploaded = uploadedFiles[fileCursor++];
-      if (uploaded) displayAttachments.push({ kind: 'file', ...uploaded });
+      if (uploadedFile) displayAttachments.push({ kind: 'file', ...uploadedFile });
     }
   });
 
@@ -99,6 +98,8 @@ export async function sendMessage(userText, deps) {
       }
     : textToSend;
 
+  // The workspace metadata is attached to the same message as the image_ref,
+  // so buildApiMessages() supplies both its file path and its visual content.
   turn.messages.push({ role: 'user', content: apiContent, attachments: uploadedFiles });
   turn.displayLog.push({ type: 'message', role: 'user', content: displayContent });
   deps.syncVisibleTurn(turn);
