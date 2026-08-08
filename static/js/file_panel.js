@@ -12,6 +12,7 @@ import { escapeHtml, formatBytes, fileExtension as ext } from './format.js';
 const PANEL_WIDTH_KEY = 'lumen_file_panel_width';
 const MIN_PANEL_WIDTH = 280;
 const DEFAULT_PANEL_WIDTH = 380;
+const MAX_PANEL_VIEWPORT_RATIO = 0.5;
 const WORKSPACE_ROOT = '/workspace';
 const TREE_INDENT_PX = 14;
 
@@ -33,7 +34,12 @@ function workspaceApiBase() {
 }
 
 function maxPanelWidth() {
-  return Math.max(MIN_PANEL_WIDTH, Math.min(Math.round(window.innerWidth * 0.72), 920));
+  // Keep this in sync with the desktop max-width in 12-file-panel.css. The
+  // same value drives the panel's negative closing margin, so allowing the
+  // custom property to exceed the rendered width can push the header controls
+  // past the right edge of the viewport when the panel closes.
+  const viewportLimit = Math.floor(window.innerWidth * MAX_PANEL_VIEWPORT_RATIO);
+  return Math.max(MIN_PANEL_WIDTH, Math.min(viewportLimit, 920));
 }
 
 function clampPanelWidth(width) {
